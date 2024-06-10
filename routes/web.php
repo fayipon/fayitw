@@ -15,4 +15,4 @@ use Illuminate\Support\Facades\Route;
 
 
 // 首頁
-Route::get('/', 'App\Http\Controllers\SiteHomeController@index');
+Route::get('/', 'App\Http\Controllers\HomeController@index');

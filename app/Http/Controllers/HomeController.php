@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 /************************************
 *  
-*  SiteHome 首頁
+*  Home 首頁
 *  
 *************************************/
 
-class SiteHomeController extends SiteController {
+class HomeController extends Controller {
    
     // 建構方法
     public function index($request) {
