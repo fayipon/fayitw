@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller {
    
-    // 建構方法
+    // 首頁
     public function index(Request $request) {
     	echo 111;
     }
