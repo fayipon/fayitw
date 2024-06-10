@@ -13,6 +13,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+
+// 首頁
+Route::get('/', 'App\Http\Controllers\SiteHomeController@index');
