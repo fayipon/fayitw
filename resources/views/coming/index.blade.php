@@ -54,7 +54,7 @@
 
 
 					<!-- HERO CONTENT -->
-					<h1 class="m-b-40">This page Coming <b>soon.</b></h1>
+					<h1 class="m-b-40">Coming <b>soon.</b></h1>
 					<p class="lead m-b-60"> https://fayi.tw<br class="hidden-xs">即將上線, 敬請期待</p>
 
 					<!-- COUNTDOWN: YOUR DATE HERE -->
