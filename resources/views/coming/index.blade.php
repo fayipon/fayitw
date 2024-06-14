@@ -6,7 +6,7 @@
 	<meta name="description" content="">
 	<meta name="author" content="">
 	
-	<title id="title">Skyflex- Coming Soon</title>
+	<title>Fayi.tw - Coming Soon</title>
 	
 	<!-- Favicons -->
 	<link rel="shortcut icon" href="assets/images/favicon.png">
