@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\Session;
 *  
 *************************************/
 
-class HomeController extends Controller {
+class HomeController extends SiteController {
    
     // 首頁
     public function index(Request $request) {
-    	echo "coming soon";
+    	
+        return view('coming.index',$this->data);
     }
     
 }

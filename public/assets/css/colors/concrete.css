@@ -1,0 +1,41 @@
+/*!------------------------------------------------------------------
+Concrete
+Accent color:       #95a5a6;
+Hover accent color: rgb(122, 142, 144);
+*/
+
+a {
+	color: #95a5a6;
+}
+
+.loader:after {
+	border-color: #95a5a6 transparent transparent transparent;
+}
+
+.form-control:focus {
+	border-color: #95a5a6;
+}
+
+.btn-base, .btn-base:focus {
+	background: #95a5a6;
+}
+
+.btn-base:hover {
+	background: rgb(122, 142, 144);
+}
+
+.iconbox-icon {
+	color: #95a5a6;
+}
+
+.iconbox:hover .iconbox-icon {
+	color: rgb(122, 142, 144);
+}
+
+.striped-icon {
+	color: #95a5a6;
+}
+
+.social-icons a:hover {
+	color: #95a5a6;
+}

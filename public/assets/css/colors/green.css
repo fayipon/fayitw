@@ -1,0 +1,41 @@
+/*!------------------------------------------------------------------
+Green
+Accent color:       #27ae60;
+Hover accent color: rgb(30, 133, 73);
+*/
+
+a {
+	color: #27ae60;
+}
+
+.loader:after {
+	border-color: #27ae60 transparent transparent transparent;
+}
+
+.form-control:focus {
+	border-color: #27ae60;
+}
+
+.btn-base, .btn-base:focus {
+	background: #27ae60;
+}
+
+.btn-base:hover {
+	background: rgb(30, 133, 73);
+}
+
+.iconbox-icon {
+	color: #27ae60;
+}
+
+.iconbox:hover .iconbox-icon {
+	color: rgb(30, 133, 73);
+}
+
+.striped-icon {
+	color: #27ae60;
+}
+
+.social-icons a:hover {
+	color: #27ae60;
+}

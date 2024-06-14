@@ -1,0 +1,41 @@
+/*!------------------------------------------------------------------
+Alizarin
+Accent color:       #e74c3c;
+Hover accent color: rgb(213, 45, 26);
+*/
+
+a {
+	color: #e74c3c;
+}
+
+.loader:after {
+	border-color: #e74c3c transparent transparent transparent;
+}
+
+.form-control:focus {
+	border-color: #e74c3c;
+}
+
+.btn-base, .btn-base:focus {
+	background: #e74c3c;
+}
+
+.btn-base:hover {
+	background: rgb(213, 45, 26);
+}
+
+.iconbox-icon {
+	color: #e74c3c;
+}
+
+.iconbox:hover .iconbox-icon {
+	color: rgb(213, 45, 26);
+}
+
+.striped-icon {
+	color: #e74c3c;
+}
+
+.social-icons a:hover {
+	color: #e74c3c;
+}

@@ -1,0 +1,41 @@
+/*!------------------------------------------------------------------
+Emerald
+Accent color:       #2ecc71;
+Hover accent color: rgb(37, 162, 89);
+*/
+
+a {
+	color: #2ecc71;
+}
+
+.loader:after {
+	border-color: #2ecc71 transparent transparent transparent;
+}
+
+.form-control:focus {
+	border-color: #2ecc71;
+}
+
+.btn-base, .btn-base:focus {
+	background: #2ecc71;
+}
+
+.btn-base:hover {
+	background: rgb(37, 162, 89);
+}
+
+.iconbox-icon {
+	color: #2ecc71;
+}
+
+.iconbox:hover .iconbox-icon {
+	color: rgb(37, 162, 89);
+}
+
+.striped-icon {
+	color: #2ecc71;
+}
+
+.social-icons a:hover {
+	color: #2ecc71;
+}

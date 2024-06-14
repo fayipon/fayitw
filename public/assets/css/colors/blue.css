@@ -1,0 +1,41 @@
+/*!------------------------------------------------------------------
+Blue
+Accent color:       #3498db;
+Hover accent color: rgb(33, 125, 186);
+*/
+
+a {
+	color: #3498db;
+}
+
+.loader:after {
+	border-color: #3498db transparent transparent transparent;
+}
+
+.form-control:focus {
+	border-color: #3498db;
+}
+
+.btn-base, .btn-base:focus {
+	background: #3498db;
+}
+
+.btn-base:hover {
+	background: rgb(33, 125, 186);
+}
+
+.iconbox-icon {
+	color: #3498db;
+}
+
+.iconbox:hover .iconbox-icon {
+	color: rgb(33, 125, 186);
+}
+
+.striped-icon {
+	color: #3498db;
+}
+
+.social-icons a:hover {
+	color: #3498db;
+}
