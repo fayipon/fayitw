@@ -15,7 +15,7 @@ class HomeController extends Controller {
    
     // 首頁
     public function index(Request $request) {
-    	echo 111;
+    	echo "coming soon";
     }
     
 }
