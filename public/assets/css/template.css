@@ -565,7 +565,7 @@ p, ul, ol, .form-group{
 
 .overlay-light:before{
 	background-image:url(../images/overlay.png);
-	opacity:0.75;
+	opacity:0.3;
 	content:"";
 	left:0;
 	top:0;

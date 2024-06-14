@@ -46,14 +46,12 @@
 	<div class="wrapper">
 
 		<!-- HERO -->
-		<section id="hero" class="module-hero overlay-light" data-background="assets/images/bg01.jpeg">
+		<section id="hero" class="module-hero overlay-dark" data-background="assets/images/bg01.jpeg">
 
 			<!-- HERO TEXT -->
 			<div class="hero-caption">
 				<div class="hero-text">
 
-					<!-- YOUR LOGO -->
-					<img class="m-b-100" src="assets/images/logo.png" alt="">
 
 					<!-- HERO CONTENT -->
 					<h1 class="m-b-40">Coming back <b>soon.</b></h1>
