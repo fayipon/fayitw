@@ -46,7 +46,7 @@
 	<div class="wrapper">
 
 		<!-- HERO -->
-		<section id="hero" class="module-hero overlay-light" data-background="assets/images/module-1.jpg">
+		<section id="hero" class="module-hero overlay-light" data-background="assets/images/bg01.jpeg">
 
 			<!-- HERO TEXT -->
 			<div class="hero-caption">
