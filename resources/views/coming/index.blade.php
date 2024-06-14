@@ -30,7 +30,7 @@
 	<link href="assets/css/animate.css" rel="stylesheet">
 	
 	<!-- Template core CSS -->
-	<link href="assets/css/template.css" rel="stylesheet">
+	<link href="assets/css/template.css?v=1" rel="stylesheet">
 	
 	<!-- Color CSS -->
 	<!--<link href="assets/css/colors/blue.css" rel="stylesheet" type="text/css">-->
@@ -55,10 +55,10 @@
 
 					<!-- HERO CONTENT -->
 					<h1 class="m-b-40">Coming back <b>soon.</b></h1>
-					<p class="lead m-b-60">One morning, when Gregor Samsa woke from troubled dreams, he found himself <br class="hidden-xs"> transformed in his bed into a horrible vermin.</p>
+					<p class="lead m-b-60"> Fayi的個人頁<br class="hidden-xs"> transformed in his bed into a horrible vermin.</p>
 
 					<!-- COUNTDOWN: YOUR DATE HERE -->
-					<div id="countdown" class="m-b-100" data-countdown="2017/01/01"></div>
+					<div id="countdown" class="m-b-100" data-countdown="2024/07/01"></div>
 
 				</div>
 			</div>
