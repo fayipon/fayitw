@@ -55,7 +55,7 @@
 
 					<!-- HERO CONTENT -->
 					<h1 class="m-b-40">Coming back <b>soon.</b></h1>
-					<p class="lead m-b-60"> Fayi的個人頁<br class="hidden-xs"> transformed in his bed into a horrible vermin.</p>
+					<p class="lead m-b-60"> Fayi.tw 個人演示<br class="hidden-xs">我將會在近期將展示產品架設上線</p>
 
 					<!-- COUNTDOWN: YOUR DATE HERE -->
 					<div id="countdown" class="m-b-100" data-countdown="2024/07/01"></div>
