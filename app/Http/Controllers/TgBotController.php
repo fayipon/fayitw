@@ -19,6 +19,9 @@ class TgBotController extends SiteController {
     	
         $this->getRequest($request);
 
+        $reponse = json_encode($this->request);
+        dd($reponse);
+        
         $data = Test::first();
         dd($data);
         
