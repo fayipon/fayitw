@@ -11,5 +11,7 @@ class Test extends Model
 
     protected $table = 'test';
     protected $fillable = ['data'];
+    
+    public $timestamps = true;
 
 }
