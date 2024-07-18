@@ -16,3 +16,4 @@ use Illuminate\Support\Facades\Route;
 
 // 首頁
 Route::get('/', 'App\Http\Controllers\HomeController@index');
+Route::get('/tg', 'App\Http\Controllers\TgBotController@index');

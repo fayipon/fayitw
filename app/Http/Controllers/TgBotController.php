@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
+use App\Models\Test;
 /************************************
 *  
 *  TradingView Bot
@@ -18,7 +19,8 @@ class TgBotController extends SiteController {
     	
         $this->getRequest($request);
 
-        dd($this->request);
+        $data = User::first();
+        dd($data);
         
     }
     
