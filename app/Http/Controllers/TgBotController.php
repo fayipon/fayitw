@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Session;
 *  
 *************************************/
 
-class TVBotController extends SiteController {
+class TgBotController extends SiteController {
    
     // 首頁
     public function index(Request $request) {
