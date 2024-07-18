@@ -19,7 +19,7 @@ class TgBotController extends SiteController {
     	
         $this->getRequest($request);
 
-        $data = User::first();
+        $data = Test::first();
         dd($data);
         
     }
