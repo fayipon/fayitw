@@ -31,6 +31,8 @@ class TgBotController extends SiteController {
         // 去除TradingView部份參數 帶了.P
         $ticker_tradingview = $reponse['ticker'];
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
+        
+        $binance_tradingview = $reponse['ticker'];
 
         // 判斷信號為做多或空
         if ($reponse['close'] >= $reponse['open']) {
@@ -48,7 +50,9 @@ class TgBotController extends SiteController {
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
-Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
+
+Binance : https://www.binance.com/zh-TC/futures/" . $binance_tradingview . "
+
 TradingView : https://cn.tradingview.com/chart/ggHGzezs/?symbol=BINANCE%3A" . $ticker_tradingview . "
 ";
         
