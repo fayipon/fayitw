@@ -20,6 +20,10 @@ class TgBotController extends SiteController {
         $this->getRequest($request);
         $reponse = $this->request;
 
+        // 將傳入資料儲存
+        Test::create([
+            "data" => json_encode($this->request)
+        ]);
 
         // 判斷信號為做多或空
         if ($reponse['close'] >= $reponse['open']) {
@@ -28,27 +32,6 @@ class TgBotController extends SiteController {
             $reponse['type'] = "sell";
         }
 
-        $reponse = json_encode($reponse);
-
-        $data = Test::create([
-            "data" => $reponse
-        ]);
-
-        /*
-        {
-        "type":"sell",
-        "ticker":"{{ticker}}",
-        "open":"{{open}}",
-        "close":"{{close}}",
-        "high":"{{high}}",
-        "low":"{{low}}",
-        "volume":"{{volume}}",
-        "time":"{{time}}"
-        }
-        */
-
-
-        
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($reponse));
 
