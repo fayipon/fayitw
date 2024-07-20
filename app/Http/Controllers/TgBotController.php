@@ -41,12 +41,12 @@ class TgBotController extends SiteController {
     public function message(Request $request) {
 
         $message = "message test\n
-        =========================
-        line 2 \n
-        line 3 \n
-        line 4 \n
-        line 5 \n
-        ";
+=========================
+line 2 \n
+line 3 \n
+line 4 \n
+line 5 \n
+";
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
 
