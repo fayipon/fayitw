@@ -28,6 +28,7 @@ class TgBotController extends SiteController {
 
         $default_rate = 0.01;
 
+        // 去除TradingView部份參數 帶了.P
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
 
         // 判斷信號為做多或空
