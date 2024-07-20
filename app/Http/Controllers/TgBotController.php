@@ -45,7 +45,7 @@ class TgBotController extends SiteController {
 發送時間 : " . date("Y-m-d H:i:s") . "
 ";
         
-        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($reponse));
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
 
     }
 
