@@ -19,7 +19,7 @@ class TgBotController extends SiteController {
     	
         $this->getRequest($request);
         $reponse = $this->request;
-
+        date_default_timezone_set("Asia/Taipei");
         // 將傳入資料儲存
         Test::create([
             "data" => json_encode($this->request)
