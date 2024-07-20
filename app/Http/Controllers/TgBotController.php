@@ -42,7 +42,6 @@ class TgBotController extends SiteController {
         $message = $reponse['ticker'] . " " . $reponse['type'] . "
 =========================
 當前價格 : " . $reponse['close'] . "
-建議止損 : " . ($reponse['close'] * $rate) . " (1%)
 發送時間 : " . date("Y-m-d H:i:s") . "
 ";
         
