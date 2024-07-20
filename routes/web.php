@@ -18,3 +18,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', 'App\Http\Controllers\HomeController@index');
 Route::get('/tg', 'App\Http\Controllers\TgBotController@index');
 Route::post('/tg', 'App\Http\Controllers\TgBotController@index');
+
+
+Route::get('/tg/message', 'App\Http\Controllers\TgBotController@message');
