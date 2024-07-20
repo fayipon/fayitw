@@ -47,6 +47,8 @@ class TgBotController extends SiteController {
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
+Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
+TradingView : https://cn.tradingview.com/chart/ggHGzezs/?symbol=BINANCE%3A" . $reponse['ticker'] . "
 ";
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
