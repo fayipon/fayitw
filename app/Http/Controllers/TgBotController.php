@@ -36,5 +36,14 @@ class TgBotController extends SiteController {
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($reponse));
 
     }
+
+    // 測試用
+    public function message(Request $request) {
+
+        $message = "message test";
+        
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
+
+    }
     
 }
