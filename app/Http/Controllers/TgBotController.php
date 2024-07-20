@@ -29,6 +29,7 @@ class TgBotController extends SiteController {
         $default_rate = 0.01;
 
         // 去除TradingView部份參數 帶了.P
+        $ticker_tradingview = $reponse['ticker'];
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
 
         // 判斷信號為做多或空
@@ -48,7 +49,7 @@ class TgBotController extends SiteController {
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
 Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
-TradingView : https://cn.tradingview.com/chart/ggHGzezs/?symbol=BINANCE%3A" . $reponse['ticker'] . "
+TradingView : https://cn.tradingview.com/chart/ggHGzezs/?symbol=BINANCE%3A" . $ticker_tradingview . "
 ";
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
