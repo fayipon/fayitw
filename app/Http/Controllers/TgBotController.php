@@ -32,6 +32,14 @@ class TgBotController extends SiteController {
             $reponse['type'] = "sell";
         }
 
+        // 組合發送資料
+        $message = $reponse['type'] . "
+=========================
+line 2
+line 3
+line 4
+line 5
+";
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($reponse));
 
@@ -40,7 +48,7 @@ class TgBotController extends SiteController {
     // 測試用
     public function message(Request $request) {
 
-        $message = "message test
+        $message = "↗︎ 1000STAT 買入
 =========================
 line 2
 line 3
