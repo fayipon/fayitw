@@ -39,7 +39,7 @@ class TgBotController extends SiteController {
         }
 
         // 組合發送資料
-        $message = $reponse['ticker'] . " " . $reponse['type'] . "
+        $message = $reponse['ticker'] . " 15M " . $reponse['type'] . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
