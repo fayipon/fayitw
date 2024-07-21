@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
-use App\Models\Test;
 use App\Models\Stock;
 /************************************
 *  
@@ -21,11 +20,6 @@ class TgBotController extends SiteController {
         $this->getRequest($request);
         $reponse = $this->request;
         date_default_timezone_set("Asia/Taipei");
-
-        // 將傳入資料儲存
-        Test::create([
-            "data" => json_encode($this->request)
-        ]);
 
         $default_rate = 0.01;
 
