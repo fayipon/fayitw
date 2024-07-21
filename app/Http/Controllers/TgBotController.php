@@ -74,7 +74,7 @@ line 5
     }
 
     // send message
-    protected function send($reponse)) {
+    protected function send($reponse) {
 
         $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
 =========================
