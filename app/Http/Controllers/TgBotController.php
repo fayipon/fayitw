@@ -56,10 +56,8 @@ class TgBotController extends SiteController {
         $this->send($reponse, $time_type, $binance_tradingview);
 
         // 更新資料
-        Stock::update([
-            $time_type . 'h' => $mode
-        ])->where([
-            'name' => $reponse['ticker']
+        Stock::where('name',$reponse['ticker'])->update([
+            $time_type.'h' => $mode
         ]);
 
     }
