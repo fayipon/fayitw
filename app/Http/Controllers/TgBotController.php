@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
 use App\Models\Test;
+use App\Models\Stock;
 /************************************
 *  
 *  TradingView Bot
@@ -33,10 +34,7 @@ class TgBotController extends SiteController {
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
         
         // 紀錄時間
-        $time_type = "15M";
-        if ($reponse['type'] == 60) {
-            $time_type = "1H";
-        }
+        $time_type = $reponse['type'];
 
         $binance_tradingview = $reponse['ticker'];
 
@@ -52,31 +50,20 @@ class TgBotController extends SiteController {
         }
 
         // 組合發送資料
-        $this->send($reponse,$time_type,$binance_tradingview);
+        $this->send($reponse, $time_type, $binance_tradingview);
 
         // 更新資料
-
-    }
-
-    // 測試用
-    public function message(Request $request) {
-
-        $message = "↗︎ 1000STAT 買入
-=========================
-line 2
-line 3
-line 4
-line 5
-";
-        
-        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
+        Stock::update(
+            ['user_id' => $user->id],
+            ['token' => $token]
+        );
 
     }
 
     // send message
     protected function send($reponse,$time_type,$binance_tradingview) {
 
-        $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
+        $message = $reponse['ticker'] . " " . $time_type . "H " . $reponse['type'] . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "

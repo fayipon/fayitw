@@ -13,8 +13,11 @@ if (isset($update["message"])) {
     file_put_contents("chat_ids.log", "Chat ID: " . $chatId . "\n", FILE_APPEND);
     // 定义回复消息
     $response = "This group's chat ID is: " . $chatId;
+
     // 发送回复消息
     file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=$chatId&text=" . urlencode($response));
+
+    file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=$chatId&text=" . urlencode($message));
 }
 
 ?>
