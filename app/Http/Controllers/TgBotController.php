@@ -32,6 +32,12 @@ class TgBotController extends SiteController {
         $ticker_tradingview = $reponse['ticker'];
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
         
+        // 紀錄時間
+        $time_type = "15M";
+        if ($reponse['type'] == 60) {
+            $time_type = "1H";
+        }
+        
         $binance_tradingview = $reponse['ticker'];
 
         // 判斷信號為做多或空
@@ -46,7 +52,7 @@ class TgBotController extends SiteController {
         }
 
         // 組合發送資料
-        $message = $reponse['ticker'] . " 15M " . $reponse['type'] . "
+        $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
