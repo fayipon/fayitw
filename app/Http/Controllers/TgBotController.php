@@ -52,7 +52,7 @@ class TgBotController extends SiteController {
         }
 
         // 組合發送資料
-        $this->send($reponse);
+        $this->send($reponse,$time_type,$binance_tradingview);
 
         // 更新資料
 
@@ -74,12 +74,16 @@ line 5
     }
 
     // send message
-    protected function send($reponse) {
+    protected function send($reponse,$time_type,$binance_tradingview) {
 
         $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
+
+Binance : https://www.binance.com/zh-TC/futures/" . $binance_tradingview . "
+";
+        
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
     }
     
