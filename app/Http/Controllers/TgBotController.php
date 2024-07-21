@@ -37,26 +37,30 @@ class TgBotController extends SiteController {
         $time_type = $reponse['type'];
 
         $binance_tradingview = $reponse['ticker'];
+        $mode = 0;
 
         // 判斷信號為做多或空
         if ($reponse['close'] >= $reponse['open']) {
             $reponse['type'] = "做多";
             $rate = 1 - $default_rate;
             $reponse['ticker'] = "↗︎ " . $reponse['ticker'];
+            $mode = 1;
         } else {
             $reponse['type'] = "做空";
             $rate = 1 + $default_rate;
             $reponse['ticker'] = "↘︎ " . $reponse['ticker'];
+            $mode = 0;
         }
 
         // 組合發送資料
         $this->send($reponse, $time_type, $binance_tradingview);
 
         // 更新資料
-        Stock::update(
-            ['user_id' => $user->id],
-            ['token' => $token]
-        );
+        Stock::update([
+            $time_type . 'h' => $mode
+        ])->where([
+            'name' => $reponse['ticker']
+        ]);
 
     }
 
