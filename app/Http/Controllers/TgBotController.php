@@ -60,7 +60,8 @@ class TgBotController extends SiteController {
             }
         } else {
             $result = Stock::where('name',$ticker_boinnance)->update([
-                '4h' => $mode
+                '4h' => $mode,
+                'updated_at' => date("Y-m-d H:i:s")
             ]);
             if ($result === false) {
                 dd($result);
