@@ -37,7 +37,7 @@ class TgBotController extends SiteController {
         if ($reponse['type'] == 60) {
             $time_type = "1H";
         }
-        
+
         $binance_tradingview = $reponse['ticker'];
 
         // 判斷信號為做多或空
@@ -52,15 +52,9 @@ class TgBotController extends SiteController {
         }
 
         // 組合發送資料
-        $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
-=========================
-當前價格 : " . $reponse['close'] . "
-發送時間 : " . date("Y-m-d H:i:s") . "
+        $this->send($reponse);
 
-Binance : https://www.binance.com/zh-TC/futures/" . $binance_tradingview . "
-";
-        
-        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
+        // 更新資料
 
     }
 
@@ -77,6 +71,16 @@ line 5
         
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
 
+    }
+
+    // send message
+    protected function send($reponse)) {
+
+        $message = $reponse['ticker'] . " " . $time_type . " " . $reponse['type'] . "
+=========================
+當前價格 : " . $reponse['close'] . "
+發送時間 : " . date("Y-m-d H:i:s") . "
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
     }
     
 }
