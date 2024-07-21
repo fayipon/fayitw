@@ -51,13 +51,19 @@ class TgBotController extends SiteController {
 
         // 更新資料
         if ($time_type == 1) {
-            Stock::where('name',$reponse['ticker'])->update([
+            $result = Stock::where('name',$reponse['ticker'])->update([
                 '1h' => $mode
             ]);
+            if ($result === false) {
+                dd($result);
+            }
         } else {
-            Stock::where('name',$reponse['ticker'])->update([
+            $result = Stock::where('name',$reponse['ticker'])->update([
                 '4h' => $mode
             ]);
+            if ($result === false) {
+                dd($result);
+            }
         }
 
     }
