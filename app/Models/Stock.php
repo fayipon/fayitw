@@ -10,7 +10,7 @@ class Stock extends Model
     use HasFactory;
 
     protected $table = 'stock';
-    protected $fillable = ['name','15m','1h','updated_at'];
+    protected $fillable = ['name','1h','4h','updated_at'];
 
     public $timestamps = false;
 
