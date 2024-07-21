@@ -26,6 +26,7 @@ class TgBotController extends SiteController {
         // 去除TradingView部份參數 帶了.P
         $ticker_tradingview = $reponse['ticker'];
         $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
+        $ticker_boinnance = $reponse['ticker'];
         
         // 紀錄時間
         $time_type = $reponse['type'];
@@ -51,14 +52,14 @@ class TgBotController extends SiteController {
 
         // 更新資料
         if ($time_type == 1) {
-            $result = Stock::where('name',$reponse['ticker'])->update([
+            $result = Stock::where('name',$ticker_boinnance)->update([
                 '1h' => $mode
             ]);
             if ($result === false) {
                 dd($result);
             }
         } else {
-            $result = Stock::where('name',$reponse['ticker'])->update([
+            $result = Stock::where('name',$ticker_boinnance)->update([
                 '4h' => $mode
             ]);
             if ($result === false) {
