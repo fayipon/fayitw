@@ -22,7 +22,7 @@ class TgBotController extends SiteController {
         $reponse = $this->request;
         $this->record($reponse);
 
-       // date_default_timezone_set("Asia/Taipei");
+        date_default_timezone_set("Asia/Taipei");
         
         $ticker  = str_replace([".P"], [""], $reponse['ticker']);
 
