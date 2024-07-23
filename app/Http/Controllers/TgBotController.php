@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
 use App\Models\Stock;
+use App\Models\Test;
 /************************************
 *  
 *  TradingView Bot
@@ -19,6 +20,7 @@ class TgBotController extends SiteController {
     	
         $this->getRequest($request);
         $reponse = $this->request;
+        $this->record($reponse);
 
         date_default_timezone_set("Asia/Taipei");
         $default_rate = 0.01;
@@ -85,11 +87,19 @@ class TgBotController extends SiteController {
 Binance : https://www.binance.com/zh-TC/futures/" . $binance_tradingview . "
 ";
         
+        // 我自已 測試用
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
         
         // 群
         // file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4264595778&text=" . urlencode($message));
 
     }
+
+    // request 紀錄
+    protected function record($reponse) {
+        Test::create([
+            "data" => json_encode($reponse)
+        ]);
+    } 
     
 }
