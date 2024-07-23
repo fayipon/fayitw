@@ -30,26 +30,31 @@ class TgBotController extends SiteController {
         switch ($reponse['mode']) {
             case "PD":
                 $mode = "底背離";
+                $sense = "做多";
                 break;
             case "ND":
                 $mode = "頂背離";
+                $sense = "做空";
                 break;
             case "PDH":
                 $mode = "隱性底背離";
+                $sense = "待定";
                 break;
             case "NDH":
                 $mode = "隱性頂背離";
+                $sense = "待定";
                 break;
             }
 
-        $this->send($reponse, $mode);
+        $this->send($reponse, $mode, $sense);
     }
 
     // send message
-    protected function send($reponse, $mode) {
+    protected function send($reponse, $mode, $sense) {
 
         $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
+操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
 
