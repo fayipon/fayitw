@@ -26,13 +26,29 @@ class TgBotController extends SiteController {
         
         $ticker  = str_replace([".P"], [""], $reponse['ticker']);
 
-        $this->send($reponse, $ticker);
+        $mode = "";
+        switch ($reponse['mode']) {
+            case "PD":
+                $mode = "頂背離";
+                break;
+            case "ND":
+                $mode = "底背離";
+                break;
+            case "PDH":
+                $mode = "隱性頂背離";
+                break;
+            case "NDH":
+                $mode = "隱性底背離";
+                break;
+            }
+
+        $this->send($reponse, $ticker, $mode);
     }
 
     // send message
-    protected function send($reponse, $ticker) {
+    protected function send($reponse, $ticker, $mode) {
 
-        $message = $ticker . " " . $reponse['type'] . "
+        $message = $ticker . " " . $reponse['type'] . " " . $mode . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
