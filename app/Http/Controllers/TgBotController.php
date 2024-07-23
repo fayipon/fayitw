@@ -29,16 +29,16 @@ class TgBotController extends SiteController {
         $mode = "";
         switch ($reponse['mode']) {
             case "PD":
-                $mode = "頂背離";
-                break;
-            case "ND":
                 $mode = "底背離";
                 break;
+            case "ND":
+                $mode = "頂背離";
+                break;
             case "PDH":
-                $mode = "隱性頂背離";
+                $mode = "隱性底背離";
                 break;
             case "NDH":
-                $mode = "隱性底背離";
+                $mode = "隱性頂背離";
                 break;
             }
 
