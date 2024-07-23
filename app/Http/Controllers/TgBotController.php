@@ -24,7 +24,7 @@ class TgBotController extends SiteController {
 
         date_default_timezone_set("Asia/Taipei");
         
-        $ticker  = str_replace([".P"], [""], $reponse['ticker']);
+        $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
 
         $mode = "";
         switch ($reponse['mode']) {
@@ -42,13 +42,13 @@ class TgBotController extends SiteController {
                 break;
             }
 
-        $this->send($reponse, $ticker, $mode);
+        $this->send($reponse, $mode);
     }
 
     // send message
-    protected function send($reponse, $ticker, $mode) {
+    protected function send($reponse, $mode) {
 
-        $message = $ticker . " " . $reponse['type'] . " " . $mode . "
+        $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
