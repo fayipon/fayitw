@@ -26,7 +26,7 @@ class TgBotController extends SiteController {
 
         if isset($reponse['signal']) {
             
-            $this->sri_send($reponse, $mode, $sense);
+            $this->sri_send($reponse);
 
         } else {
 
