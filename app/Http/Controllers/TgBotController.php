@@ -82,8 +82,9 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
     // sri group send message
     protected function sri_send($reponse) {
 
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=6608374257&text=" . urlencode($reponse));
         // sri group -4127267982
-        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4127267982&text=" . urlencode($reponse));
+       // file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4127267982&text=" . urlencode($reponse));
 
 
     }
