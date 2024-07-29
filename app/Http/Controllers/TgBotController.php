@@ -23,30 +23,38 @@ class TgBotController extends SiteController {
         $this->record($reponse);
 
         date_default_timezone_set("Asia/Taipei");
+
+        if isset($reponse['signal']) {
+            
+            $this->sri_send($reponse, $mode, $sense);
+
+        } else {
+
+            $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
+
+            $mode = "";
+            switch ($reponse['mode']) {
+                case "PD":
+                    $mode = "底背離";
+                    $sense = "做多";
+                    break;
+                case "ND":
+                    $mode = "頂背離";
+                    $sense = "做空";
+                    break;
+                case "PDH":
+                    $mode = "隱性底背離";
+                    $sense = "待定";
+                    break;
+                case "NDH":
+                    $mode = "隱性頂背離";
+                    $sense = "待定";
+                    break;
+                }
+    
+            $this->send($reponse, $mode, $sense);
+        }
         
-        $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
-
-        $mode = "";
-        switch ($reponse['mode']) {
-            case "PD":
-                $mode = "底背離";
-                $sense = "做多";
-                break;
-            case "ND":
-                $mode = "頂背離";
-                $sense = "做空";
-                break;
-            case "PDH":
-                $mode = "隱性底背離";
-                $sense = "待定";
-                break;
-            case "NDH":
-                $mode = "隱性頂背離";
-                $sense = "待定";
-                break;
-            }
-
-        $this->send($reponse, $mode, $sense);
     }
 
     // send message
@@ -67,8 +75,20 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
         // 群
         // file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4264595778&text=" . urlencode($message));
 
+        // sri group -4127267982
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4127267982&text=" . urlencode($message));
+
+
     }
 
+    // sri group send message
+    protected function sri_send($reponse) {
+
+        // sri group -4127267982
+        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4127267982&text=" . urlencode($reponse));
+
+
+    }
     // request 紀錄
     protected function record($reponse) {
         Test::create([
