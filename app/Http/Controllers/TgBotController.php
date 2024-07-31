@@ -57,6 +57,20 @@ class TgBotController extends SiteController {
         
     }
 
+
+    // 燈姐警報
+    public function horatio_don(Request $request) {
+
+        $url = 'https://twitter.com/horatio_don';
+        $html = $this->getTwitterPage($url);
+        $tweets = $this->parseTwitterPage($html);
+
+        dd($tweets);
+    }
+
+    ////////////////////////////////////////
+
+
     // send message
     protected function send($reponse, $mode, $sense) {
 
@@ -95,5 +109,34 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
             "data" => json_encode($reponse)
         ]);
     } 
+
+    /////////////////////////////////////////
+
+    protected function getTwitterPage($url) {
+        $context = stream_context_create(array(
+            'http' => array(
+                'header' => 'User-Agent: Mozilla/5.0'
+            )
+        ));
+        
+        $html = file_get_contents($url, false, $context);
+        return $html;
+    }
+
+    protected function parseTwitterPage($html) {
+        $dom = new DOMDocument();
+        @$dom->loadHTML($html);
+        $xpath = new DOMXPath($dom);
+        $tweets = $xpath->query('//div[@data-testid="tweet"]');
+        
+        $tweetData = [];
+        foreach ($tweets as $tweet) {
+            $content = $xpath->query('.//div[@lang]', $tweet);
+            if ($content->length > 0) {
+                $tweetData[] = $content->item(0)->textContent;
+            }
+        }
+        return $tweetData;
+    }
     
 }
