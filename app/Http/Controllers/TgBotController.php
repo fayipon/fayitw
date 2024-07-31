@@ -26,7 +26,7 @@ class TgBotController extends SiteController {
 
         if (isset($reponse['signal'])) {
             
-            $this->sri_send($reponse);
+            $this->axe_send($reponse);
 
         } else {
 
@@ -62,6 +62,7 @@ class TgBotController extends SiteController {
 
         $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
+警報類型 : MACD+RSI Divergence
 操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
@@ -79,8 +80,8 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
 
     }
 
-    // sri group send message
-    protected function sri_send($reponse) {
+    // axe send message
+    protected function axe_send($reponse) {
 
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=6608374257&text=" . urlencode($reponse));
         // sri group -4127267982
