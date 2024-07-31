@@ -66,6 +66,7 @@ class TgBotController extends SiteController {
 操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
+!!! 注意重繪 !!!
 
 Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
 ";
