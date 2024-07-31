@@ -65,7 +65,7 @@ class TgBotController extends SiteController {
         $html = $this->getTwitterPage($url);
         $tweets = $this->parseTwitterPage($html);
 
-        dd($tweets);
+        dd($html,$tweets);
     }
 
     ////////////////////////////////////////
