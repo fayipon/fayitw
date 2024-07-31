@@ -124,19 +124,17 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
     }
 
     protected function parseTwitterPage($html) {
-        $dom = new DOMDocument();
-        @$dom->loadHTML($html);
-        $xpath = new DOMXPath($dom);
-        $tweets = $xpath->query('//div[@data-testid="tweet"]');
-        
-        $tweetData = [];
-        foreach ($tweets as $tweet) {
-            $content = $xpath->query('.//div[@lang]', $tweet);
-            if ($content->length > 0) {
-                $tweetData[] = $content->item(0)->textContent;
+        $pattern = '/<div[^>]*data-testid="tweet"[^>]*>.*?<div[^>]*lang="[^"]*"[^>]*>(.*?)<\/div>.*?<\/div>/s';
+        preg_match_all($pattern, $html, $matches);
+
+        $tweets = [];
+        if (isset($matches[1])) {
+            foreach ($matches[1] as $tweet) {
+                $tweets[] = strip_tags($tweet);
             }
         }
-        return $tweetData;
+
+        return $tweets;
     }
     
 }
