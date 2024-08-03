@@ -74,6 +74,18 @@ class TgBotController extends SiteController {
     // send message
     protected function send($reponse, $mode, $sense) {
 
+        if ($reponse['ticker'] == "VIX") {
+
+            $message = "
+！！美股 反轉！！
+=========================
+警報類型 : 美股
+操作方向 : " . $sense . "
+當前價格 : " . $reponse['close'] . "
+發送時間 : " . date("Y-m-d H:i:s") . "
+";
+        } else {
+            
         $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
 警報類型 : MACD+RSI Divergence
@@ -85,6 +97,8 @@ class TgBotController extends SiteController {
 Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
 ";
         
+        }
+
         // 我自已 測試用
         file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=545205414&text=" . urlencode($message));
         
