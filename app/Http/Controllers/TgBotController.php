@@ -58,19 +58,6 @@ class TgBotController extends SiteController {
     }
 
 
-    // 燈姐警報
-    public function horatio_don(Request $request) {
-
-        $url = 'https://twitter.com/horatio_don';
-        $html = $this->getTwitterPage($url);
-        $tweets = $this->parseTwitterPage($html);
-
-        dd($html,$tweets);
-    }
-
-    ////////////////////////////////////////
-
-
     // send message
     protected function send($reponse, $mode, $sense) {
 
