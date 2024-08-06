@@ -73,7 +73,7 @@ class TgBotController extends SiteController {
 ";
         } else {
             
-        $m2essage = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
+        $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
 警報類型 : " . $reponse['kind'] . "
 操作方向 : " . $sense . "
