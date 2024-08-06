@@ -64,18 +64,18 @@ class TgBotController extends SiteController {
         if ($reponse['ticker'] == "VIX") {
 
             $message = "
-！！美股 反轉！！
+！！ VIX ！！
 =========================
-警報類型 : 美股
+警報類型 : VIX
 操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
 ";
         } else {
             
-        $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
+        $m2essage = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
 =========================
-警報類型 : MACD+RSI Divergence
+警報類型 : " . $reponse['kind'] . "
 操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "

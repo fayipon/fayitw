@@ -2,8 +2,8 @@
 // © LonesomeTheBlue
 
 //@version=4
-study("Divergence for Many Indicators v4", overlay = true, max_bars_back = 1000, max_lines_count = 400, max_labels_count = 400)
-prd = input(defval = 5, title = "Pivot Period", minval = 1, maxval = 50)
+study("Fayi's Divergence", overlay = true, max_bars_back = 1000, max_lines_count = 400, max_labels_count = 400)
+prd = input(defval = 6, title = "Pivot Period", minval = 1, maxval = 50)
 source = input(defval = "Close", title = "Source for Pivot Points", options = ["Close", "High/Low"])
 searchdiv = input(defval = "Regular", title = "Divergence Type", options = ["Regular", "Hidden", "Regular/Hidden"])
 showindis = input(defval = "Full", title = "Show Indicator Names", options = ["Full", "First Letter", "Don't Show"])
@@ -54,8 +54,8 @@ var hid_div_l_style = hid_div_l_style_ == "Solid" ? line.style_solid :
 
 
 // get indicators
-rsi = rsi(close, 14) // RSI
-[macd, signal, deltamacd] = macd(close, 12, 26, 9) // MACD
+rsi = rsi(close, 13) // RSI
+[macd, signal, deltamacd] = macd(close, 13, 34, 9) // MACD
 moment = mom(close, 10) // Momentum
 cci = cci(close, 10) // CCI
 Obv = obv // OBV
