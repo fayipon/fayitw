@@ -24,42 +24,32 @@ class TgBotController extends SiteController {
 
         date_default_timezone_set("Asia/Taipei");
 
-        if (isset($reponse['signal'])) {
-            
-            $this->axe_send($reponse);
+        $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
 
-        } else {
-
-            $reponse['ticker']  = str_replace([".P"], [""], $reponse['ticker']);
-
-            $mode = "";
-            switch ($reponse['mode']) {
-                case "PD":
-                    $mode = "底背離";
+        $mode = "";
+        switch ($reponse['mode']) {
+            case "PD":
                     $sense = "做多";
                     break;
-                case "ND":
-                    $mode = "頂背離";
+            case "ND":
                     $sense = "做空";
                     break;
-                case "PDH":
-                    $mode = "隱性底背離";
-                    $sense = "待定";
+            case "LONG":
+                    $sense = "做多";
                     break;
-                case "NDH":
-                    $mode = "隱性頂背離";
-                    $sense = "待定";
+            case "SHORT":
+                    $sense = "做空";
                     break;
-                }
-    
-            $this->send($reponse, $mode, $sense);
         }
+    
+        $this->send($reponse, $sense);
+        
         
     }
 
 
     // send message
-    protected function send($reponse, $mode, $sense) {
+    protected function send($reponse, $sense) {
 
         if ($reponse['ticker'] == "VIX") {
 
@@ -73,13 +63,12 @@ class TgBotController extends SiteController {
 ";
         } else {
             
-        $message = $reponse['ticker'] . " " . $reponse['type'] . " " . $mode . "
+        $message = $reponse['ticker'] . " " . $reponse['type'] . " 
 =========================
 警報類型 : " . $reponse['kind'] . "
 操作方向 : " . $sense . "
 當前價格 : " . $reponse['close'] . "
 發送時間 : " . date("Y-m-d H:i:s") . "
-!!! 注意重繪 !!!
 
 Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
 ";
@@ -93,14 +82,6 @@ Binance : https://www.binance.com/zh-TC/futures/" . $reponse['ticker'] . "
         // file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4264595778&text=" . urlencode($message));
 
 
-    }
-
-    // axe send message
-    protected function axe_send($reponse) {
-
-        file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=6608374257&text=" . urlencode($reponse));
-        // sri group -4127267982
-       // file_get_contents("https://api.telegram.org/bot7360641960:AAHeOdSE1MmR5nJU1iiJtP0pM0-W9XEgTOU/sendMessage?chat_id=-4127267982&text=" . urlencode($reponse));
     }
 
     // request 紀錄
