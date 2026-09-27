@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Banner Lab — FAYI</title>
+  <meta name="description" content="六種 Motion Graphic 風格的網站主視覺 banner：幾何、動態字體、流體漸層、切片輪播、點陣、線條描繪。">
+  <meta name="theme-color" content="#F2EEE3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23FF4A1C'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Serif:ital@0;1&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // 在第一次繪製前決定是否啟用動畫
+    document.documentElement.classList.add('js');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
+  <script src="js/core.js" defer></script>
+  <script src="js/banners/geo.js" defer></script>
+  <script src="js/banners/kinetic.js" defer></script>
+  <script src="js/banners/liquid.js" defer></script>
+  <script src="js/banners/slice.js" defer></script>
+  <script src="js/banners/dots.js" defer></script>
+  <script src="js/banners/line.js" defer></script>
+  <script src="js/main.js" defer></script>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="logo" href="#top"><span class="logo-mark"></span>FAYI</a>
+    <nav class="index" aria-label="Banner 樣式">
+      <a href="#geo"><b>01</b>幾何</a>
+      <a href="#kinetic"><b>02</b>字體</a>
+      <a href="#liquid"><b>03</b>流體</a>
+      <a href="#slice"><b>04</b>輪播</a>
+      <a href="#dots"><b>05</b>點陣</a>
+      <a href="#line"><b>06</b>線條</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 頁首介紹 -->
+    <section class="intro" id="top">
+      <div class="container">
+        <p class="eyebrow">Motion Banner Lab</p>
+        <h1 class="intro-title">
+          <span class="rl"><span>六種會動的</span></span>
+          <span class="rl"><span>主視覺 Banner</span></span>
+        </h1>
+        <div class="intro-meta">
+          <p class="intro-lead">同一個版位，六種完全不同的動態語言。每個 banner 捲到畫面中會自動播放，按「重播」可以再看一次。HTML、CSS、JS 都各自獨立，挑中哪個就能直接拿去用。</p>
+          <div class="intro-shapes" aria-hidden="true"><i class="is-c"></i><i class="is-s"></i><i class="is-t"></i></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 幾何構成 -->
+    <section class="specimen" id="geo" data-banner="geo">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">01</span>
+          <div class="spec-title"><h2>幾何構成</h2><span class="spec-en">Geometric</span></div>
+          <ul class="spec-tags"><li>遮罩文字</li><li>幾何拼貼</li><li>隨機旋轉</li><li>3D 傾斜</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">幾何構成</span></button>
+        </header>
+
+        <div class="banner banner-geo">
+          <div class="geo-copy">
+            <p class="geo-eyebrow"><span></span>FAYI · 2026 Collection</p>
+            <h3 class="geo-title">
+              <span class="rl"><span>形狀</span></span>
+              <span class="rl"><span>會說話。</span></span>
+            </h3>
+            <p class="geo-sub">用最單純的幾何，拼出最有記憶點的品牌畫面。</p>
+            <a class="btn btn-ink" href="#geo">看作品 <i aria-hidden="true">→</i></a>
+          </div>
+          <div class="geo-grid" aria-hidden="true">
+            <span class="tile bg-blue"><i class="sh sh-quarter c-yellow"></i></span>
+            <span class="tile bg-paper"><i class="sh sh-circle c-red"></i></span>
+            <span class="tile bg-ink"><i class="sh sh-half c-paper"></i></span>
+            <span class="tile bg-yellow"><i class="sh sh-tri c-ink"></i></span>
+            <span class="tile bg-red"><i class="sh sh-quarter c-paper"></i></span>
+            <span class="tile bg-blue"><i class="sh sh-dot c-paper"></i></span>
+            <span class="tile bg-paper"><i class="sh sh-diag c-blue"></i></span>
+            <span class="tile bg-ink"><i class="sh sh-circle c-yellow"></i></span>
+            <span class="tile bg-red"><i class="sh sh-half c-ink"></i></span>
+          </div>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>品牌首頁、設計工作室、作品集</span><span><b>技術</b>CSS Grid 拼貼、GSAP grid stagger、perspective 傾斜</span></p>
+      </div>
+    </section>
+
+    <!-- 02 動態字體 -->
+    <section class="specimen" id="kinetic" data-banner="kinetic">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">02</span>
+          <div class="spec-title"><h2>動態字體</h2><span class="spec-en">Kinetic Type</span></div>
+          <ul class="spec-tags"><li>字寬波浪</li><li>文字替換</li><li>跑馬燈</li><li>遮罩進場</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">動態字體</span></button>
+        </header>
+
+        <div class="banner banner-kinetic">
+          <h3 class="kt-lines" aria-label="Make it move.">
+            <span class="kt-line kt-l1" aria-hidden="true">Make it</span>
+            <span class="kt-line kt-l2" aria-hidden="true">
+              <span class="kt-slot"><span class="kt-word">Move</span><span class="kt-word">Loud</span><span class="kt-word">Bold</span><span class="kt-word">Pop</span></span><span class="kt-dot">.</span>
+            </span>
+          </h3>
+          <div class="kt-band" aria-hidden="true">
+            <div class="kt-track"><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i></div>
+          </div>
+          <div class="kt-foot">
+            <p class="kt-sub">字體本身就是畫面——讓標題伸縮、替換、流動，一眼抓住注意力。</p>
+            <a class="btn btn-ink" href="#kinetic">開始設計 <i aria-hidden="true">→</i></a>
+          </div>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>活動主打、音樂祭、運動與潮流品牌</span><span><b>技術</b>可變字型 wdth 軸、keyframes stagger、無限跑馬燈</span></p>
+      </div>
+    </section>
+
+    <!-- 03 流體漸層 -->
+    <section class="specimen" id="liquid" data-banner="liquid">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">03</span>
+          <div class="spec-title"><h2>流體漸層</h2><span class="spec-en">Liquid Gradient</span></div>
+          <ul class="spec-tags"><li>流動色塊</li><li>模糊淡入</li><li>毛玻璃</li><li>游標光暈</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">流體漸層</span></button>
+        </header>
+
+        <div class="banner banner-liquid">
+          <div class="lq-blobs" aria-hidden="true">
+            <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
+            <span class="blob b-cursor"></span>
+          </div>
+          <div class="lq-grain" aria-hidden="true"></div>
+          <div class="lq-content">
+            <p class="lq-pill"><span aria-hidden="true">✦</span> 全新發表 · 2026 秋季</p>
+            <h3 class="lq-title">讓色彩自己<em>流動</em></h3>
+            <p class="lq-sub">柔和的漸層與緩慢的呼吸感，讓畫面看起來像活的一樣，很適合科技產品與新品發表。</p>
+            <div class="lq-actions">
+              <a class="btn btn-light" href="#liquid">立即體驗</a>
+              <a class="btn btn-glass" href="#liquid">了解更多</a>
+            </div>
+          </div>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>科技產品、App 發表、SaaS 首頁</span><span><b>技術</b>blur 色塊隨機漂移、backdrop-filter、逐字模糊淡入</span></p>
+      </div>
+    </section>
+
+    <!-- 04 切片輪播 -->
+    <section class="specimen" id="slice" data-banner="slice">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">04</span>
+          <div class="spec-title"><h2>切片輪播</h2><span class="spec-en">Slice Carousel</span></div>
+          <ul class="spec-tags"><li>百葉窗轉場</li><li>自動輪播</li><li>進度條</li><li>懸停暫停</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">切片輪播</span></button>
+        </header>
+
+        <div class="banner banner-slice" role="region" aria-roledescription="carousel" aria-label="活動輪播">
+          <div class="sl-slides">
+            <article class="sl-slide slide-red is-active" data-bg="#FF4A1C" aria-roledescription="slide" aria-label="第 1 張，共 3 張">
+              <div class="sl-copy">
+                <p class="sl-kicker">New Arrival</p>
+                <h3 class="sl-title"><span class="rl"><span>把季節</span></span><span class="rl"><span>穿在身上。</span></span></h3>
+                <p class="sl-sub">秋冬新品陸續上架，找一件讓你想出門的外套。</p>
+                <a class="btn btn-ink" href="#slice">立即選購 <i aria-hidden="true">→</i></a>
+              </div>
+              <div class="sl-art art-1" aria-hidden="true"><span class="a1-circle"></span><span class="a1-ring"></span><span class="a1-bar"></span></div>
+            </article>
+            <article class="sl-slide slide-blue" data-bg="#2B4BFF" aria-roledescription="slide" aria-label="第 2 張，共 3 張" aria-hidden="true">
+              <div class="sl-copy">
+                <p class="sl-kicker">Limited</p>
+                <h3 class="sl-title"><span class="rl"><span>只有</span></span><span class="rl"><span>這個週末。</span></span></h3>
+                <p class="sl-sub">週末限定的小驚喜，錯過就要再等一季。</p>
+                <a class="btn btn-yellow" href="#slice">看活動 <i aria-hidden="true">→</i></a>
+              </div>
+              <div class="sl-art art-2" aria-hidden="true"><span class="a2-s1"></span><span class="a2-s2"></span><span class="a2-s3"></span></div>
+            </article>
+            <article class="sl-slide slide-ink" data-bg="#121212" aria-roledescription="slide" aria-label="第 3 張，共 3 張" aria-hidden="true">
+              <div class="sl-copy">
+                <p class="sl-kicker">Our Story</p>
+                <h3 class="sl-title"><span class="rl"><span>從一個</span></span><span class="rl"><span>形狀開始。</span></span></h3>
+                <p class="sl-sub">我們相信好的設計，都是從最簡單的東西長出來的。</p>
+                <a class="btn btn-light" href="#slice">認識我們 <i aria-hidden="true">→</i></a>
+              </div>
+              <div class="sl-art art-3" aria-hidden="true"><span class="a3-tri"></span><span class="a3-circle"></span><span class="a3-dots"></span></div>
+            </article>
+          </div>
+
+          <div class="sl-blinds" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+          <div class="sl-ui">
+            <p class="sl-count"><b class="sl-current">01</b> / 03</p>
+            <div class="sl-progress" aria-hidden="true"><span><i></i></span><span><i></i></span><span><i></i></span></div>
+            <div class="sl-nav">
+              <button class="sl-btn sl-toggle" type="button" aria-label="暫停輪播" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M8 5v14M16 5v14"/><path class="i-play" d="M7 5l12 7-12 7z"/></svg></button>
+              <button class="sl-btn sl-prev" type="button" aria-label="上一張">←</button>
+              <button class="sl-btn sl-next" type="button" aria-label="下一張">→</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>電商首頁、多檔活動輪播</span><span><b>技術</b>交錯百葉窗 scaleY、自動輪播計時、滑鼠移入或聚焦時暫停</span></p>
+      </div>
+    </section>
+
+    <!-- 05 點陣 -->
+    <section class="specimen" id="dots" data-banner="dots">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">05</span>
+          <div class="spec-title"><h2>點陣波紋</h2><span class="spec-en">Dot Matrix</span></div>
+          <ul class="spec-tags"><li>點陣文字</li><li>擴散波紋</li><li>游標推開</li><li>字詞切換</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">點陣波紋</span></button>
+        </header>
+
+        <div class="banner banner-dots">
+          <canvas class="dm-canvas" aria-hidden="true"></canvas>
+          <div class="dm-copy">
+            <p class="dm-kicker"><span class="dm-led" aria-hidden="true"></span>Live · Dot Matrix</p>
+            <h3 class="dm-title">像素也能跳舞</h3>
+            <p class="dm-sub">幾千個點拼成文字，會呼吸、會波動，游標劃過時還會被推開。</p>
+            <a class="btn btn-yellow" href="#dots">來玩玩看 <i aria-hidden="true">→</i></a>
+          </div>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>科技感活動、遊戲、音樂與倒數頁</span><span><b>技術</b>Canvas 2D 點陣、文字取樣成遮罩、依距離延遲的波紋</span></p>
+      </div>
+    </section>
+
+    <!-- 06 線條描繪 -->
+    <section class="specimen" id="line" data-banner="line">
+      <div class="container">
+        <header class="spec-head">
+          <span class="spec-num">06</span>
+          <div class="spec-title"><h2>線條描繪</h2><span class="spec-en">Line Drawing</span></div>
+          <ul class="spec-tags"><li>線條描繪</li><li>襯線字</li><li>底線動畫</li><li>景深視差</li></ul>
+          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">線條描繪</span></button>
+        </header>
+
+        <div class="banner banner-line">
+          <div class="ln-copy">
+            <p class="ln-kicker">Issue No.06 — 2026 秋</p>
+            <h3 class="ln-title">
+              <span class="rl"><span>一條線，</span></span>
+              <span class="rl"><span>走出一個故事。</span></span>
+            </h3>
+            <p class="ln-en"><em>A single line, drawn with patience.</em></p>
+            <p class="ln-sub">極簡的線條描繪，搭配大量留白與襯線字，適合品牌故事、藝文活動與雜誌風格的首頁。</p>
+            <a class="ln-link" href="#line">閱讀專題 <i aria-hidden="true">→</i></a>
+          </div>
+          <svg class="ln-art" viewBox="0 0 600 520" aria-hidden="true">
+            <defs>
+              <clipPath id="ln-arch"><path d="M70 500 V240 A230 230 0 0 1 530 240 V500 Z"/></clipPath>
+            </defs>
+            <g clip-path="url(#ln-arch)">
+              <g class="ln-sun">
+                <circle class="ln-sun-fill" cx="392" cy="330" r="58"/>
+                <path class="ln-stroke" pathLength="1" d="M334 330 a58 58 0 1 0 116 0 a58 58 0 1 0 -116 0"/>
+              </g>
+              <g class="ln-birds">
+                <path class="ln-stroke" pathLength="1" d="M168 176 q12 -13 24 0 q12 -13 24 0"/>
+                <path class="ln-stroke" pathLength="1" d="M236 138 q9 -10 18 0 q9 -10 18 0"/>
+              </g>
+              <g class="ln-hills">
+                <path class="ln-hill-fill" d="M40 382 C 150 310, 230 300, 300 352 S 440 420, 560 330 V520 H40 Z"/>
+                <path class="ln-stroke" pathLength="1" d="M40 382 C 150 310, 230 300, 300 352 S 440 420, 560 330"/>
+                <path class="ln-hill-fill" d="M40 432 C 170 382, 280 392, 360 420 S 470 442, 560 408 V520 H40 Z"/>
+                <path class="ln-stroke" pathLength="1" d="M40 432 C 170 382, 280 392, 360 420 S 470 442, 560 408"/>
+              </g>
+              <g class="ln-waves">
+                <path class="ln-stroke" pathLength="1" d="M92 468 q15 -10 30 0 t30 0 t30 0 t30 0"/>
+                <path class="ln-stroke" pathLength="1" d="M290 486 q15 -10 30 0 t30 0 t30 0 t30 0 t30 0"/>
+              </g>
+            </g>
+            <path class="ln-stroke ln-frame" pathLength="1" d="M70 500 V240 A230 230 0 0 1 530 240 V500"/>
+            <path class="ln-stroke ln-base" pathLength="1" d="M24 500 H576"/>
+          </svg>
+        </div>
+
+        <p class="spec-note"><span><b>適合</b>品牌故事、藝文展覽、雜誌風格網站</span><span><b>技術</b>SVG stroke-dashoffset 描繪、clipPath、滑鼠景深視差</span></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · Motion Banner Lab</span>
+      <span class="footer-shapes" aria-hidden="true"><i class="f-circle"></i><i class="f-square"></i><i class="f-tri"></i></span>
+      <a href="#top">回到頂端 ↑</a>
+    </div>
+  </footer>
+</body>
+</html>

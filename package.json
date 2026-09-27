@@ -1,0 +1,10 @@
+{
+  "name": "fayitw",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FAYI — Motion Graphic 風格網站",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs 5173"
+  }
+}
