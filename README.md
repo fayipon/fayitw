@@ -1,6 +1,8 @@
 # Motion Banner Lab — FAYI
 
-六種 Motion Graphic 風格的網站主視覺 banner。純 HTML / CSS / JavaScript，不需要 build，動畫由 [GSAP](https://gsap.com/) 與 ScrollTrigger 驅動（從 jsDelivr CDN 載入）。
+圖片主視覺 banner 的動態層實驗台。一張平面主視覺圖，依畫面中主體的座標疊上光束、閃光、粒子與場景特效，再加上鏡頭推移、滑鼠視差、文字進場和五種轉場。每一層都能在頁面上單獨開關比較。
+
+純 HTML / CSS / JavaScript，不需要 build，動畫由 [GSAP](https://gsap.com/) 驅動（從 jsDelivr CDN 載入）。
 
 ## 本機預覽
 
@@ -10,47 +12,78 @@ npm run dev
 
 然後打開 <http://localhost:5173>。伺服器是零依賴的 Node 腳本（`scripts/serve.mjs`），不需要 `npm install`。
 
-## 六種樣式
+## 動態層
 
-| # | 樣式 | 效果 | 適合 |
-|---|---|---|---|
-| 01 | 幾何構成 Geometric | 九宮格拼貼彈出、遮罩文字、隨機旋轉、滑鼠 3D 傾斜 | 品牌首頁、設計工作室 |
-| 02 | 動態字體 Kinetic Type | 可變字型字寬波浪、單字替換、跑馬燈帶 | 活動主打、音樂祭、潮流品牌 |
-| 03 | 流體漸層 Liquid Gradient | 模糊色塊漂移、逐字模糊淡入、毛玻璃、游標光暈 | 科技產品、App 發表 |
-| 04 | 切片輪播 Slice Carousel | 交錯百葉窗轉場、自動輪播進度條、懸停暫停 | 電商首頁、多檔活動 |
-| 05 | 點陣波紋 Dot Matrix | Canvas 點陣拼字、擴散進場、游標推開、字詞輪替 | 科技感活動、遊戲、倒數 |
-| 06 | 線條描繪 Line Drawing | SVG 線條描繪、襯線字、底線動畫、景深視差 | 品牌故事、藝文、雜誌風 |
+| 層 | 做法 |
+|---|---|
+| 鏡頭推移 | 停留期間整個場景以主體為中心放大 8%，特效跟著一起放大不會錯位 |
+| 滑鼠視差 | 背景與文字往相反方向微移，只在滑鼠裝置啟用 |
+| 光束光暈 | 主體後方光暈呼吸、光束擺動，screen 混合模式只提亮 |
+| 場景特效 | 依圖片內容設計：底座光環、螢幕閃爍掃描線、漩渦旋轉 |
+| 閃光 | 在寶石、霓虹星、水晶位置隨機閃出十字星芒 |
+| 粒子 | Canvas 繪製，三種模式：上升、光斑漂浮、被漩渦吸入 |
+| 掃光 | 斜光定期掃過畫面，接著掃過按鈕 |
+| 文字進場 | 小標字距收合、標題遮罩上推、重點字流光、按鈕彈出 |
+
+轉場：視差滑動、淡入推近、光圈展開（從主體中心擴散）、斜切掃過、百葉窗。
 
 ## 結構
 
 ```
-index.html            頁面與六個 banner 的 HTML
-css/style.css         樣式（每個 banner 一個區塊，色票定義在 :root）
-js/core.js            共用工具與 banner 註冊表
-js/banners/*.js       每個 banner 的動畫，一個檔案一種
-js/main.js            控制進場、循環、重播與導覽列
+index.html            實驗台頁面
+css/style.css         頁面樣式與 MotionBanner 元件樣式
+js/slides.js          每張 banner 的文案與特效座標
+js/banner.js          MotionBanner 元件（輪播、轉場、動態層、粒子）
+js/main.js            控制面板
+assets/banners/       主視覺圖（960×436）
 scripts/serve.mjs     本機靜態伺服器
+scripts/deploy.ps1    部署腳本（主機用 -Server 指定）
+Dockerfile            nginx 映像
+docker/nginx.conf     nginx 設定（快取、gzip）
+compose.yaml          容器設定
 ```
 
-## 把某一種 banner 拿去用
+## 新增或替換一張 banner
 
-1. 複製 `index.html` 裡對應的 `<div class="banner banner-xxx">…</div>`。
-2. 複製 `css/style.css` 的共用區塊（`:root`、`.btn`、`.banner`、`.rl`）和該 banner 的區塊。
-3. 載入 GSAP、ScrollTrigger、`js/core.js` 和 `js/banners/xxx.js`，然後：
+在 `js/slides.js` 加一筆設定。所有座標都是原圖 960×436 的百分比：
 
 ```js
-const api = MB.banners.xxx(document.querySelector('.banner-xxx'), {
-  motion: true,
-  finePointer: matchMedia('(pointer: fine)').matches,
-});
-api.intro.eventCallback('onComplete', api.play);
-api.intro.play();
+{
+  id: 'crown',
+  image: 'assets/banners/crown.webp',
+  label: 'Welcome to your kingdom',
+  title: ['Your world.', 'Your rules.'],   // 最後一行會套重點色與流光
+  desc: 'Discover a world of play.',
+  cta: 'Explore games',
+  accent: '#c9f2a8',                       // 重點字顏色
+  glow: 'rgba(121, 245, 170, .4)',         // 光暈顏色
+  focus: { x: 73.8, y: 33 },               // 主體中心
+  rays: { x: 73.8, y: -8, color: '…', angles: [-17, -10, -4, 2, 8, 15] },
+  ring: { x: 73.6, y: 68.5, w: 44, h: 9 },
+  glintColor: '#b9ffd6',
+  glints: [[73.8, 11.5, 3.6], [73.8, 31.5]],   // [x, y, 大小(選填)]
+  particles: { mode: 'rise', count: 46, area: [50, 97, 45, 96], colors: ['#ffd98a'] },
+}
 ```
 
-每個 banner 都回傳 `{ intro, play, pause, reset }`：`intro` 是進場 timeline，`play` / `pause` 控制循環動畫，`reset` 在重播前還原狀態。
+`rays`、`ring`、`screen`、`vortex` 都是選填，依圖片內容挑適合的。
+
+## 使用元件
+
+```js
+const banner = new MotionBanner(document.querySelector('#hero'), MB_SLIDES, {
+  transition: 'slide',   // slide | fade | iris | wipe | blinds
+  layers: { kenburns: true, parallax: true, light: true, scene: true, glints: true, particles: true, sweep: true, copy: true },
+});
+```
+
+## 注意
+
+- 被 GSAP 動到的元素不要用 CSS `translate` / `rotate` 屬性定位。GSAP 會把它們換算成像素寫死，尺寸一變就錯位；置中請用 GSAP 的 `xPercent` / `yPercent`。
+- 舞台同時用 `aspect-ratio` 和 `min-height` 時要明確給 `width: 100%`，否則最小高度會反推出過寬的最小寬度。
 
 ## 無障礙
 
-- 系統開啟「減少動態效果」時，banner 直接顯示最終畫面，不自動播放；按「重播」或輪播按鈕才會動。
-- 輪播有暫停按鈕，滑鼠移入或鍵盤聚焦時也會自動暫停。
-- CDN 載入失敗時，頁面會退回可讀的靜態版面。
+- 系統開啟「減少動態效果」時不自動輪播、不播循環動畫，轉場改為短暫淡入。
+- 輪播有暫停按鈕，滑鼠移入或鍵盤聚焦時自動暫停；支援左右方向鍵與手機左右滑動。
+- 不在畫面內或分頁隱藏時，所有循環動畫與粒子都會停止。

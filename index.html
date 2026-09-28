@@ -4,299 +4,124 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Motion Banner Lab — FAYI</title>
-  <meta name="description" content="六種 Motion Graphic 風格的網站主視覺 banner：幾何、動態字體、流體漸層、切片輪播、點陣、線條描繪。">
-  <meta name="theme-color" content="#F2EEE3">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23FF4A1C'/%3E%3C/svg%3E">
+  <meta name="description" content="圖片主視覺 banner 的動態層實驗台：鏡頭推移、視差、光束、閃光、粒子、場景特效與五種轉場。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Serif:ital@0;1&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="preload" as="image" href="assets/banners/crown.webp">
   <link rel="stylesheet" href="css/style.css">
-  <script>
-    // 在第一次繪製前決定是否啟用動畫
-    document.documentElement.classList.add('js');
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
-  <script src="js/core.js" defer></script>
-  <script src="js/banners/geo.js" defer></script>
-  <script src="js/banners/kinetic.js" defer></script>
-  <script src="js/banners/liquid.js" defer></script>
-  <script src="js/banners/slice.js" defer></script>
-  <script src="js/banners/dots.js" defer></script>
-  <script src="js/banners/line.js" defer></script>
+  <script src="js/slides.js" defer></script>
+  <script src="js/banner.js" defer></script>
   <script src="js/main.js" defer></script>
 </head>
 <body>
-  <div class="progress" aria-hidden="true"></div>
-
-  <header class="topbar">
+  <header class="top">
     <a class="logo" href="#top"><span class="logo-mark"></span>FAYI</a>
-    <nav class="index" aria-label="Banner 樣式">
-      <a href="#geo"><b>01</b>幾何</a>
-      <a href="#kinetic"><b>02</b>字體</a>
-      <a href="#liquid"><b>03</b>流體</a>
-      <a href="#slice"><b>04</b>輪播</a>
-      <a href="#dots"><b>05</b>點陣</a>
-      <a href="#line"><b>06</b>線條</a>
-    </nav>
+    <span class="top-title">Motion Banner Lab</span>
   </header>
 
-  <main>
-    <!-- 頁首介紹 -->
-    <section class="intro" id="top">
-      <div class="container">
-        <p class="eyebrow">Motion Banner Lab</p>
-        <h1 class="intro-title">
-          <span class="rl"><span>六種會動的</span></span>
-          <span class="rl"><span>主視覺 Banner</span></span>
-        </h1>
-        <div class="intro-meta">
-          <p class="intro-lead">同一個版位，六種完全不同的動態語言。每個 banner 捲到畫面中會自動播放，按「重播」可以再看一次。HTML、CSS、JS 都各自獨立，挑中哪個就能直接拿去用。</p>
-          <div class="intro-shapes" aria-hidden="true"><i class="is-c"></i><i class="is-s"></i><i class="is-t"></i></div>
+  <main id="top">
+    <section class="hero container">
+      <p class="eyebrow">Image banner × Motion layers</p>
+      <h1>一張主視覺，<br>疊出會動的 Banner</h1>
+      <p class="lead">不用重新出圖，也不用拆圖層。依照畫面中主體的位置，疊上光束、閃光、粒子和場景特效，再加上鏡頭推移、滑鼠視差和轉場。下面每一層都可以單獨開關，直接比較有沒有差別。</p>
+    </section>
+
+    <section class="lab container" aria-label="Banner 實驗台">
+      <div class="lab-banner">
+        <div data-motion-banner></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-row">
+          <span class="panel-label" id="label-transition">轉場</span>
+          <div class="seg" role="group" aria-labelledby="label-transition">
+            <button type="button" data-transition="slide" aria-pressed="true">視差滑動</button>
+            <button type="button" data-transition="fade" aria-pressed="false">淡入推近</button>
+            <button type="button" data-transition="iris" aria-pressed="false">光圈展開</button>
+            <button type="button" data-transition="wipe" aria-pressed="false">斜切掃過</button>
+            <button type="button" data-transition="blinds" aria-pressed="false">百葉窗</button>
+          </div>
+        </div>
+        <div class="panel-row">
+          <span class="panel-label" id="label-layers">動態層</span>
+          <div class="chips" role="group" aria-labelledby="label-layers">
+            <button type="button" data-layer="kenburns" aria-pressed="true">鏡頭推移</button>
+            <button type="button" data-layer="parallax" aria-pressed="true">滑鼠視差</button>
+            <button type="button" data-layer="light" aria-pressed="true">光束光暈</button>
+            <button type="button" data-layer="scene" aria-pressed="true">場景特效</button>
+            <button type="button" data-layer="glints" aria-pressed="true">閃光</button>
+            <button type="button" data-layer="particles" aria-pressed="true">粒子</button>
+            <button type="button" data-layer="sweep" aria-pressed="true">掃光</button>
+            <button type="button" data-layer="copy" aria-pressed="true">文字進場</button>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn-ghost" type="button" data-action="replay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播進場</button>
+          <button class="btn-ghost" type="button" data-action="next">下一張</button>
+          <button class="btn-ghost" type="button" data-action="off">全部關閉（看原圖）</button>
+          <button class="btn-ghost" type="button" data-action="on">全部開啟</button>
+        </div>
+      </div>
+
+      <aside class="lab-phone" aria-label="手機寬度預覽">
+        <div class="phone">
+          <div class="phone-bar" aria-hidden="true"><span class="phone-logo"></span><span class="phone-pill"></span></div>
+          <div class="mb-compact" data-motion-banner></div>
+          <div class="phone-chips" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="phone-cards" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+        <p class="phone-cap">手機寬度預覽（約 360px）</p>
+      </aside>
+
+      <div class="guide">
+        <h2>每一層在做什麼</h2>
+        <div class="guide-grid">
+          <article class="guide-card"><h3>鏡頭推移 <small>成本 極低</small></h3><p>停留期間整個場景緩慢放大 8%，以主體為中心，靜態圖也像有鏡頭在推。特效跟著一起放大，不會錯位。</p></article>
+          <article class="guide-card"><h3>滑鼠視差 <small>成本 極低</small></h3><p>背景往滑鼠反方向、文字往同方向微移，做出前後景深。只在有滑鼠的裝置啟用。</p></article>
+          <article class="guide-card"><h3>光束光暈 <small>成本 低</small></h3><p>主體後方的光暈會呼吸，皇冠上方的光束輕輕擺動。用 screen 混合模式疊在圖上，只會提亮。</p></article>
+          <article class="guide-card"><h3>場景特效 <small>成本 低</small></h3><p>依圖片內容設計：皇冠底座光環、街機螢幕閃爍與掃描線、傳送門漩渦旋轉與能量環。</p></article>
+          <article class="guide-card"><h3>閃光 <small>成本 極低</small></h3><p>在寶石、霓虹星、水晶的位置閃出十字星芒，每顆隨機錯開，不會同時亮。</p></article>
+          <article class="guide-card"><h3>粒子 <small>成本 中</small></h3><p>Canvas 繪製：金粉往上飄、霓虹光斑漂浮、能量粒子被漩渦吸進去。手機自動減量，畫面外會停止。</p></article>
+          <article class="guide-card"><h3>掃光 <small>成本 極低</small></h3><p>一道斜光定期掃過畫面，接著掃過按鈕，把視線帶到行動按鈕上。</p></article>
+          <article class="guide-card"><h3>文字進場 <small>成本 極低</small></h3><p>小標字距收合、標題遮罩上推、重點字流光、按鈕彈出。換張時舊文案先淡出。</p></article>
+        </div>
+
+        <h2>五種轉場</h2>
+        <div class="guide-grid">
+          <article class="guide-card"><h3>視差滑動</h3><p>外框整片滑動、裡面的圖慢一拍，最自然，適合當預設。</p></article>
+          <article class="guide-card"><h3>淡入推近</h3><p>新畫面從放大狀態淡入並推近，節奏柔和，適合質感型品牌。</p></article>
+          <article class="guide-card"><h3>光圈展開</h3><p>從新圖的主體中心擴散出來，視線直接落在主角上。</p></article>
+          <article class="guide-card"><h3>斜切掃過</h3><p>斜邊快速掃過，速度感強，適合活動、促銷與遊戲。</p></article>
+          <article class="guide-card"><h3>百葉窗</h3><p>八條同時打開，有儀式感，適合重大公告或新品揭幕。</p></article>
         </div>
       </div>
     </section>
 
-    <!-- 01 幾何構成 -->
-    <section class="specimen" id="geo" data-banner="geo">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">01</span>
-          <div class="spec-title"><h2>幾何構成</h2><span class="spec-en">Geometric</span></div>
-          <ul class="spec-tags"><li>遮罩文字</li><li>幾何拼貼</li><li>隨機旋轉</li><li>3D 傾斜</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">幾何構成</span></button>
-        </header>
-
-        <div class="banner banner-geo">
-          <div class="geo-copy">
-            <p class="geo-eyebrow"><span></span>FAYI · 2026 Collection</p>
-            <h3 class="geo-title">
-              <span class="rl"><span>形狀</span></span>
-              <span class="rl"><span>會說話。</span></span>
-            </h3>
-            <p class="geo-sub">用最單純的幾何，拼出最有記憶點的品牌畫面。</p>
-            <a class="btn btn-ink" href="#geo">看作品 <i aria-hidden="true">→</i></a>
-          </div>
-          <div class="geo-grid" aria-hidden="true">
-            <span class="tile bg-blue"><i class="sh sh-quarter c-yellow"></i></span>
-            <span class="tile bg-paper"><i class="sh sh-circle c-red"></i></span>
-            <span class="tile bg-ink"><i class="sh sh-half c-paper"></i></span>
-            <span class="tile bg-yellow"><i class="sh sh-tri c-ink"></i></span>
-            <span class="tile bg-red"><i class="sh sh-quarter c-paper"></i></span>
-            <span class="tile bg-blue"><i class="sh sh-dot c-paper"></i></span>
-            <span class="tile bg-paper"><i class="sh sh-diag c-blue"></i></span>
-            <span class="tile bg-ink"><i class="sh sh-circle c-yellow"></i></span>
-            <span class="tile bg-red"><i class="sh sh-half c-ink"></i></span>
-          </div>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>品牌首頁、設計工作室、作品集</span><span><b>技術</b>CSS Grid 拼貼、GSAP grid stagger、perspective 傾斜</span></p>
-      </div>
-    </section>
-
-    <!-- 02 動態字體 -->
-    <section class="specimen" id="kinetic" data-banner="kinetic">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">02</span>
-          <div class="spec-title"><h2>動態字體</h2><span class="spec-en">Kinetic Type</span></div>
-          <ul class="spec-tags"><li>字寬波浪</li><li>文字替換</li><li>跑馬燈</li><li>遮罩進場</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">動態字體</span></button>
-        </header>
-
-        <div class="banner banner-kinetic">
-          <h3 class="kt-lines" aria-label="Make it move.">
-            <span class="kt-line kt-l1" aria-hidden="true">Make it</span>
-            <span class="kt-line kt-l2" aria-hidden="true">
-              <span class="kt-slot"><span class="kt-word">Move</span><span class="kt-word">Loud</span><span class="kt-word">Bold</span><span class="kt-word">Pop</span></span><span class="kt-dot">.</span>
-            </span>
-          </h3>
-          <div class="kt-band" aria-hidden="true">
-            <div class="kt-track"><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i><span>Kinetic type</span><i>✦</i><span>動態字體</span><i>✦</i></div>
-          </div>
-          <div class="kt-foot">
-            <p class="kt-sub">字體本身就是畫面——讓標題伸縮、替換、流動，一眼抓住注意力。</p>
-            <a class="btn btn-ink" href="#kinetic">開始設計 <i aria-hidden="true">→</i></a>
-          </div>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>活動主打、音樂祭、運動與潮流品牌</span><span><b>技術</b>可變字型 wdth 軸、keyframes stagger、無限跑馬燈</span></p>
-      </div>
-    </section>
-
-    <!-- 03 流體漸層 -->
-    <section class="specimen" id="liquid" data-banner="liquid">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">03</span>
-          <div class="spec-title"><h2>流體漸層</h2><span class="spec-en">Liquid Gradient</span></div>
-          <ul class="spec-tags"><li>流動色塊</li><li>模糊淡入</li><li>毛玻璃</li><li>游標光暈</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">流體漸層</span></button>
-        </header>
-
-        <div class="banner banner-liquid">
-          <div class="lq-blobs" aria-hidden="true">
-            <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
-            <span class="blob b-cursor"></span>
-          </div>
-          <div class="lq-grain" aria-hidden="true"></div>
-          <div class="lq-content">
-            <p class="lq-pill"><span aria-hidden="true">✦</span> 全新發表 · 2026 秋季</p>
-            <h3 class="lq-title">讓色彩自己<em>流動</em></h3>
-            <p class="lq-sub">柔和的漸層與緩慢的呼吸感，讓畫面看起來像活的一樣，很適合科技產品與新品發表。</p>
-            <div class="lq-actions">
-              <a class="btn btn-light" href="#liquid">立即體驗</a>
-              <a class="btn btn-glass" href="#liquid">了解更多</a>
-            </div>
-          </div>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>科技產品、App 發表、SaaS 首頁</span><span><b>技術</b>blur 色塊隨機漂移、backdrop-filter、逐字模糊淡入</span></p>
-      </div>
-    </section>
-
-    <!-- 04 切片輪播 -->
-    <section class="specimen" id="slice" data-banner="slice">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">04</span>
-          <div class="spec-title"><h2>切片輪播</h2><span class="spec-en">Slice Carousel</span></div>
-          <ul class="spec-tags"><li>百葉窗轉場</li><li>自動輪播</li><li>進度條</li><li>懸停暫停</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">切片輪播</span></button>
-        </header>
-
-        <div class="banner banner-slice" role="region" aria-roledescription="carousel" aria-label="活動輪播">
-          <div class="sl-slides">
-            <article class="sl-slide slide-red is-active" data-bg="#FF4A1C" aria-roledescription="slide" aria-label="第 1 張，共 3 張">
-              <div class="sl-copy">
-                <p class="sl-kicker">New Arrival</p>
-                <h3 class="sl-title"><span class="rl"><span>把季節</span></span><span class="rl"><span>穿在身上。</span></span></h3>
-                <p class="sl-sub">秋冬新品陸續上架，找一件讓你想出門的外套。</p>
-                <a class="btn btn-ink" href="#slice">立即選購 <i aria-hidden="true">→</i></a>
-              </div>
-              <div class="sl-art art-1" aria-hidden="true"><span class="a1-circle"></span><span class="a1-ring"></span><span class="a1-bar"></span></div>
-            </article>
-            <article class="sl-slide slide-blue" data-bg="#2B4BFF" aria-roledescription="slide" aria-label="第 2 張，共 3 張" aria-hidden="true">
-              <div class="sl-copy">
-                <p class="sl-kicker">Limited</p>
-                <h3 class="sl-title"><span class="rl"><span>只有</span></span><span class="rl"><span>這個週末。</span></span></h3>
-                <p class="sl-sub">週末限定的小驚喜，錯過就要再等一季。</p>
-                <a class="btn btn-yellow" href="#slice">看活動 <i aria-hidden="true">→</i></a>
-              </div>
-              <div class="sl-art art-2" aria-hidden="true"><span class="a2-s1"></span><span class="a2-s2"></span><span class="a2-s3"></span></div>
-            </article>
-            <article class="sl-slide slide-ink" data-bg="#121212" aria-roledescription="slide" aria-label="第 3 張，共 3 張" aria-hidden="true">
-              <div class="sl-copy">
-                <p class="sl-kicker">Our Story</p>
-                <h3 class="sl-title"><span class="rl"><span>從一個</span></span><span class="rl"><span>形狀開始。</span></span></h3>
-                <p class="sl-sub">我們相信好的設計，都是從最簡單的東西長出來的。</p>
-                <a class="btn btn-light" href="#slice">認識我們 <i aria-hidden="true">→</i></a>
-              </div>
-              <div class="sl-art art-3" aria-hidden="true"><span class="a3-tri"></span><span class="a3-circle"></span><span class="a3-dots"></span></div>
-            </article>
-          </div>
-
-          <div class="sl-blinds" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-
-          <div class="sl-ui">
-            <p class="sl-count"><b class="sl-current">01</b> / 03</p>
-            <div class="sl-progress" aria-hidden="true"><span><i></i></span><span><i></i></span><span><i></i></span></div>
-            <div class="sl-nav">
-              <button class="sl-btn sl-toggle" type="button" aria-label="暫停輪播" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M8 5v14M16 5v14"/><path class="i-play" d="M7 5l12 7-12 7z"/></svg></button>
-              <button class="sl-btn sl-prev" type="button" aria-label="上一張">←</button>
-              <button class="sl-btn sl-next" type="button" aria-label="下一張">→</button>
-            </div>
-          </div>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>電商首頁、多檔活動輪播</span><span><b>技術</b>交錯百葉窗 scaleY、自動輪播計時、滑鼠移入或聚焦時暫停</span></p>
-      </div>
-    </section>
-
-    <!-- 05 點陣 -->
-    <section class="specimen" id="dots" data-banner="dots">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">05</span>
-          <div class="spec-title"><h2>點陣波紋</h2><span class="spec-en">Dot Matrix</span></div>
-          <ul class="spec-tags"><li>點陣文字</li><li>擴散波紋</li><li>游標推開</li><li>字詞切換</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">點陣波紋</span></button>
-        </header>
-
-        <div class="banner banner-dots">
-          <canvas class="dm-canvas" aria-hidden="true"></canvas>
-          <div class="dm-copy">
-            <p class="dm-kicker"><span class="dm-led" aria-hidden="true"></span>Live · Dot Matrix</p>
-            <h3 class="dm-title">像素也能跳舞</h3>
-            <p class="dm-sub">幾千個點拼成文字，會呼吸、會波動，游標劃過時還會被推開。</p>
-            <a class="btn btn-yellow" href="#dots">來玩玩看 <i aria-hidden="true">→</i></a>
-          </div>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>科技感活動、遊戲、音樂與倒數頁</span><span><b>技術</b>Canvas 2D 點陣、文字取樣成遮罩、依距離延遲的波紋</span></p>
-      </div>
-    </section>
-
-    <!-- 06 線條描繪 -->
-    <section class="specimen" id="line" data-banner="line">
-      <div class="container">
-        <header class="spec-head">
-          <span class="spec-num">06</span>
-          <div class="spec-title"><h2>線條描繪</h2><span class="spec-en">Line Drawing</span></div>
-          <ul class="spec-tags"><li>線條描繪</li><li>襯線字</li><li>底線動畫</li><li>景深視差</li></ul>
-          <button class="replay" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播<span class="sr-only">線條描繪</span></button>
-        </header>
-
-        <div class="banner banner-line">
-          <div class="ln-copy">
-            <p class="ln-kicker">Issue No.06 — 2026 秋</p>
-            <h3 class="ln-title">
-              <span class="rl"><span>一條線，</span></span>
-              <span class="rl"><span>走出一個故事。</span></span>
-            </h3>
-            <p class="ln-en"><em>A single line, drawn with patience.</em></p>
-            <p class="ln-sub">極簡的線條描繪，搭配大量留白與襯線字，適合品牌故事、藝文活動與雜誌風格的首頁。</p>
-            <a class="ln-link" href="#line">閱讀專題 <i aria-hidden="true">→</i></a>
-          </div>
-          <svg class="ln-art" viewBox="0 0 600 520" aria-hidden="true">
-            <defs>
-              <clipPath id="ln-arch"><path d="M70 500 V240 A230 230 0 0 1 530 240 V500 Z"/></clipPath>
-            </defs>
-            <g clip-path="url(#ln-arch)">
-              <g class="ln-sun">
-                <circle class="ln-sun-fill" cx="392" cy="330" r="58"/>
-                <path class="ln-stroke" pathLength="1" d="M334 330 a58 58 0 1 0 116 0 a58 58 0 1 0 -116 0"/>
-              </g>
-              <g class="ln-birds">
-                <path class="ln-stroke" pathLength="1" d="M168 176 q12 -13 24 0 q12 -13 24 0"/>
-                <path class="ln-stroke" pathLength="1" d="M236 138 q9 -10 18 0 q9 -10 18 0"/>
-              </g>
-              <g class="ln-hills">
-                <path class="ln-hill-fill" d="M40 382 C 150 310, 230 300, 300 352 S 440 420, 560 330 V520 H40 Z"/>
-                <path class="ln-stroke" pathLength="1" d="M40 382 C 150 310, 230 300, 300 352 S 440 420, 560 330"/>
-                <path class="ln-hill-fill" d="M40 432 C 170 382, 280 392, 360 420 S 470 442, 560 408 V520 H40 Z"/>
-                <path class="ln-stroke" pathLength="1" d="M40 432 C 170 382, 280 392, 360 420 S 470 442, 560 408"/>
-              </g>
-              <g class="ln-waves">
-                <path class="ln-stroke" pathLength="1" d="M92 468 q15 -10 30 0 t30 0 t30 0 t30 0"/>
-                <path class="ln-stroke" pathLength="1" d="M290 486 q15 -10 30 0 t30 0 t30 0 t30 0 t30 0"/>
-              </g>
-            </g>
-            <path class="ln-stroke ln-frame" pathLength="1" d="M70 500 V240 A230 230 0 0 1 530 240 V500"/>
-            <path class="ln-stroke ln-base" pathLength="1" d="M24 500 H576"/>
-          </svg>
-        </div>
-
-        <p class="spec-note"><span><b>適合</b>品牌故事、藝文展覽、雜誌風格網站</span><span><b>技術</b>SVG stroke-dashoffset 描繪、clipPath、滑鼠景深視差</span></p>
-      </div>
+    <section class="config container">
+      <h2>一張 banner 怎麼設定</h2>
+      <p>每張 banner 只需要一張主視覺圖，加上這份設定。特效位置用原圖的百分比標示，之後換圖只要重新量一次主體位置。完整設定在 <code>js/slides.js</code>。</p>
+<pre><code><span class="c">// 皇冠：座標都是原圖 960×436 的百分比</span>
+{
+  <span class="k">image</span>: <span class="s">'assets/banners/crown.webp'</span>,
+  <span class="k">label</span>: <span class="s">'Welcome to your kingdom'</span>,
+  <span class="k">title</span>: [<span class="s">'Your world.'</span>, <span class="s">'Your rules.'</span>],
+  <span class="k">cta</span>: <span class="s">'Explore games'</span>,
+  <span class="k">focus</span>: { x: 73.8, y: 33 },                 <span class="c">// 主體中心：光暈、推移中心、光圈起點</span>
+  <span class="k">rays</span>: { x: 73.8, y: -8, angles: [-17, -10, -4, 2, 8, 15] },
+  <span class="k">ring</span>: { x: 73.6, y: 68.5, w: 44, h: 9 },      <span class="c">// 底座光環</span>
+  <span class="k">glints</span>: [[73.8, 11.5], [73.8, 31.5], [64.7, 39.4], ...],
+  <span class="k">particles</span>: { mode: <span class="s">'rise'</span>, count: 46, area: [50, 97, 45, 96] },
+}</code></pre>
     </section>
   </main>
 
   <footer class="footer">
     <div class="container footer-inner">
       <span>© 2026 FAYI · Motion Banner Lab</span>
-      <span class="footer-shapes" aria-hidden="true"><i class="f-circle"></i><i class="f-square"></i><i class="f-tri"></i></span>
       <a href="#top">回到頂端 ↑</a>
     </div>
   </footer>

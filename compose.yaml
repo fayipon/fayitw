@@ -1,0 +1,18 @@
+# 只有一個 nginx 容器，接到主機上既有 Proxy 的 Docker 網路，
+# 由 Proxy 依網域（fayi.tw / www.fayi.tw）轉進來，不對外發布 port。
+name: fayitw
+
+services:
+  web:
+    build: .
+    image: fayitw-web:latest
+    container_name: fayitw-web
+    restart: unless-stopped
+    networks:
+      - proxy
+
+# Proxy 所在的 Docker 網路名稱由部署時的環境變數提供，不寫進 repo
+networks:
+  proxy:
+    name: ${FAYITW_PROXY_NETWORK:?請設定 FAYITW_PROXY_NETWORK（Proxy 所在的 Docker 網路名稱）}
+    external: true
