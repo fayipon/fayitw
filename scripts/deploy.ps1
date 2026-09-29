@@ -19,13 +19,18 @@ $sshOpts = @('-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'Co
 
 function Invoke-Remote([string]$Code) {
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("`$ProgressPreference='SilentlyContinue';" + $Code))
+    # docker 的建置進度寫在 stderr；只看結束代碼判斷成敗，不讓進度訊息中斷腳本
+    $ErrorActionPreference = 'Continue'
     & ssh @sshOpts $Server powershell -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand $encoded
     if ($LASTEXITCODE -ne 0) { throw "遠端指令失敗（exit $LASTEXITCODE）" }
 }
 
 # 1. 只打包網站需要的檔案
+# 固定用 Windows 內建的 tar：從 Git Bash 執行時 PATH 會先找到 GNU tar，它會把 C:\ 路徑當成遠端主機
+$tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+if (-not (Test-Path $tar)) { $tar = 'tar' }
 Push-Location $root
-try { tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html join.html teaser.html affiliate.html trailer.html slots.html css js assets }
+try { & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html join.html teaser.html affiliate.html trailer.html slots.html css js assets }
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw '打包失敗' }
 $hash = (Get-FileHash $archive -Algorithm SHA256).Hash
