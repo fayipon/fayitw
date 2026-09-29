@@ -25,7 +25,7 @@ function Invoke-Remote([string]$Code) {
 
 # 1. 只打包網站需要的檔案
 Push-Location $root
-try { tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html css js assets }
+try { tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html join.html affiliate.html trailer.html slots.html css js assets }
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw '打包失敗' }
 $hash = (Get-FileHash $archive -Algorithm SHA256).Hash

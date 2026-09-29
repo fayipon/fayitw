@@ -1,0 +1,144 @@
+/* =========================================================
+   老虎機介紹動畫（slots.html）
+   播放器與 .mg 畫布沿用 trailer.css；這裡是老虎機分鏡的樣式。
+   每款遊戲的顏色由 --a（主色）、--b（輔色）、--bg1/--bg2（背景）決定
+   ========================================================= */
+
+.sl-pick { display: flex; gap: 10px; margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.sl-pick::-webkit-scrollbar { display: none; }
+.sl-pick button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 18px 6px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  transition: color .25s, border-color .25s, background-color .25s;
+}
+.sl-pick button:hover { color: var(--text); }
+.sl-pick button[aria-selected="true"] { border-color: var(--mint); background: rgba(93, 245, 194, .12); color: var(--text); }
+.sl-pick i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--c, var(--mint)); color: #111; font-size: 11px; font-style: normal; font-weight: 900; }
+
+/* ---------- 畫布內 ---------- */
+.mg.sl .mg-bg { background: radial-gradient(900px 620px at 50% 40%, var(--bg1), var(--bg2) 72%); }
+
+/* 開場 */
+.sl-rays {
+  left: 50%;
+  top: 50%;
+  width: 1900px;
+  height: 1900px;
+  margin: -950px 0 0 -950px;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--a) 22%, transparent) 0deg 5deg, transparent 5deg 16deg);
+  -webkit-mask: radial-gradient(closest-side, #000 8%, transparent 72%);
+  mask: radial-gradient(closest-side, #000 8%, transparent 72%);
+}
+.sl-deco span {
+  position: absolute;
+  font-size: 150px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--a);
+  text-shadow: 0 10px 40px rgba(0, 0, 0, .4);
+  opacity: .9;
+}
+.sl-deco { inset: 0; }
+.sl-prov {
+  left: 0;
+  right: 0;
+  top: 150px;
+  text-align: center;
+}
+.sl-prov b { display: inline-block; padding: 8px 22px; border-radius: 999px; background: var(--a); color: #1a1200; font-size: 26px; font-weight: 900; letter-spacing: .14em; }
+.sl-name { left: 0; right: 0; top: 215px; text-align: center; font-size: 150px; font-weight: 900; line-height: 1.05; letter-spacing: .01em; }
+.sl-name span { display: inline-block; background: linear-gradient(180deg, #fff 40%, color-mix(in srgb, var(--a) 70%, #fff)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 8px 30px rgba(0, 0, 0, .45)); }
+.sl-zh { left: 0; right: 0; top: 390px; text-align: center; font-size: 46px; font-weight: 900; letter-spacing: .3em; color: var(--a); }
+.sl-tag { left: 0; right: 0; top: 480px; text-align: center; font-size: 30px; font-weight: 700; color: rgba(255, 255, 255, .85); }
+
+/* 實機畫面外框（跨場景共用） */
+.dev {
+  z-index: 5;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  border: 8px solid #0d0d10;
+  border-radius: 34px;
+  background: #000;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a) 70%, transparent), 0 30px 70px rgba(0, 0, 0, .55), 0 0 90px color-mix(in srgb, var(--a) 35%, transparent);
+  visibility: hidden;
+}
+.dev video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+.dev-tag {
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .6);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  visibility: hidden;
+}
+.dev-tag i { width: 12px; height: 12px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 12px #ff4d4d; }
+
+/* 旁白字卡 */
+.co { width: 600px; }
+.co-h { position: relative; font-size: 68px; font-weight: 900; line-height: 1.15; text-shadow: 0 6px 30px rgba(0, 0, 0, .45); }
+.co-h em { color: var(--a); font-style: normal; }
+.co-s { position: relative; margin-top: 14px; font-size: 30px; font-weight: 700; color: rgba(255, 255, 255, .85); }
+.co-k { position: relative; display: inline-block; margin-bottom: 16px; padding: 6px 16px; border-radius: 8px; background: var(--a); color: #1a1200; font-size: 22px; font-weight: 900; letter-spacing: .1em; }
+
+/* 盤面格子 */
+.sp-grid { display: grid; gap: 8px; }
+.sp-grid i { width: 52px; height: 52px; border-radius: 10px; background: rgba(255, 255, 255, .1); border: 2px solid rgba(255, 255, 255, .18); }
+
+/* 倍數階梯 */
+.ld { left: 0; right: 0; }
+.ld-title { left: 0; right: 0; top: 70px; text-align: center; font-size: 60px; font-weight: 900; }
+.ld-title em { color: var(--a); font-style: normal; }
+.ld-row { left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 22px; }
+.ld-row > b { width: 220px; text-align: right; font-size: 30px; font-weight: 900; color: rgba(255, 255, 255, .8); }
+.ld-box {
+  display: grid;
+  place-items: center;
+  width: 170px;
+  height: 130px;
+  border: 3px solid rgba(255, 255, 255, .22);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, .25);
+  font-size: 64px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, .45);
+}
+.ld-note { left: 0; right: 0; top: 590px; text-align: center; font-size: 30px; font-weight: 700; color: rgba(255, 255, 255, .85); }
+
+/* 大倍數 */
+.mx { font-size: 230px; font-weight: 900; font-style: italic; line-height: 1; color: var(--a); -webkit-text-stroke: 8px #1a1200; paint-order: stroke fill; text-shadow: 0 16px 0 #1a1200; }
+.mx-ring { width: 420px; height: 420px; border-radius: 50%; border: 6px solid var(--a); opacity: 0; }
+
+/* 數據 */
+.st3 { left: 30px; right: 30px; top: 200px; display: flex; justify-content: space-evenly; }
+.st3 div { text-align: center; }
+.st3 b { display: block; white-space: nowrap; font-size: 120px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.st3 b small { font-size: 60px; }
+.st3 b em { font-style: normal; }
+.st3 .lbl { display: block; margin-top: 16px; font-size: 30px; font-weight: 800; color: var(--a); letter-spacing: .1em; }
+.st-vol { left: 0; right: 0; top: 480px; display: flex; justify-content: center; align-items: center; gap: 20px; font-size: 30px; font-weight: 800; }
+.st-vol i { display: inline-block; width: 70px; height: 18px; border-radius: 9px; background: rgba(255, 255, 255, .15); }
+.st-vol i.on { background: var(--a); box-shadow: 0 0 16px var(--a); }
+.st-fine { left: 0; right: 0; top: 600px; text-align: center; font-size: 20px; color: rgba(255, 255, 255, .55); }
+
+/* 結尾 */
+.sl-end-copy { left: 640px; top: 170px; width: 560px; }
+.sl-end-copy p { position: relative; font-size: 26px; font-weight: 900; color: var(--a); letter-spacing: .14em; }
+.sl-end-copy h3 { position: relative; margin: 8px 0 10px; font-size: 96px; font-weight: 900; line-height: 1.05; }
+.sl-end-copy .sub { color: rgba(255, 255, 255, .85); font-size: 28px; letter-spacing: 0; }
+.sl-end-copy .btn { position: relative; display: inline-block; margin-top: 34px; padding: 20px 46px; overflow: hidden; border-radius: 18px; background: var(--a); color: #1a1200; font-size: 38px; font-weight: 900; box-shadow: 0 16px 40px -10px var(--a); }
+.sl-end-copy .btn i { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .8), transparent); }
+.sl-end-copy small { position: relative; display: block; margin-top: 26px; color: rgba(255, 255, 255, .6); font-size: 20px; }

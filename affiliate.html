@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>熱門遊戲介紹 — FAYI</title>
+  <meta name="description" content="虎虎生財、麻將胡了、招財喵、極速賽馬等熱門遊戲的玩法、特色、RTP 與最高倍數介紹。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="preload" as="image" href="assets/games/fortune-tiger.webp">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="js/games.js" defer></script>
+  <script src="js/affiliate.js" defer></script>
+</head>
+<body class="aff">
+  <header class="aff-top">
+    <a class="logo" href="#top"><span class="logo-mark"></span>FAYI</a>
+    <nav class="aff-nav" aria-label="頁面導覽">
+      <a href="#intro">遊戲介紹</a>
+      <a href="#library">遊戲庫</a>
+      <a href="join.html">介紹動畫</a>
+      <a href="#faq">常見問題</a>
+    </nav>
+    <a class="btn-play btn-sm" data-play href="#">立即遊玩</a>
+  </header>
+
+  <main id="top">
+    <!-- 精選輪播：內容由 affiliate.js 依 AFF_GAMES 填入 -->
+    <section class="show" aria-roledescription="carousel" aria-label="精選遊戲">
+      <div class="show-bg" aria-hidden="true"><img alt=""><img alt=""></div>
+      <canvas class="show-sparks" aria-hidden="true"></canvas>
+
+      <div class="show-inner container">
+        <div class="show-copy">
+          <p class="show-meta"><span class="show-provider"></span><span class="show-type"></span></p>
+          <h1 class="show-title"><span class="show-zh"></span><span class="show-en"></span></h1>
+          <p class="show-pitch"></p>
+          <dl class="show-stats"></dl>
+          <div class="show-cta">
+            <a class="btn-play" data-play href="#"><span class="btn-shine" aria-hidden="true"></span>立即遊玩</a>
+            <a class="btn-line" data-show-intro href="#intro">看完整介紹</a>
+          </div>
+        </div>
+
+        <div class="show-visual" aria-hidden="true">
+          <div class="show-rays"></div>
+          <div class="show-glow"></div>
+          <div class="show-stage">
+            <div class="show-card"><img alt=""><span class="show-shine"></span></div>
+          </div>
+          <span class="show-chip chip-a"></span>
+          <span class="show-chip chip-b"></span>
+          <div class="show-floor"></div>
+        </div>
+      </div>
+
+      <div class="show-rail container">
+        <div class="show-thumbs" role="group" aria-label="選擇遊戲"></div>
+        <button class="show-pause" type="button" aria-label="暫停輪播" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M9 6v12M15 6v12"/><path class="i-play" d="M8 5.5v13l10.5-6.5z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <section id="intro" class="intro container" aria-labelledby="intro-title">
+      <header class="sec-head">
+        <p class="eyebrow">Game guide</p>
+        <h2 id="intro-title">遊戲介紹</h2>
+        <p>玩法、特色和規格一次看懂，挑一款適合你的再開始。</p>
+      </header>
+      <div class="intro-tabs" role="tablist" aria-label="選擇要看的遊戲"></div>
+      <article class="intro-panel" role="tabpanel" tabindex="-1">
+        <div class="intro-art">
+          <div class="intro-glow" aria-hidden="true"></div>
+          <div class="intro-card"><img alt=""><span class="show-shine" aria-hidden="true"></span></div>
+          <div class="intro-gallery" hidden><h4></h4><ul></ul></div>
+        </div>
+        <div class="intro-body">
+          <p class="intro-meta"></p>
+          <h3 class="intro-title"></h3>
+          <p class="intro-text"></p>
+          <dl class="intro-specs"></dl>
+          <h4>特色玩法</h4>
+          <ul class="intro-features"></ul>
+          <h4>怎麼玩</h4>
+          <ol class="intro-steps"></ol>
+          <p class="intro-tip"></p>
+          <div class="intro-cta">
+            <a class="btn-play" data-play href="#"><span class="btn-shine" aria-hidden="true"></span>立即遊玩</a>
+            <a class="btn-line" data-trailer href="#" hidden>▶ 看介紹動畫</a>
+            <a class="btn-line" href="#library">看更多遊戲</a>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="library" class="library container" aria-labelledby="library-title">
+      <header class="sec-head">
+        <p class="eyebrow">Game library</p>
+        <h2 id="library-title">遊戲庫</h2>
+      </header>
+      <div class="lib-filters" role="group" aria-label="篩選遊戲">
+        <button type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button type="button" data-filter="intro" aria-pressed="false">有介紹</button>
+        <button type="button" data-filter="hot" aria-pressed="false">熱門</button>
+        <button type="button" data-filter="big" aria-pressed="false">高倍數</button>
+        <button type="button" data-filter="original" aria-pressed="false">原創</button>
+      </div>
+      <div class="lib-grid"></div>
+    </section>
+
+    <section id="faq" class="faq container" aria-labelledby="faq-title">
+      <header class="sec-head">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-title">常見問題</h2>
+      </header>
+      <div class="faq-list">
+        <details>
+          <summary>RTP 是什麼？</summary>
+          <p>RTP（Return to Player）是長期下來押注金額返還給玩家的理論比例，例如 96.81% 代表在非常大量的遊戲次數下，平均每押 100 會返還 96.81。它是長期平均值，不代表每一次或每一段時間的結果。</p>
+        </details>
+        <details>
+          <summary>最高倍數是什麼意思？</summary>
+          <p>單轉最多可以贏得押注金額的幾倍。例如最高 2,500 倍、押注 10，這一轉最多可以贏 25,000。最高倍數越高，通常波動也越大。</p>
+        </details>
+        <details>
+          <summary>波動度高低有什麼差別？</summary>
+          <p>低波動的遊戲小獎多、贏分平均；高波動的遊戲平常贏分少，但一次爆發的金額大。想玩得久可以選低波動，想追大獎可以選高波動。</p>
+        </details>
+        <details>
+          <summary>怎麼開始玩？</summary>
+          <p>按頁面上任一個「立即遊玩」按鈕，註冊並登入後就能直接進入遊戲。</p>
+        </details>
+        <details>
+          <summary>手機可以玩嗎？</summary>
+          <p>可以。這些遊戲都支援手機瀏覽器，不需要另外下載 App。</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="container" aria-label="理性遊戲">
+      <div class="care">
+        <span class="care-badge">18+</span>
+        <p><strong>請理性遊戲。</strong>遊戲僅供年滿 18 歲的玩家娛樂，請先設定好預算與時間，不要把遊戲當成賺錢的方式。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · 遊戲名稱、圖片與商標屬各遊戲商所有，規格以遊戲內說明為準。</span>
+      <a href="#top">回到頂端 ↑</a>
+    </div>
+  </footer>
+</body>
+</html>

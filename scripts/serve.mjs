@@ -20,6 +20,7 @@ const types = {
   '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.mp4': 'video/mp4',
 };
 
 createServer(async (req, res) => {
@@ -32,7 +33,21 @@ createServer(async (req, res) => {
   try {
     if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
     const body = await readFile(file);
-    res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    const headers = { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes' };
+    // 影片要能跳到任意時間點，瀏覽器會用 Range 分段要檔案
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (range) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, body.length - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1;
+      if (start >= body.length || start > end) {
+        res.writeHead(416, { 'Content-Range': `bytes */${body.length}` }).end();
+        return;
+      }
+      res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${body.length}` });
+      res.end(body.subarray(start, end + 1));
+      return;
+    }
+    res.writeHead(200, headers);
     res.end(body);
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');

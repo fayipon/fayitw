@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>立即註冊，熱門遊戲一站玩遍 — FAYI</title>
+  <meta name="description" content="PG、JILI 熱門老虎機加上原創賽馬，手機打開就能玩。看活動、站點特色與極速充提，現在註冊馬上開玩。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <link rel="stylesheet" href="css/trailer.css">
+  <link rel="stylesheet" href="css/join.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="js/games.js" defer></script>
+  <script src="js/site.js" defer></script>
+  <script src="js/mg-player.js" defer></script>
+  <script src="js/join-page.js" defer></script>
+  <script src="js/join-mg.js" defer></script>
+</head>
+<body class="aff join tr-page">
+  <header class="aff-top">
+    <a class="logo" href="#top"><span class="logo-mark"></span>FAYI</a>
+    <nav class="aff-nav" aria-label="頁面導覽">
+      <a href="#games">熱門遊戲</a>
+      <a href="#events">活動</a>
+      <a href="#features">站點特色</a>
+      <a href="#pay">極速充提</a>
+    </nav>
+    <a class="btn-play btn-reg btn-sm" data-register href="#">立即註冊</a>
+  </header>
+
+  <main id="top">
+    <section class="tr jn-hero container" aria-labelledby="jn-title">
+      <header class="tr-head">
+        <p class="eyebrow">FAYI · Hot games, all in one</p>
+        <h1 id="jn-title">熱門遊戲一站玩遍，<em>現在註冊</em>馬上開玩</h1>
+        <p>PG、JILI 熱門老虎機加上原創賽馬，手機打開就能玩。動畫中的遊戲畫面都是實機錄影。</p>
+      </header>
+
+      <!-- 16:9 推廣動畫：分鏡由 join-mg.js 建立 -->
+      <div class="tr-player">
+        <div class="tr-frame">
+          <div class="mg" aria-hidden="true"></div>
+          <button class="tr-big-play" type="button" aria-label="播放動畫" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+        </div>
+        <div class="tr-controls">
+          <button class="tr-toggle" type="button" aria-label="暫停" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M9 6v12M15 6v12"/><path class="i-play" d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+          <ol class="tr-chapters" aria-label="段落"></ol>
+          <span class="tr-time" aria-hidden="true">0:00</span>
+          <button class="tr-fs" type="button" aria-label="全螢幕" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+        <p class="tr-caption" aria-live="polite"></p>
+      </div>
+
+      <div class="tr-cta">
+        <a class="btn-play btn-reg btn-xl" data-register href="#"><span class="btn-shine" aria-hidden="true"></span>立即註冊</a>
+        <a class="btn-line" href="affiliate.html">看遊戲介紹</a>
+      </div>
+    </section>
+
+    <section id="games" class="jn-sec container" aria-labelledby="games-title">
+      <header class="sec-head">
+        <p class="eyebrow">Hot games</p>
+        <h2 id="games-title">熱門遊戲</h2>
+        <p>老虎機、消除、高倍數，加上每 2 分鐘一場的原創賽馬。</p>
+      </header>
+      <ul class="jn-games"></ul>
+      <a class="jn-more" href="affiliate.html#library">看全部遊戲 →</a>
+    </section>
+
+    <section id="events" class="jn-sec container" aria-labelledby="events-title">
+      <header class="sec-head">
+        <p class="eyebrow">Events</p>
+        <h2 id="events-title">限時活動</h2>
+        <p>註冊就能參加。</p>
+      </header>
+      <ul class="jn-events"></ul>
+      <p class="jn-note">活動內容、資格與期限以站內公告為準。</p>
+    </section>
+
+    <section id="features" class="jn-sec container" aria-labelledby="features-title">
+      <header class="sec-head">
+        <p class="eyebrow">Why FAYI</p>
+        <h2 id="features-title">站點特色</h2>
+      </header>
+      <ul class="jn-feats"></ul>
+    </section>
+
+    <section id="pay" class="jn-sec container" aria-labelledby="pay-title">
+      <header class="sec-head">
+        <p class="eyebrow">Fast deposit &amp; withdrawal</p>
+        <h2 id="pay-title">極速充值・極速出款</h2>
+      </header>
+      <ul class="jn-pay"></ul>
+    </section>
+
+    <section id="join" class="jn-sec container" aria-labelledby="join-title">
+      <div class="jn-join">
+        <h2 id="join-title">現在註冊，<em>馬上開玩</em></h2>
+        <p>三個步驟完成註冊，活動獎勵直接參加。</p>
+        <ol class="jn-steps"></ol>
+        <a class="btn-play btn-reg btn-xl" data-register href="#"><span class="btn-shine" aria-hidden="true"></span>立即註冊</a>
+        <p class="care-line">18+ 請理性遊戲。遊戲僅供年滿 18 歲的玩家娛樂，請先設定好預算與時間。</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="jn-bar">
+    <a class="btn-play btn-reg" data-register href="#">立即註冊</a>
+  </div>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · 遊戲名稱與畫面屬各遊戲商所有，動畫中的遊戲畫面為實機錄影。</span>
+      <a href="affiliate.html">遊戲介紹 →</a>
+    </div>
+  </footer>
+</body>
+</html>
