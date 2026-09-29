@@ -6,14 +6,6 @@
 .join { --gold: #ffcf4a; --gold-ink: #2a1400; }
 .join main > section { scroll-margin-top: 76px; }
 
-/* 註冊按鈕：整頁最主要的行動按鈕 */
-.btn-reg {
-  background: linear-gradient(180deg, #ffe680, #ffc21a 55%, #f59b00);
-  color: var(--gold-ink);
-  box-shadow: 0 10px 30px -8px rgba(255, 180, 0, .75);
-}
-.btn-reg:hover { box-shadow: 0 16px 38px -8px rgba(255, 180, 0, .9); }
-.btn-xl { min-height: 64px; padding: 0 44px; border-radius: 18px; font-size: 20px; letter-spacing: .08em; }
 
 /* ---------- 首屏 ---------- */
 .jn-hero { padding-block: clamp(28px, 4vw, 52px) 0; }

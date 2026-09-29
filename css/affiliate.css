@@ -32,6 +32,14 @@
 .btn-line { border: 1px solid rgba(255, 255, 255, .22); color: var(--text); }
 .btn-line:hover { border-color: var(--accent); }
 .btn-sm { min-height: 40px; padding: 0 18px; border-radius: 11px; font-size: 14px; }
+/* 註冊按鈕（推廣頁、站點預告）：整頁最主要的行動按鈕 */
+.btn-reg {
+  background: linear-gradient(180deg, #ffe680, #ffc21a 55%, #f59b00);
+  color: #2a1400;
+  box-shadow: 0 10px 30px -8px rgba(255, 180, 0, .75);
+}
+.btn-reg:hover { box-shadow: 0 16px 38px -8px rgba(255, 180, 0, .9); }
+.btn-xl { min-height: 64px; padding: 0 44px; border-radius: 18px; font-size: 20px; letter-spacing: .08em; }
 .btn-shine {
   position: absolute;
   inset: 0 auto 0 0;

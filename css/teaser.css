@@ -1,0 +1,169 @@
+/* =========================================================
+   KUNKING 站點預告（teaser.html）
+   播放器與 1280×720 畫布沿用 trailer.css；這裡是分鏡樣式（k- 開頭）
+   風格：白底、大塊黑、螢光綠點綴、粗斜體窄字、塗鴉角色名、貼紙、映像管電視
+   ========================================================= */
+
+.tz-page .tr-head h1 em { color: #d7ff1f; font-style: normal; }
+.tz-page .tr-frame { box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(215, 255, 31, .3); }
+
+/* ---------- 畫布 ---------- */
+.mg.kz {
+  --lime: #d7ff1f;
+  --ink: #111;
+  --ui: "Barlow Condensed", "Noto Sans TC", sans-serif;
+  --graf: "Sedgwick Ave Display", "Barlow Condensed", cursive;
+  background: #000;
+  font-family: var(--ui);
+}
+.kz .k-crt, .kz .k-hud, .kz .k-flash, .kz .k-hud > *, .k-slash i, .k-wall > .k-tv, .k-imp img { position: absolute; }
+.kz .k-src { display: none; }
+
+.k-bg { inset: 0; background: #f3f3ef; }
+.k-fx { inset: 0; z-index: 7; width: 1280px; height: 720px; pointer-events: none; }
+.k-static { inset: 0; z-index: 8; width: 1280px; height: 720px; image-rendering: pixelated; opacity: 0; }
+.k-dots {
+  inset: 0;
+  background-image: radial-gradient(circle, var(--dot, rgba(17, 17, 17, .16)) 2px, transparent 2.4px);
+  background-size: 14px 14px;
+  -webkit-mask: linear-gradient(120deg, #000, transparent 40%, transparent 70%, #000);
+  mask: linear-gradient(120deg, #000, transparent 40%, transparent 70%, #000);
+}
+
+/* 映像管：淡淡的掃描線與暗角 */
+.kz .k-crt {
+  inset: 0;
+  z-index: 8;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .07) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, .35));
+  pointer-events: none;
+}
+
+/* HUD：黑色膠囊標籤，白底黑底都看得清楚 */
+.kz .k-hud { inset: 0; z-index: 9; pointer-events: none; }
+.k-hud .c { width: 34px; height: 34px; border: 5px solid #111; filter: drop-shadow(0 0 1.5px #fff); }
+.k-hud .tl { left: 20px; top: 20px; border-right: 0; border-bottom: 0; }
+.k-hud .tr { right: 20px; top: 20px; border-left: 0; border-bottom: 0; }
+.k-hud .bl { left: 20px; bottom: 20px; border-right: 0; border-top: 0; }
+.k-hud .br { right: 20px; bottom: 20px; border-left: 0; border-top: 0; }
+.h-ch { left: 64px; top: 28px; display: flex; font: italic 900 20px/1 var(--ui); letter-spacing: .04em; }
+.h-ch b { padding: 6px 10px; background: #111; color: #fff; }
+.h-ch span { padding: 6px 10px; background: #d7ff1f; color: #111; }
+.h-rec { right: 64px; top: 28px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #111; color: #fff; font: 800 16px/1 var(--ui); letter-spacing: .08em; }
+.h-rec i { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; }
+.h-play { right: 64px; bottom: 28px; padding: 6px 12px; background: #111; color: #d7ff1f; font: italic 900 18px/1 var(--ui); }
+.kz .k-flash { inset: 0; z-index: 10; background: #fff; opacity: 0; pointer-events: none; }
+
+/* 斜切轉場 */
+.k-slash { left: -200px; top: -60px; z-index: 6; width: 1680px; height: 840px; }
+.k-slash i { top: 0; bottom: 0; }
+.k-slash i:first-child { left: 0; width: 70px; background: #d7ff1f; }
+.k-slash i:last-child { left: 70px; right: 0; background: #111; }
+
+/* 游標與點擊波紋 */
+.k-cursor { left: 0; top: 0; z-index: 7; width: 36px; height: 60px; overflow: visible; shape-rendering: crispEdges; transform-origin: 0 0; filter: drop-shadow(3px 3px 0 rgba(0, 0, 0, .4)); visibility: hidden; }
+.k-cursor path { fill: #fff; stroke: #111; stroke-width: 1.2; }
+.k-ripple { left: -40px; top: -40px; z-index: 7; width: 80px; height: 80px; border: 5px solid #111; border-radius: 50%; opacity: 0; }
+
+/* 黑色橫條標題 */
+.k-band { left: 0; top: 584px; display: flex; align-items: center; gap: 24px; width: 1280px; height: 84px; padding: 0 64px; background: #111; }
+.k-band b { color: #d7ff1f; font: italic 900 52px/1 var(--ui); letter-spacing: .02em; }
+.k-band span { color: #fff; font: 800 28px/1 var(--ui); letter-spacing: .1em; }
+
+/* ---------- 開機 ---------- */
+.k-lockup { left: 0; right: 0; top: 250px; display: flex; align-items: center; width: fit-content; margin-inline: auto; }
+.k-lockup b { padding: 12px 36px 18px; background: #111; color: #fff; font: italic 900 150px/1 var(--ui); transform: skewX(-8deg); }
+.k-lockup i { margin-left: -16px; padding: 10px 18px; border: 5px solid #111; background: #d7ff1f; color: #111; font: italic 900 64px/1 var(--ui); }
+.k-loading { right: 70px; bottom: 80px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.k-loading b { color: #111; font: italic 900 46px/1 var(--ui); letter-spacing: .02em; }
+.k-loading span { display: flex; gap: 4px; }
+.k-loading span i { width: 18px; height: 22px; background: #111; clip-path: polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 45% 50%); }
+
+/* ---------- PICK YOUR GAME ---------- */
+.k-word { left: 80px; overflow: hidden; padding-right: 30px; font: italic 900 180px/.9 var(--ui); color: #111; }
+.k-w0 { top: 30px; }
+.k-w1 { top: 200px; }
+.k-w2 { top: 370px; }
+.k-word i { position: absolute; left: -10px; right: 0; bottom: 14px; height: 64px; background: #d7ff1f; transform-origin: left; }
+.k-word span { position: relative; display: inline-block; }
+.k-w1 span { color: transparent; -webkit-text-stroke: 5px #111; }
+.k-sub { left: 620px; top: 250px; padding: 10px 18px; background: #111; color: #fff; font: italic 900 40px/1 var(--ui); letter-spacing: .08em; }
+
+/* ---------- 角色登場卡 ---------- */
+.k-panel { left: 0; top: 0; width: 1280px; height: 720px; background: #111; clip-path: polygon(0 0, 700px 0, 540px 720px, 0 720px); }
+.ks-card .k-dots { --dot: color-mix(in srgb, var(--c) 55%, transparent); -webkit-mask: linear-gradient(90deg, #000, transparent 50%); mask: linear-gradient(90deg, #000, transparent 50%); }
+.k-graf { left: 30px; top: 60px; color: var(--c); font: 400 250px/1 var(--graf); white-space: nowrap; -webkit-text-stroke: 8px #111; paint-order: stroke fill; text-shadow: 10px 10px 0 #111; transform: rotate(-8deg); }
+.k-graf span { display: inline-block; }
+.k-art img { display: block; width: 100%; }
+.k-plate { left: 56px; top: 452px; isolation: isolate; width: 620px; }
+.k-plate::before { content: ""; position: absolute; inset: -30px -80px -60px -80px; z-index: -1; background: linear-gradient(90deg, rgba(17, 17, 17, .92) 55%, transparent); }
+.k-file { display: flex; align-items: center; gap: 10px; font: italic 900 24px/1 var(--ui); }
+.k-file b { padding: 5px 10px; background: #d7ff1f; color: #111; }
+.k-file span { color: #fff; }
+.k-name { margin-top: 10px; color: #fff; font: italic 900 84px/.92 var(--ui); letter-spacing: .01em; text-shadow: 6px 6px 0 var(--c); }
+.k-chips { display: flex; gap: 8px; margin-top: 16px; list-style: none; }
+.k-chips li { padding: 6px 14px; border: 3px solid #fff; border-radius: 999px; color: #fff; font: 800 20px/1 var(--ui); letter-spacing: .06em; }
+.k-chips li:first-child { background: #fff; color: #111; }
+.k-chips li:last-child { border-color: var(--c); background: var(--c); color: #111; }
+.k-corner { right: 60px; top: 78px; display: flex; align-items: center; gap: 10px; }
+.k-corner i { width: 90px; height: 34px; background: repeating-linear-gradient(90deg, #111 0 3px, transparent 3px 5px, #111 5px 6px, transparent 6px 10px); }
+.k-corner span { color: #111; font: italic 900 18px/1 var(--ui); text-align: right; }
+.k-imp { inset: 0; background: #d7ff1f; visibility: hidden; }
+.k-imp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(from 0deg at 70% 50%, #111 0deg 2deg, transparent 2deg 9deg);
+  -webkit-mask: radial-gradient(circle at 70% 50%, transparent 22%, #000 60%);
+  mask: radial-gradient(circle at 70% 50%, transparent 22%, #000 60%);
+}
+.k-imp img { left: 900px; top: 20px; height: 680px; filter: brightness(0); }
+.k-cardtv { left: 950px; top: 440px; width: 290px; height: 214px; }
+
+/* 映像管電視 */
+.k-tv { padding: 14px 58px 14px 14px; border: 6px solid #111; border-radius: 26px; background: #deded8; box-shadow: 8px 8px 0 #111; transform: rotate(var(--r, 0deg)); }
+.k-tv-scr { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 16px; background: #111; }
+.k-tv-scr > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.k-tv-scr::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .2) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 30% 18%, rgba(255, 255, 255, .22), transparent 50%); }
+.k-tv-scr canvas.k-noise { image-rendering: pixelated; }
+.k-knob { position: absolute; right: 12px; top: 20px; width: 30px; height: 30px; border: 5px solid #111; border-radius: 50%; background: #d7ff1f; }
+.k-knob.b { top: 62px; background: #ff3b30; }
+.k-tvlogo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #d7ff1f; }
+.k-tvlogo b { color: #111; font: italic 900 78px/1 var(--ui); }
+.k-tvlogo span { color: #111; font: 800 20px/1 var(--ui); letter-spacing: .24em; }
+.k-wall { left: 0; top: 0; width: 1280px; height: 720px; }
+.k-band-tv { top: auto; bottom: 120px; transform: rotate(-3deg); }
+
+/* ---------- 漫畫賽道 ---------- */
+.k-gutter { left: 0; top: 0; width: 1280px; height: 720px; overflow: visible; }
+.k-gutter polygon { fill: none; stroke: #111; stroke-width: 8; stroke-linejoin: round; }
+.k-halftone {
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, .3) 1.5px, transparent 1.9px);
+  background-size: 9px 9px;
+  mix-blend-mode: multiply;
+  -webkit-mask: linear-gradient(120deg, #000, transparent 35%, transparent 70%, #000);
+  mask: linear-gradient(120deg, #000, transparent 35%, transparent 70%, #000);
+  pointer-events: none;
+}
+.k-nar { padding: 10px 18px; border: 5px solid #111; background: #fff; color: #111; font: italic 900 38px/1 var(--ui); box-shadow: 6px 6px 0 #111; }
+.k-nar-a { left: 50px; top: 84px; }
+.k-nar-b { left: 330px; top: 600px; }
+.k-dash { left: 960px; top: 196px; color: #d7ff1f; font: italic 900 110px/1 var(--ui); -webkit-text-stroke: 12px #111; paint-order: stroke fill; text-shadow: 8px 8px 0 #111; }
+.k-stamp { left: 530px; top: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 190px; height: 190px; border: 7px solid #111; border-radius: 50%; background: #d7ff1f; box-shadow: 8px 8px 0 #111; }
+.k-stamp b { font: italic 900 40px/1 var(--ui); }
+.k-stamp span { font: 900 26px/1 var(--ui); letter-spacing: .12em; }
+.k-rlabel { left: 960px; top: 628px; padding: 10px 16px; background: #111; color: #d7ff1f; font: italic 900 32px/1 var(--ui); }
+.k-pf { left: 390px; top: 230px; width: 500px; padding: 30px 0; border: 7px solid #111; background: #d7ff1f; color: #111; font: italic 900 96px/.9 var(--ui); text-align: center; box-shadow: 10px 10px 0 #111; }
+
+/* ---------- 註冊 ---------- */
+.k-slashbg { left: -100px; top: 330px; width: 1500px; height: 250px; background: #d7ff1f; transform: rotate(-6deg); }
+.k-mark { left: 60px; top: 40px; color: #111; font: italic 900 200px/.9 var(--ui); letter-spacing: .01em; text-shadow: 8px 8px 0 #d7ff1f; }
+.k-mark span { display: inline-block; }
+.k-tagline { left: 66px; top: 236px; padding: 8px 16px; background: #111; color: #fff; font: italic 900 38px/1 var(--ui); letter-spacing: .06em; }
+.k-cta { left: 880px; top: 110px; display: grid; place-items: center; width: 360px; height: 100px; border-radius: 999px; background: #111; color: #d7ff1f; font: italic 900 54px/1 var(--ui); letter-spacing: .04em; box-shadow: 8px 8px 0 #d7ff1f, 8px 8px 0 4px #111; }
+.k-cta span { position: relative; }
+.k-cta i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .45) 50%, transparent 62%) var(--sx, 160%) 0 / 260% 100% no-repeat; }
+.k-cta em { position: absolute; right: -26px; top: -28px; padding: 6px 12px; border: 4px solid #111; background: #ff3b30; color: #fff; font: italic 900 26px/1 var(--ui); }
+.k-18 { left: 902px; top: 240px; padding: 6px 14px; border: 3px solid #111; background: #fff; color: #111; font: 800 20px/1 var(--ui); letter-spacing: .08em; }
