@@ -25,12 +25,15 @@ function Invoke-Remote([string]$Code) {
     if ($LASTEXITCODE -ne 0) { throw "遠端指令失敗（exit $LASTEXITCODE）" }
 }
 
-# 1. 只打包網站需要的檔案
+# 1. 只打包網站需要的檔案（根目錄的每個 .html 頁面都會帶上，新增頁面不用改這裡）
 # 固定用 Windows 內建的 tar：從 Git Bash 執行時 PATH 會先找到 GNU tar，它會把 C:\ 路徑當成遠端主機
 $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
 if (-not (Test-Path $tar)) { $tar = 'tar' }
 Push-Location $root
-try { & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html lab.html join.html teaser.html affiliate.html trailer.html slots.html css js assets }
+try {
+    $pages = (Get-ChildItem -Filter *.html -File).Name
+    & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker @pages css js assets
+}
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw '打包失敗' }
 $hash = (Get-FileHash $archive -Algorithm SHA256).Hash
