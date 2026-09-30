@@ -92,7 +92,6 @@
 /* 手機：底部固定註冊列 */
 .jn-bar { display: none; }
 @media (max-width: 720px) {
-  .aff-nav { display: none; }
   .jn-bar {
     position: fixed;
     inset: auto 0 0;

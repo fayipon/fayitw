@@ -61,17 +61,14 @@
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 14px;
+  min-height: 64px;
   padding: 12px var(--pad);
   border-bottom: 1px solid rgba(255, 255, 255, .06);
   background: rgba(7, 17, 15, .72);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
-.aff-top .home-back { margin-left: -12px; }
-.aff-nav { display: flex; gap: 24px; margin-left: auto; }
-.aff-nav a { color: var(--muted); font-size: 15px; font-weight: 500; transition: color .25s; }
-.aff-nav a:hover { color: var(--text); }
 
 /* ---------- 精選輪播 ---------- */
 .show {
@@ -521,8 +518,6 @@
   .intro-art { max-width: 360px; width: 100%; justify-self: center; }
 }
 @media (max-width: 640px) {
-  .aff-nav { display: none; }
-  .aff-top .btn-play { margin-left: auto; }
   .show-visual { max-width: 280px; }
   .show-chip { padding: 6px 12px; font-size: 12px; }
   .show-stats div { padding-right: 10px; }
