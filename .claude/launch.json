@@ -4,8 +4,9 @@
     {
       "name": "site",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["scripts/serve.mjs", "5173"],
-      "port": 5173
+      "runtimeArgs": ["scripts/serve.mjs"],
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

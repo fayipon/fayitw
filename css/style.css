@@ -61,9 +61,29 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .top-links a:hover { color: var(--mint); }
 @media (max-width: 480px) { .top-title { display: none; } }
 
+/* 內頁頁首的「所有頁面」返回鍵：每個內頁都有，窄螢幕也保留 */
+.home-back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 14px 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: border-color .25s, color .25s, background-color .25s;
+}
+.home-back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
+.home-back:hover { border-color: var(--mint); color: var(--mint); background: rgba(93, 245, 194, .08); }
+.home-back:hover svg { transform: translateX(-2px); }
+
 /* ---------- 所有頁面 ---------- */
-.hub { padding-block: clamp(32px, 5vw, 64px) 0; scroll-margin-top: 16px; }
-.hub-head h2 { margin: 6px 0 20px; font-size: clamp(28px, 3.4vw, 40px); font-weight: 900; line-height: 1.25; }
+.hub { padding-block: clamp(32px, 5vw, 64px) clamp(56px, 8vw, 96px); }
+.hub-head h1 { margin: 6px 0 20px; font-size: clamp(28px, 3.4vw, 40px); font-weight: 900; line-height: 1.25; }
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; list-style: none; }
 .hub-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); transition: transform .35s var(--ease), border-color .3s, box-shadow .3s; }
 .hub-card:hover { transform: translateY(-4px); border-color: var(--mint); box-shadow: 0 18px 40px -20px rgba(93, 245, 194, .45); }

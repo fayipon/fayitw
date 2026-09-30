@@ -4,7 +4,8 @@
 
 | 頁面 | 內容 |
 |---|---|
-| `index.html` | 首頁：所有頁面的入口，下方是圖片主視覺 banner 的動態層實驗台 |
+| `index.html` | 首頁：所有頁面的入口卡片 |
+| `lab.html` | Banner 實驗台：圖片主視覺 banner 的動態層，每一層都能開關比較 |
 | `teaser.html` | KUNKING 站點預告：絕區零式的角色登場預告（全英文），最後收在註冊 |
 | `join.html` | 推廣頁（主要目的是註冊）：全站推廣動畫 + 熱門遊戲、活動、站點特色、極速充提、註冊 |
 | `affiliate.html` | 遊戲介紹頁（推廣用）：精選輪播、每款遊戲的玩法與規格、遊戲庫、常見問題 |
@@ -41,7 +42,8 @@ npm run dev
 ## 結構
 
 ```
-index.html            首頁（所有頁面入口 + 實驗台）
+index.html            首頁（所有頁面入口）
+lab.html              Banner 實驗台
 teaser.html           站點預告
 join.html             推廣頁（註冊）
 affiliate.html        遊戲介紹頁
@@ -55,7 +57,7 @@ css/join.css          推廣頁與推廣動畫樣式
 css/teaser.css        站點預告的分鏡樣式
 js/slides.js          每張 banner 的文案與特效座標
 js/banner.js          MotionBanner 元件（輪播、轉場、動態層、粒子）
-js/main.js            控制面板
+js/main.js            實驗台控制面板
 js/games.js           推廣連結、註冊連結設定與遊戲資料
 js/site.js            推廣頁的站點資料：活動、特色、充提速度、註冊步驟
 js/join-page.js       推廣頁的區塊內容
@@ -127,7 +129,8 @@ compose.yaml          容器設定
 
 ## 首頁入口
 
-- `index.html` 最上面的「所有頁面」列出每一頁；新增頁面時在那裡加一張卡片，縮圖放在 `assets/posters/`。
+- `index.html` 的「所有頁面」列出每一頁；新增頁面時在那裡加一張卡片，縮圖放在 `assets/posters/`。
+- 每個內頁的頁首在 logo 旁有「所有頁面」返回鍵（`.home-back`，樣式在 `css/style.css`），新頁面也要加上；窄螢幕時導覽列會收起，返回鍵保留。
 
 ## 介紹動畫
 

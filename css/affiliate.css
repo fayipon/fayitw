@@ -68,6 +68,7 @@
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
+.aff-top .home-back { margin-left: -12px; }
 .aff-nav { display: flex; gap: 24px; margin-left: auto; }
 .aff-nav a { color: var(--muted); font-size: 15px; font-weight: 500; transition: color .25s; }
 .aff-nav a:hover { color: var(--text); }

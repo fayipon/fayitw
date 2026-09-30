@@ -30,7 +30,7 @@ function Invoke-Remote([string]$Code) {
 $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
 if (-not (Test-Path $tar)) { $tar = 'tar' }
 Push-Location $root
-try { & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html join.html teaser.html affiliate.html trailer.html slots.html css js assets }
+try { & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker index.html lab.html join.html teaser.html affiliate.html trailer.html slots.html css js assets }
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw '打包失敗' }
 $hash = (Get-FileHash $archive -Algorithm SHA256).Hash

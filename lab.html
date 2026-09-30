@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Banner 實驗台 — FAYI</title>
+  <meta name="description" content="Motion Banner Lab：一張主視覺疊上光束、閃光、粒子、場景特效與轉場，每一層都可以單獨開關比較。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="preload" as="image" href="assets/banners/crown.webp">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="js/slides.js" defer></script>
+  <script src="js/banner.js" defer></script>
+  <script src="js/main.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"></span>FAYI</a>
+    <a class="home-back" href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>所有頁面</a>
+    <span class="top-title">Motion Banner Lab</span>
+    <nav class="top-links" aria-label="其他頁面">
+      <a href="teaser.html">站點預告</a>
+      <a href="join.html">推廣頁</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero container">
+      <p class="eyebrow">Image banner × Motion layers</p>
+      <h1>一張主視覺，<br>疊出會動的 Banner</h1>
+      <p class="lead">不用重新出圖，也不用拆圖層。依照畫面中主體的位置，疊上光束、閃光、粒子和場景特效，再加上鏡頭推移、滑鼠視差和轉場。下面每一層都可以單獨開關，直接比較有沒有差別。</p>
+    </section>
+
+    <section id="lab" class="lab container" aria-label="Banner 實驗台">
+      <div class="lab-banner">
+        <div data-motion-banner></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-row">
+          <span class="panel-label" id="label-transition">轉場</span>
+          <div class="seg" role="group" aria-labelledby="label-transition">
+            <button type="button" data-transition="slide" aria-pressed="true">視差滑動</button>
+            <button type="button" data-transition="fade" aria-pressed="false">淡入推近</button>
+            <button type="button" data-transition="iris" aria-pressed="false">光圈展開</button>
+            <button type="button" data-transition="wipe" aria-pressed="false">斜切掃過</button>
+            <button type="button" data-transition="blinds" aria-pressed="false">百葉窗</button>
+          </div>
+        </div>
+        <div class="panel-row">
+          <span class="panel-label" id="label-layers">動態層</span>
+          <div class="chips" role="group" aria-labelledby="label-layers">
+            <button type="button" data-layer="kenburns" aria-pressed="true">鏡頭推移</button>
+            <button type="button" data-layer="parallax" aria-pressed="true">滑鼠視差</button>
+            <button type="button" data-layer="light" aria-pressed="true">光束光暈</button>
+            <button type="button" data-layer="scene" aria-pressed="true">場景特效</button>
+            <button type="button" data-layer="glints" aria-pressed="true">閃光</button>
+            <button type="button" data-layer="particles" aria-pressed="true">粒子</button>
+            <button type="button" data-layer="sweep" aria-pressed="true">掃光</button>
+            <button type="button" data-layer="copy" aria-pressed="true">文字進場</button>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn-ghost" type="button" data-action="replay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>重播進場</button>
+          <button class="btn-ghost" type="button" data-action="next">下一張</button>
+          <button class="btn-ghost" type="button" data-action="off">全部關閉（看原圖）</button>
+          <button class="btn-ghost" type="button" data-action="on">全部開啟</button>
+        </div>
+      </div>
+
+      <aside class="lab-phone" aria-label="手機寬度預覽">
+        <div class="phone">
+          <div class="phone-bar" aria-hidden="true"><span class="phone-logo"></span><span class="phone-pill"></span></div>
+          <div class="mb-compact" data-motion-banner></div>
+          <div class="phone-chips" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="phone-cards" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+        <p class="phone-cap">手機寬度預覽（約 360px）</p>
+      </aside>
+
+      <div class="guide">
+        <h2>每一層在做什麼</h2>
+        <div class="guide-grid">
+          <article class="guide-card"><h3>鏡頭推移 <small>成本 極低</small></h3><p>停留期間整個場景緩慢放大 8%，以主體為中心，靜態圖也像有鏡頭在推。特效跟著一起放大，不會錯位。</p></article>
+          <article class="guide-card"><h3>滑鼠視差 <small>成本 極低</small></h3><p>背景往滑鼠反方向、文字往同方向微移，做出前後景深。只在有滑鼠的裝置啟用。</p></article>
+          <article class="guide-card"><h3>光束光暈 <small>成本 低</small></h3><p>主體後方的光暈會呼吸，皇冠上方的光束輕輕擺動。用 screen 混合模式疊在圖上，只會提亮。</p></article>
+          <article class="guide-card"><h3>場景特效 <small>成本 低</small></h3><p>依圖片內容設計：皇冠底座光環、街機螢幕閃爍與掃描線、傳送門漩渦旋轉與能量環。</p></article>
+          <article class="guide-card"><h3>閃光 <small>成本 極低</small></h3><p>在寶石、霓虹星、水晶的位置閃出十字星芒，每顆隨機錯開，不會同時亮。</p></article>
+          <article class="guide-card"><h3>粒子 <small>成本 中</small></h3><p>Canvas 繪製：金粉往上飄、霓虹光斑漂浮、能量粒子被漩渦吸進去。手機自動減量，畫面外會停止。</p></article>
+          <article class="guide-card"><h3>掃光 <small>成本 極低</small></h3><p>一道斜光定期掃過畫面，接著掃過按鈕，把視線帶到行動按鈕上。</p></article>
+          <article class="guide-card"><h3>文字進場 <small>成本 極低</small></h3><p>小標字距收合、標題遮罩上推、重點字流光、按鈕彈出。換張時舊文案先淡出。</p></article>
+        </div>
+
+        <h2>五種轉場</h2>
+        <div class="guide-grid">
+          <article class="guide-card"><h3>視差滑動</h3><p>外框整片滑動、裡面的圖慢一拍，最自然，適合當預設。</p></article>
+          <article class="guide-card"><h3>淡入推近</h3><p>新畫面從放大狀態淡入並推近，節奏柔和，適合質感型品牌。</p></article>
+          <article class="guide-card"><h3>光圈展開</h3><p>從新圖的主體中心擴散出來，視線直接落在主角上。</p></article>
+          <article class="guide-card"><h3>斜切掃過</h3><p>斜邊快速掃過，速度感強，適合活動、促銷與遊戲。</p></article>
+          <article class="guide-card"><h3>百葉窗</h3><p>八條同時打開，有儀式感，適合重大公告或新品揭幕。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="config container">
+      <h2>一張 banner 怎麼設定</h2>
+      <p>每張 banner 只需要一張主視覺圖，加上這份設定。特效位置用原圖的百分比標示，之後換圖只要重新量一次主體位置。完整設定在 <code>js/slides.js</code>。</p>
+<pre><code><span class="c">// 皇冠：座標都是原圖 960×436 的百分比</span>
+{
+  <span class="k">image</span>: <span class="s">'assets/banners/crown.webp'</span>,
+  <span class="k">label</span>: <span class="s">'Welcome to your kingdom'</span>,
+  <span class="k">title</span>: [<span class="s">'Your world.'</span>, <span class="s">'Your rules.'</span>],
+  <span class="k">cta</span>: <span class="s">'Explore games'</span>,
+  <span class="k">focus</span>: { x: 73.8, y: 33 },                 <span class="c">// 主體中心：光暈、推移中心、光圈起點</span>
+  <span class="k">rays</span>: { x: 73.8, y: -8, angles: [-17, -10, -4, 2, 8, 15] },
+  <span class="k">ring</span>: { x: 73.6, y: 68.5, w: 44, h: 9 },      <span class="c">// 底座光環</span>
+  <span class="k">glints</span>: [[73.8, 11.5], [73.8, 31.5], [64.7, 39.4], ...],
+  <span class="k">particles</span>: { mode: <span class="s">'rise'</span>, count: 46, area: [50, 97, 45, 96] },
+}</code></pre>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · Motion Banner Lab</span>
+      <a href="#top">回到頂端 ↑</a>
+    </div>
+  </footer>
+</body>
+</html>
