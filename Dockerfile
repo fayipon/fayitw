@@ -7,4 +7,10 @@ COPY css /usr/share/nginx/html/css
 COPY js /usr/share/nginx/html/js
 COPY assets /usr/share/nginx/html/assets
 
+# CSS / JS 網址加上內容雜湊（style.css?v=1a2b3c4d），改版後瀏覽器與 Cloudflare 不會拿到舊檔
+RUN cd /usr/share/nginx/html && for f in css/*.css js/*.js; do \
+      v=$(md5sum "$f" | cut -c1-8); \
+      sed -i "s#\"$f\"#\"$f?v=$v\"#g" *.html; \
+    done
+
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -q --spider http://127.0.0.1/ || exit 1
