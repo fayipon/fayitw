@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>貓抓蝴蝶 — FAYI</title>
-  <meta name="description" content="貓抓蝴蝶：水墨短片。黑煙色緬因貓從霧裡走來，追著一隻發光的白蝴蝶：霧中登場、墨圈、撲擊、躍起、捧蝶。">
+  <meta name="description" content="貓抓蝴蝶：水墨短片。霧裡走出一隻長毛黑貓，追一隻發光的白蝴蝶：現身、凝視、撲蝶、落空。毛由數千撮筆觸堆出，墨是 GPU 即時模擬的流體。">
   <meta name="theme-color" content="#07110f">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/cat.css">
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
   <script src="js/mg-player.js" defer></script>
+  <script src="js/ink-gl.js" defer></script>
   <script src="js/cat-film.js" defer></script>
 </head>
 <body class="aff tr-page cat-page">
@@ -30,7 +31,7 @@
       <header class="tr-head">
         <p class="eyebrow">Ink-wash short film</p>
         <h1 id="cat-title">貓抓<em>蝴蝶</em></h1>
-        <p>水墨短片：一隻黑煙色緬因貓從霧裡走來，追著一隻發光的白蝴蝶。16 秒，畫面全部由程式即時繪製，沒有文字與介面。</p>
+        <p>水墨短片：霧裡走出一隻長毛黑貓，追一隻發光的白蝴蝶。15 秒、十二個鏡頭；畫面全部由程式即時繪製，貓的毛是數千撮筆觸，墨與霧是 GPU 即時模擬的流體，沒有文字與介面。</p>
       </header>
 
       <!-- 16:9 短片：分鏡由 cat-film.js 畫在 canvas 上 -->
@@ -57,11 +58,10 @@
 
     <section class="container cat-notes" aria-label="分鏡">
       <ol>
-        <li><b>霧中登場</b><span>霧裡的遠山與石叢，貓從遠方走來；巨大的腳掌踩下，墨水一圈圈漾開。</span></li>
-        <li><b>墨圈</b><span>正面坐下，四周的墨點與墨圈成形，一隻發光的白蝴蝶飛進來；橘色眼睛特寫。</span></li>
-        <li><b>撲擊</b><span>竹林裡伏低、往前撲、低身衝刺，墨痕繞著身體甩開，最後落地捲起尾巴。</span></li>
-        <li><b>躍起</b><span>瞳孔放大、抬頭看著蝴蝶，在巨大的墨圈裡站起來，雙爪舉向牠。</span></li>
-        <li><b>捧蝶</b><span>蝴蝶停在合攏的前爪上，又飛走；貓在竹林的霧裡端坐，畫面暗下。</span></li>
+        <li><b>現身</b><span>霧中的湖面，一隻長毛黑貓的影子慢慢走近；低角度的特寫裡腳掌落下，墨一圈圈漾開。</span></li>
+        <li><b>凝視</b><span>從濃霧裡走出來，橙色的眼睛亮起；乾筆的墨圈在身邊捲開、墨團暈開，一隻發光的白蝴蝶飛來，眼睛跟著牠。</span></li>
+        <li><b>撲蝶</b><span>竹林裡伏低、搖屁股，撲向鏡頭；追著蝴蝶又撲又抓，閃白之後一記大撲，瞳孔放到最大。</span></li>
+        <li><b>落空</b><span>在墨圈裡往上合攏雙爪，蝴蝶卻從爪縫溜走、從臉前飛過；最後牠坐在竹林裡，蝴蝶停在牠頭上。</span></li>
       </ol>
     </section>
   </main>
