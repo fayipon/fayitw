@@ -46,7 +46,41 @@
   mg.classList.add('battlefilm');
   mg.innerHTML = '<canvas width="1280" height="720"></canvas>';
   const cv = $('canvas', mg);
-  const g = cv.getContext('2d');
+  const main = cv.getContext('2d');
+  let g = main;
+  // 發光層：光束、魔法陣、光點、火花、月亮另外畫一份（半解析度），撮影時只讓這一層發光
+  const ev = document.createElement('canvas');
+  const EG = ev.getContext('2d');
+  // 撮影：2D 畫好的每一格交給 WebGL 做光暈、柔焦、色彩校正；不支援 WebGL 就直接顯示 2D canvas
+  const post = window.FilmPost ? window.FilmPost.create(cv, ev) : null;
+  if (post) mg.replaceChildren(post.canvas);
+  // 角色：主畫面照常畫，發光層上畫成黑色剪影，擋住身後魔法陣、月亮的光（邊緣還是會透一點光）
+  const cast = fn => {
+    fn();
+    if (!post || g === EG) return;
+    const m = g.getTransform(), k = ev.width / cv.width, sil = SIL;
+    g = EG;
+    SIL = '#000';
+    g.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    fn();
+    SIL = sil;
+    g = main;
+  };
+  // 把會發光的東西在發光層再畫一次（同樣的鏡頭位置，縮成一半）
+  const emit = (fn, gain = 1) => {
+    fn();
+    if (!post || g === EG) return;
+    const m = g.getTransform(), k = ev.width / cv.width;
+    const op = g.globalCompositeOperation, al = g.globalAlpha;
+    g = EG;
+    g.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
+    g.globalCompositeOperation = op;
+    g.globalAlpha = al * gain;
+    fn();
+    g = main;
+  };
   let R = 1;
   let lastT = 0;
 
@@ -202,6 +236,15 @@
 
   /* ---------- 畫面工具 ---------- */
 
+  // 撮影（後製）參數：每一格先重設，各個鏡頭再依需要調整；座標用 1280×720 的畫布座標
+  const POST0 = { bloom: 1.1, th: 0, diff: 0.14, ca: 0.0018, vig: 0.38, grain: 0.05, grade: 0, expo: 1, inv: 0, blur: null, rays: null };
+  let POST = { ...POST0, shock: [] };
+  // 衝擊波：dt 是撞擊後經過的秒數，圈往外擴、力道遞減
+  const shockAt = (x, y, dt, s = 0.03, speed = 1400) => {
+    if (dt < 0 || dt > 0.6) return;
+    POST.shock.push([x, y, 30 + dt * speed, s * (1 - dt / 0.6)]);
+  };
+
   let SX = 0, SY = 0;   // 鏡頭晃動
   const shake = (t, amp, hz = 24) => {
     const i = Math.floor(t * hz);
@@ -232,7 +275,8 @@
     g.fillRect(0, 0, 1280, 720);
     g.globalAlpha = 1;
   };
-  const glowDot = (x, y, r, col = '150,240,255', a = 1) => {
+  const glowDot = (...args) => emit(() => glowDotDraw(...args));
+  const glowDotDraw = (x, y, r, col = '150,240,255', a = 1) => {
     if (r <= 0 || a <= 0) return;
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
     gr.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -253,7 +297,8 @@
     for (let x = ((ox % w) + w) % w - w; x < 1280; x += w) g.drawImage(img, x, bottom - img.height + oy);
     g.globalAlpha = 1;
   }
-  function moon(x, y, r, a = 1) {
+  const moon = (...args) => emit(() => moonDraw(...args), 0.35);
+  function moonDraw(x, y, r, a = 1) {
     glowDot(x, y, r * 3.4, '120,170,255', 0.45 * a);
     g.globalAlpha = a;
     g.fillStyle = '#eef5ff';
@@ -522,7 +567,8 @@
   /* ---------- 光束、魔法陣、紅綢、閃光 ---------- */
 
   // 光束：外圈藍光、青色中層、白色核心，頭粗尾細；點可以帶第三個值當粗細倍率（3D 的遠近）
-  function beam(S, o = {}) {
+  const beam = (...args) => emit(() => beamDraw(...args));
+  function beamDraw(S, o = {}) {
     const { w = 1, a = 1, head = 1 } = o;
     const N = S.length;
     if (N < 2 || a <= 0) return;
@@ -550,7 +596,8 @@
     }
   }
   // 魔法陣：外圈、符文帶、六芒星、內圈；prog 控制畫到哪裡，sy 壓扁做出傾斜
-  function magicCircle(x, y, r, prog, rot, o = {}) {
+  const magicCircle = (...args) => emit(() => magicCircleDraw(...args));
+  function magicCircleDraw(x, y, r, prog, rot, o = {}) {
     const { sy = 1, ang = 0, a = 1 } = o;
     if (prog <= 0 || a <= 0 || r <= 0) return;
     g.save();
@@ -603,12 +650,13 @@
   }
   // 紅綢：沿曲線的一條緞帶，會翻面（正面亮紅、背面暗紅），尾端收尖
   function ribbon(S, w, phase, o = {}) {
-    const { twist = 1, a = 1, tip = 0.35, cols = [C.red, C.redD, C.redL] } = o;
+    const { twist = 1, a = 1, tip = 0.35, cols = [C.red, C.redD, C.redL], line = true } = o;
     const N = S.length;
     if (N < 2 || a <= 0) return;
     const T = tangents(S);
     g.globalAlpha = a;
     let prev = null;
+    const edgeA = [], edgeB = [];
     for (let j = 0; j < N; j++) {
       const u = j / (N - 1);
       let k = 1;
@@ -619,7 +667,7 @@
       const nx = -T[j][1], ny = T[j][0];
       const L = [S[j][0] + nx * hw, S[j][1] + ny * hw], Q = [S[j][0] - nx * hw, S[j][1] - ny * hw];
       if (prev) {
-        g.fillStyle = tw >= 0 ? cols[0] : cols[1];
+        g.fillStyle = F(tw >= 0 ? cols[0] : cols[1]);
         g.beginPath();
         g.moveTo(prev[0][0], prev[0][1]);
         g.lineTo(L[0], L[1]);
@@ -630,7 +678,7 @@
         g.strokeStyle = g.fillStyle;
         g.lineWidth = 1;
         g.stroke();
-        if (tw >= 0) {
+        if (tw >= 0 && !SIL) {
           g.strokeStyle = cols[2];
           g.lineWidth = Math.max(1, w * 0.05);
           g.beginPath();
@@ -640,11 +688,24 @@
         }
       }
       prev = [L, Q];
+      edgeA.push(L);
+      edgeB.push(Q);
+    }
+    // 兩側的線稿
+    if (line && !SIL) {
+      g.beginPath();
+      edgeA.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+      edgeB.reverse().forEach(p => g.lineTo(p[0], p[1]));
+      g.strokeStyle = 'rgba(30,2,12,.85)';
+      g.lineWidth = lw() * 0.8;
+      g.lineJoin = 'round';
+      g.stroke();
     }
     g.globalAlpha = 1;
   }
   // 往外噴的火花：位置只由時間決定
-  function sparks(x, y, dt, o = {}) {
+  const sparks = (...args) => emit(() => sparksDraw(...args));
+  function sparksDraw(x, y, dt, o = {}) {
     const { n = 26, speed = 900, seed = 1, col = '#e9fdff', len = 0.05, life = 0.5, spread = TAU, dir = 0, size = 3 } = o;
     if (dt < 0 || dt > life) return;
     g.save();
@@ -664,7 +725,8 @@
     g.restore();
   }
   // 星芒爆閃：一圈白色尖刺
-  function burst(x, y, r, a = 1, seed = 1, rot = 0) {
+  const burst = (...args) => emit(() => burstDraw(...args));
+  function burstDraw(x, y, r, a = 1, seed = 1, rot = 0) {
     if (a <= 0) return;
     g.save();
     g.globalCompositeOperation = 'lighter';
@@ -730,14 +792,37 @@
   let SIL = null;   // 設定時整個角色畫成單色剪影
   const F = c => SIL || c;
 
+  // 線稿：深藍黑的外框。粗細依目前的縮放換算，畫面上約 1.4～4.6px（特寫時粗、遠景細）
+  const LINE = '#0a0e22';
+  const lw = () => {
+    const m = g.getTransform(), s = Math.hypot(m.a, m.b) / R || 1;
+    return clamp(1.1 + 0.95 * Math.sqrt(s), 1.4, 4.6) / s;
+  };
+  const ink = (k = 1) => {
+    if (SIL) return;
+    g.strokeStyle = LINE;
+    g.lineWidth = lw() * k;
+    g.lineJoin = 'round';
+    g.stroke();
+  };
+
   function limb(a, b, w, col, c2) {
+    const path = () => {
+      g.beginPath();
+      g.moveTo(a[0], a[1]);
+      if (c2) g.quadraticCurveTo(c2[0], c2[1], b[0], b[1]);
+      else g.lineTo(b[0], b[1]);
+    };
+    g.lineCap = 'round';
+    if (!SIL) {
+      g.strokeStyle = LINE;
+      g.lineWidth = w + lw() * 2;
+      path();
+      g.stroke();
+    }
     g.strokeStyle = col;
     g.lineWidth = w;
-    g.lineCap = 'round';
-    g.beginPath();
-    g.moveTo(a[0], a[1]);
-    if (c2) g.quadraticCurveTo(c2[0], c2[1], b[0], b[1]);
-    else g.lineTo(b[0], b[1]);
+    path();
     g.stroke();
   }
   function staff(ax, ay, bx, by, glow = 1) {
@@ -842,6 +927,7 @@
     back.forEach(([x, y], i) => g.lineTo(x + sw(i) * 4 * (y > 30 ? 1 : 0.4), y));
     g.closePath();
     g.fill();
+    ink();
     if (SIL) {
       g.beginPath();
       g.ellipse(fx * 0.3, 10, 42, 48, 0, 0, TAU);
@@ -851,6 +937,10 @@
     // 脖子
     g.fillStyle = C.skinD;
     g.fillRect(-13, 30, 26, 46);
+    g.beginPath();
+    g.moveTo(-13, 30); g.lineTo(-13, 76);
+    g.moveTo(13, 30); g.lineTo(13, 76);
+    ink();
     // 臉
     const face = () => {
       g.beginPath();
@@ -862,6 +952,7 @@
     face();
     g.fillStyle = C.skin;
     g.fill();
+    ink();
     // 瀏海
     const tips = [[48, 4], [37, -9], [28, 8], [16, -6], [6, 11], [-6, -4], [-16, 9], [-28, -7], [-38, 6], [-48, -5]];
     const bangs = dy => {
@@ -915,6 +1006,7 @@
     g.fillStyle = C.hair;
     bangs(0);
     g.fill();
+    ink();
     for (const s of [-1, 1]) {
       g.beginPath();
       g.moveTo(s * 45, -30);
@@ -922,6 +1014,7 @@
       g.quadraticCurveTo(s * 40, 14, s * 35, -24);
       g.closePath();
       g.fill();
+      ink();
     }
     // 頭髮光圈與月光邊
     g.strokeStyle = 'rgba(95,115,185,.75)';
@@ -957,6 +1050,7 @@
     g.quadraticCurveTo(x - 19 + side * 4, 0, x - 17, -14);
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.fillStyle = '#2c3044';
       g.fillRect(x - 16, -112, 32, 10);
@@ -983,6 +1077,7 @@
     g.quadraticCurveTo(112 + windDir * 12 * wind, -380, 58, -484);
     g.closePath();
     g.fill();
+    ink();
     // 腿、靴子、短裙
     limb([-24, -232], [-29, -60], 27, F(C.legs));
     limb([24, -232], [29, -60], 27, F(C.legs));
@@ -996,6 +1091,7 @@
     g.lineTo(40, -306);
     g.closePath();
     g.fill();
+    ink();
     // 上衣與腰帶
     g.fillStyle = F(C.shirt);
     g.beginPath();
@@ -1005,6 +1101,7 @@
     g.quadraticCurveTo(45, -390, 50, -478);
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.fillStyle = 'rgba(120,140,180,.45)';
       g.beginPath();
@@ -1034,8 +1131,8 @@
         limb([54, -468], [168, -472], 22, F(C.shirt), [112, -446]);
         staff(-66, -470, -52, -940, glow);
         g.fillStyle = F(C.skin);
-        g.beginPath(); g.arc(-60, -664, 10, 0, TAU); g.fill();
-        g.beginPath(); g.ellipse(178, -474, 13, 10, -0.2, 0, TAU); g.fill();
+        g.beginPath(); g.arc(-60, -664, 10, 0, TAU); g.fill(); ink(0.8);
+        g.beginPath(); g.ellipse(178, -474, 13, 10, -0.2, 0, TAU); g.fill(); ink(0.8);
       }
     };
     // 披風前襟（左右兩片），內側露出青綠內襯
@@ -1049,6 +1146,7 @@
       g.quadraticCurveTo(s * 56, -330, s * 50, -452);
       g.closePath();
       g.fill();
+      ink();
       if (!SIL) {
         g.strokeStyle = C.lining;
         g.lineWidth = 5;
@@ -1072,6 +1170,7 @@
       g.moveTo(-22, -486); g.lineTo(0, -462); g.lineTo(22, -486); g.lineTo(12, -470); g.lineTo(0, -452); g.lineTo(-12, -470);
       g.closePath();
       g.fill();
+      ink(0.7);
       g.fillStyle = C.lining;
       g.beginPath();
       g.moveTo(0, -466); g.lineTo(-13, -474); g.lineTo(-13, -456); g.closePath();
@@ -1112,6 +1211,7 @@
     cloak();
     g.fillStyle = F(C.cloak);
     g.fill();
+    ink();
     if (!SIL) {
       g.save();
       cloak();
@@ -1142,6 +1242,7 @@
     g.beginPath();
     g.ellipse(0, -494, 56, 22, 0, 0, TAU);
     g.fill();
+    ink();
     if (!SIL) {
       g.strokeStyle = C.lining;
       g.lineWidth = 3;
@@ -1155,6 +1256,7 @@
     g.beginPath();
     g.arc(hx, hy, 10, 0, TAU);
     g.fill();
+    ink();
     // 後腦勺的頭髮
     g.fillStyle = F(C.hair);
     g.beginPath();
@@ -1163,6 +1265,7 @@
     [[54, -514], [44, -498], [34, -510], [22, -494], [8, -506], [-8, -494], [-22, -508], [-34, -494], [-46, -506], [-54, -514]].forEach(([x, y], i) => g.lineTo(x + sw(i + 2, 4) + windDir * 5 * wind, y));
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.strokeStyle = 'rgba(95,115,185,.8)';
       g.lineWidth = 4;
@@ -1208,6 +1311,7 @@
     cloak();
     g.fillStyle = C.cloak;
     g.fill();
+    ink();
     g.save();
     cloak();
     g.clip();
@@ -1253,19 +1357,23 @@
     g.moveTo(-42, -52); g.lineTo(42, -52); g.lineTo(112, 26); g.quadraticCurveTo(0, 50, -112, 26);
     g.closePath();
     g.fill();
+    ink();
     g.fillStyle = C.legs;
     g.beginPath();
     g.ellipse(-66, 44, 44, 24, 0.1, 0, TAU);
     g.fill();
+    ink();
     limb([62, 0], [80, 70], 34, C.legs);
     g.beginPath();
     g.ellipse(58, 6, 40, 30, -0.3, 0, TAU);
     g.fill();
+    ink();
     g.fillStyle = C.boot;
     g.beginPath();
     g.moveTo(58, 62); g.lineTo(102, 62); g.lineTo(110, 118); g.quadraticCurveTo(82, 134, 54, 118);
     g.closePath();
     g.fill();
+    ink();
     g.fillStyle = '#2c3044';
     g.fillRect(56, 60, 48, 10);
     g.fillStyle = 'rgba(168,200,255,.45)';
@@ -1278,6 +1386,7 @@
     g.moveTo(-56, -162); g.lineTo(56, -162); g.lineTo(42, -50); g.lineTo(-42, -50);
     g.closePath();
     g.fill();
+    ink();
     g.fillStyle = 'rgba(120,140,180,.5)';
     g.beginPath();
     g.moveTo(-56, -162); g.lineTo(-14, -162); g.lineTo(-10, -50); g.lineTo(-42, -50);
@@ -1294,6 +1403,7 @@
       g.moveTo(s * 26, -178); g.quadraticCurveTo(s * 92, -186, s * 104, -120); g.lineTo(s * 92, -60); g.lineTo(s * 58, -80); g.lineTo(s * 48, -156);
       g.closePath();
       g.fill();
+      ink();
       g.strokeStyle = C.lining;
       g.lineWidth = 5;
       g.beginPath();
@@ -1390,6 +1500,7 @@
     g.moveTo(-58, -300); g.lineTo(-40, -900); g.lineTo(46, -900); g.lineTo(34, -300);
     g.closePath();
     g.fill();
+    ink();
     // 靴身：後跟、鞋筒、鞋尖
     const shape = () => {
       g.beginPath();
@@ -1405,6 +1516,7 @@
     shape();
     g.fillStyle = C.boot;
     g.fill();
+    ink();
     g.save();
     shape();
     g.clip();
@@ -1436,6 +1548,7 @@
     g.moveTo(-72, -8); g.lineTo(138, -8); g.quadraticCurveTo(158, -8, 150, 6); g.lineTo(-72, 6);
     g.closePath();
     g.fill();
+    ink();
     g.fillRect(-72, -30, 40, 36);
     g.strokeStyle = 'rgba(168,200,255,.6)';
     g.lineWidth = 3;
@@ -1480,6 +1593,7 @@
     g.quadraticCurveTo(90, -562, 46, -580);
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.fillStyle = C.vest;
       g.beginPath();
@@ -1516,6 +1630,7 @@
       g.beginPath();
       g.arc(x, y, 14, 0, TAU);
       g.fill();
+      ink();
       g.strokeStyle = F('#141420');
       g.lineWidth = 5;
       for (let f = 0; f < 4; f++) {
@@ -1540,6 +1655,7 @@
     [[-44, -660], [-30, -706], [0, -724], [30, -716], [70, -734 + sw(1, 6)], [52, -700], [92, -700 + sw(2, 6)], [58, -676], [96, -660 + sw(3, 6)], [50, -646], [70, -612 + sw(4, 5)], [34, -620]].forEach(([x, y]) => g.lineTo(x, y));
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.strokeStyle = '#7a2436';
       g.lineWidth = 3;
@@ -1561,6 +1677,7 @@
     mask();
     g.fillStyle = F(C.mask);
     g.fill();
+    ink();
     if (!SIL) {
       g.save();
       mask();
@@ -1616,6 +1733,7 @@
     g.moveTo(-50, -592); g.lineTo(-46, -624); g.lineTo(-22, -606); g.lineTo(0, -598); g.lineTo(22, -606); g.lineTo(46, -624); g.lineTo(50, -592); g.lineTo(30, -568); g.lineTo(0, -560); g.lineTo(-30, -568);
     g.closePath();
     g.fill();
+    ink();
     if (!SIL) {
       g.strokeStyle = C.red;
       g.lineWidth = 3;
@@ -1640,6 +1758,7 @@
     bridgeSide();
     tinyHero(-420, 0, 1.1, q12(t));
     tinyFoe(470, 0, 1.1, q12(t));
+    POST.rays = [930 - cx * 0.08, 170 - cy * 0.08, 0.45];
     wash('#000', 1 - inv(0, 0.7, u));
   }
   // A2、B1 從術師背後看出去：橋面往遠方收成一點，面具術士在盡頭
@@ -1653,22 +1772,25 @@
     gorge(hy, t);
     bridge3(K, { z0: -6, z1: 90 });
     const f = pt3(K, 0.3, 0, 42);
-    if (f) { screen(); at(f[0], f[1], f[2] * 1.9 / 720, () => foe(tq, { rib: o.foeRib ?? 0.6 })); }
+    if (f) { screen(); at(f[0], f[1], f[2] * 1.9 / 720, () => cast(() => foe(tq, { rib: o.foeRib ?? 0.6 }))); }
     const c = pt3(K, ...CIRCLE3);
     const h = pt3(K, 0, 0, 0);
     screen();
     if (o.circle) magicCircle(c[0], c[1], c[2] * 0.95, o.circle, t * 0.8, { sy: 0.92, ang: -K.yaw * 0.5 });
-    at(h[0], h[1], h[2] * HK, () => heroBack(tq, { cast: o.cast ?? 1, glow: o.glow ?? 1, wind: o.wind ?? 1 }));
+    at(h[0], h[1], h[2] * HK, () => cast(() => heroBack(tq, { cast: o.cast ?? 1, glow: o.glow ?? 1, wind: o.wind ?? 1 })));
     return c;
   }
   function sBackCast(u, t) {
     const K = cam3(lerp(0.9, 1.25, u / 1.4), -1.3, -3.5, 0.1, 900, 0, -0.32);
-    backScene(t, K, { circle: ease.out(inv(0.25, 1.3, u)), cast: ease.out(inv(0, 0.35, u)) });
+    const prog = ease.out(inv(0.25, 1.3, u));
+    const c = backScene(t, K, { circle: prog, cast: ease.out(inv(0, 0.35, u)) });
+    POST.rays = [c[0], c[1], 0.7 * prog];
   }
   // A3 同軸跳接：直接跳到眼睛大特寫，瞳孔裡映著魔法陣
   function sEyes(u, t) {
     fill('#1a2448');
     const z = lerp(12.5, 13.3, u / 0.6);
+    POST.diff = 0.22;
     view(0, 5, z);
     heroHead(q12(t), { glint: 0.9, look: [0.1, -0.1], wind: 0.6 });
     screen();
@@ -1688,8 +1810,9 @@
     g.fillStyle = '#0a1636';
     g.fillRect(160, 250, 110, 500);
     for (let i = 0; i < 4; i++) g.fillRect(160 + i * 30, 232, 18, 20);
+    POST.rays = [1020, 150, 0.3];
     const s = 1.3;
-    at(700, 150 + 640 * s, s, () => foe(q12(t), { rib: lerp(0.25, 1, ease.out(inv(0, 0.5, u))), arm: ease.io(inv(0.3, 0.7, u)) * 0.6, eyeGlow: inv(0.4, 0.7, u) }));
+    at(700, 150 + 640 * s, s, () => cast(() => foe(q12(t), { rib: lerp(0.25, 1, ease.out(inv(0, 0.5, u))), arm: ease.io(inv(0.3, 0.7, u)) * 0.6, eyeGlow: inv(0.4, 0.7, u) })));
   }
   // B1 發射：閃白之後光束往遠方射出，鏡頭晃
   // B1 發射：閃白之後切到橋的側面，魔法陣側對鏡頭，光束橫過整個畫面往右射出去
@@ -1707,6 +1830,9 @@
     for (let i = 0; i <= 40; i++) S.push([lerp(c[0], 1500, i / 40 * head), c[1] + Math.sin(i * 0.9 + t * 60) * 3 * (i / 40), 2.2]);
     beam(S, { w: 1.3 });
     glowDot(c[0], c[1], 320, '120,230,255', 1 - u);
+    shockAt(c[0], c[1], u, 0.05);
+    POST.rays = [c[0], c[1], 0.9 * (1 - u)];
+    POST.ca = 0.005;
     sparks(c[0], c[1], u, { n: 30, speed: 1300, seed: 12, dir: 0, spread: 1.2, life: 0.5, size: 4 });
     // 術師在畫面左邊外，只看得到被後座力掀起的披風
     const tq = q12(t);
@@ -1734,6 +1860,8 @@
     for (let i = 0; i <= 30; i++) S.push([lerp(-80, cutX, i / 30), lerp(410, 360, i / 30) + Math.sin(i + t * 40) * 2]);
     beam(S, { w: 3.2, head: 0 });
     glowDot(cutX, 360, 260, '150,240,255', 0.9);
+    shockAt(cutX, 360, u, 0.05);
+    POST.ca = 0.005;
     sparks(cutX, 360, (t % 0.25), { n: 40, speed: 1400, seed: Math.floor(t * 4), dir: -0.2, spread: 2.4, len: 0.04, life: 0.25, size: 4 });
     const tq = q12(t);
     for (let i = 0; i < 3; i++) {
@@ -1769,6 +1897,7 @@
         }
         g.stroke();
         glowDot(p[0], p[1], 160, '255,70,100', 1 - dt * 3);
+        shockAt(p[0], p[1], dt, 0.035, 1100);
       }
       ribbon(sub(wave(p[0] + 520 - i * 320, -260, 1.95 + i * 0.25, 1000, 36, tq * 6 + i), 0, k * 0.9).concat([[p[0], p[1]]]), 150, 0.3 + tq * 2 + i, { tip: 0.12, twist: 0.35 });
       if (dt > 0) {
@@ -1792,11 +1921,12 @@
     nightSky({ hy: horizon(K), moonAt: [980, 120], mr: 50 });
     gorge(horizon(K), t);
     bridge3(K, { z0: -5, z1: 90 });
+    POST.ca = 0.004;
     const z = lerp(0, 3.2, ease.out(inv(0, 0.4, u)));
     const p = pt3(K, 0.1, 0, z);
     const tq = q12(t);
     screen();
-    at(p[0], p[1], p[2] * HK, () => heroFront(tq, { pose: 'guard', lean: -0.12, windDir: 1, wind: 1.4, head: { mouth: -1, eye: 0.7 } }));
+    at(p[0], p[1], p[2] * HK, () => cast(() => heroFront(tq, { pose: 'guard', lean: -0.12, windDir: 1, wind: 1.4, head: { mouth: -1, eye: 0.7 } })));
     sparks(p[0], p[1] - 420 * p[2] * HK, u, { n: 30, speed: 800, seed: 9, col: '#ff7d96', life: 0.4 });
     for (let i = 0; i < 2; i++) {
       const s = i ? 1 : -1;
@@ -1809,7 +1939,8 @@
     nightSky({ hy: horizon(K) });
     bridge3(K, { z0: -4, z1: 20, seams: 20 });
     screen();
-    at(640, 520, 1.65, () => heroKneel(q12(t), { rise: ease.io(inv(0.4, 1.7, u)), wind: 0.8 }));
+    POST.diff = 0.2;
+    at(640, 520, 1.65, () => cast(() => heroKneel(q12(t), { rise: ease.io(inv(0.4, 1.7, u)), wind: 0.8 })));
     motes(t, 16, { vx: -60, vy: -20, a: 0.8 });
     motes(t, 8, { col: '255,70,100', vx: -90, vy: 10, seed: 8, size: 2 });
   }
@@ -1872,6 +2003,9 @@
       beam(sub(S, Math.max(0, h - 0.32), h), { w: 1.6 / z });
     }
     glowDot(-282, -90, 120 * (1 - inv(0.2, 0.9, u)), '140,235,255', 1);
+    POST.rays = [640 + (-282 - cx) * z, 360 + (-90 - cy) * z, 0.8 * (1 - inv(0.2, 1.0, u))];
+    const mv = Math.sin(Math.PI * inv(0.2, 1.6, u));
+    POST.blur = [-26 * mv, 30 * mv];
   }
   // C2 橋下迴廊：一點透視，鏡頭先快推，面具術士橫衝過去，光束從拱洞轉進來、一路衝向鏡頭
   function sArcade(u, t) {
@@ -1881,12 +2015,13 @@
     nightSky({ hy, moonAt: [1200, 150], mr: 60 });
     gorge(hy + 10, t);
     arcade(K);
+    POST.rays = [1200, 150, 0.35];
     // 面具術士橫衝
     const dk = inv(0.2, 0.5, u);
     if (dk > 0 && dk < 1) {
       const p = pt3(K, lerp(3.4, -2.8, dk), 0, 15);
       screen();
-      at(p[0], p[1], p[2] * 1.9 / 720, () => { g.rotate(-0.35); foe(q12(t), { rib: 1.2, arm: 1 }); });
+      at(p[0], p[1], p[2] * 1.9 / 720, () => { g.rotate(-0.35); cast(() => foe(q12(t), { rib: 1.2, arm: 1 })); });
     }
     screen();
     for (let i = 0; i < 3; i++) {
@@ -1900,6 +2035,8 @@
   function sChase(u, t) {
     const roll = Math.sin(u * 2.6) * 0.14;
     shake(t, 3);
+    POST.blur = [-22, 16];
+    POST.ca = 0.004;
     g.setTransform(R, 0, 0, R, 0, 0);
     g.translate(640, 360);
     g.rotate(roll);
@@ -1913,7 +2050,7 @@
     const sy = (t * 220) % 720;
     g.drawImage(STARS, -150, sy - 720);
     g.drawImage(STARS, -150, sy);
-    moon(1040 - u * 200, 150 + u * 160, 60);
+    moon(300 + u * 160, 130 + u * 120, 56);
     for (let i = 0; i < 16; i++) {
       const d = 0.35 + rnd(i, 1) * 0.9;
       const x = ((rnd(i, 2) * 2200 - t * 900 * d) % 2200 + 2200) % 2200 - 500;
@@ -1924,7 +2061,7 @@
     g.globalAlpha = 1;
     const fs = lerp(0.14, 0.42, ease.in(inv(0, 1.3, u)));
     const fx = 880 + Math.sin(u * 3) * 30, fy = 240 + Math.cos(u * 2.4) * 20;
-    at(fx, fy + 360 * fs, fs, () => foe(q12(t), { arm: 1, rib: 1.2, wind: 1.5 }));
+    at(fx, fy + 360 * fs, fs, () => cast(() => foe(q12(t), { arm: 1, rib: 1.2, wind: 1.5 })));
     for (let i = 0; i < 3; i++) {
       const hx = lerp(560 + i * 60, fx - 30, ease.in(inv(0, 1.3, u)) * (0.7 + i * 0.1)), hy = lerp(420 - i * 40, fy + 60, ease.in(inv(0, 1.3, u)) * 0.8);
       const S = bez([-200 - i * 100, 1000], [200, 800 - i * 60], [hx - 260, hy + 140 + Math.sin(t * 5 + i) * 40], [hx, hy], 40).map((p, j) => [p[0], p[1], lerp(3, 1, j / 40)]);
@@ -1935,6 +2072,7 @@
   // C4 面具術士近景：紅綢編成盾，光束打在上面，面具裂開
   function sShield(u, t) {
     shake(t, lerp(14, 5, u / 1.2));
+    POST.ca = 0.005;
     fill('#071030');
     screen();
     const sy = (t * 900) % 720;
@@ -1946,7 +2084,7 @@
     speedLines(640, 360, t, 0.5);
     const tq = q12(t);
     view(-10, -600, 2.2);
-    foe(tq, { rib: 0, arm: 1, crack: inv(0.5, 0.62, u), eyeGlow: 0.8 });
+    cast(() => foe(tq, { rib: 0, arm: 1, crack: inv(0.5, 0.62, u), eyeGlow: 0.8 }));
     for (let i = 0; i < 4; i++) {
       const y0 = -560 + i * 36;
       ribbon(wave(-330, y0 + Math.sin(tq * 3 + i) * 16, 0.08 * (i % 2 ? 1 : -1), 640, 22, tq * 4 + i * 2, { freq: 1.1 }), 46, tq * 2 + i * 1.3, { twist: 0.6, tip: 0.2 });
@@ -1963,6 +2101,7 @@
       sparks(hx, hy, dt, { n: 34, speed: 1100, seed: i + 20, dir: Math.PI, spread: 2.6, life: 0.4, size: 4 });
       sparks(hx, hy, dt, { n: 16, speed: 800, seed: i + 40, col: '#ff6d8c', dir: 0, spread: 2, life: 0.4 });
       if (dt > 0 && dt < 0.1) glowDot(hx, hy, 300, '160,240,255', 1 - dt * 10);
+      shockAt(hx, hy, dt, 0.04);
     }
   }
   // D1 俯瞰：撞擊點罩著紅綢圓頂，煙塵往外擴散；鏡頭往上拉、減速停下
@@ -1996,6 +2135,7 @@
     }
     const c = pt3(K, 0, 0, 10);
     const r = c[2] * 1.7;
+    shockAt(c[0], c[1], u, 0.05, 900);
     // 紅綢圓頂
     const dg = g.createRadialGradient(c[0] - r * 0.3, c[1] - r * 0.3, r * 0.1, c[0], c[1], r);
     dg.addColorStop(0, '#ff5b7a');
@@ -2041,7 +2181,8 @@
     screen();
     const tq = q12(t);
     const breath = Math.sin(t * 2) * 2;
-    at(640, 900 + breath, 1.25, () => foe(tq, { calm: 1, crack: 1, torn: 1, rib: 0.8 }));
+    POST.rays = [260, 140, 0.3];
+    at(640, 900 + breath, 1.25, () => cast(() => foe(tq, { calm: 1, crack: 1, torn: 1, rib: 0.8 })));
     motes(t, 10, { col: '255,80,110', vx: -20, vy: -30, seed: 5, size: 2 });
     const k = inv(1.1, 1.38, u);
     if (k > 0) {
@@ -2049,6 +2190,7 @@
       for (let i = 0; i <= 30; i++) S.push([lerp(-120, 600, i / 30), lerp(-80, 330, i / 30), 1.4]);
       beam(sub(S, Math.max(0, k - 0.6), k), { w: 1.4 });
       if (k >= 1) glowDot(600, 330, 260, '160,240,255', 1 - inv(1.38, 1.5, u));
+      shockAt(600, 330, u - 1.38, 0.05);
     }
   }
   // D3 面具特寫：紅綢從下方翻上來擋，接著刷白
@@ -2056,8 +2198,10 @@
     shake(t, 6);
     fill('#081334');
     const tq = q12(t);
+    POST.ca = 0.006;
+    POST.rays = [-80, 360, 0.7 * inv(0, 0.5, u)];
     view(0, -645, 5);
-    foe(tq, { rib: 0, crack: 1, eyeGlow: 0.9 });
+    cast(() => foe(tq, { rib: 0, crack: 1, eyeGlow: 0.9 }));
     screen();
     g.save();
     g.globalCompositeOperation = 'lighter';
@@ -2083,13 +2227,15 @@
     bridge3(K, { z0: -6, z1: 90 });
     const p = pt3(K, 0, 0, 0);
     const s = p[2] * HK, H = 620 * s;
+    POST.rays = [p[0], p[1] - 0.55 * H, 0.15 + 0.35 * k];
+    POST.bloom = 0.75;
     const draw = front => CIRCLES.forEach(([dx, dy, r, sy, ang, d, f]) => {
       if (f !== front) return;
       magicCircle(p[0] + dx * H, p[1] + dy * H, r * H, ease.out(inv(d, d + 0.5, u)), t * (f ? 1.4 : 0.6), { sy, ang });
     });
     screen();
     draw(0);
-    at(p[0], p[1], s, () => heroFront(q12(t), { pose: 'raise', windDir: 0, wind: 1.3, glow: 1.6, head: { glint: 0.6, mouth: -1 } }));
+    at(p[0], p[1], s, () => cast(() => heroFront(q12(t), { pose: 'raise', windDir: 0, wind: 1.3, glow: 1.6, head: { glint: 0.6, mouth: -1 } })));
     screen();
     draw(1);
     motes(t, 20, { vx: 10, vy: -90, a: 0.9 });
@@ -2112,14 +2258,19 @@
     }
     screen();
     const wk = inv(0.45, 0.7, u);
+    shockAt(640, 360, u - 0.55, 0.06, 1000);
+    if (wk > 0) POST.rays = [640, 360, 1];
     wash('#ffffff', wk);
     if (wk > 0) burst(640, 360, 900, inv(0.55, 0.75, u), 3, t);
   }
   // E3 刷白溶接：光的碎片像花瓣一樣綻開、飄散，畫面又慢慢變白
   function sPetals(u, t) {
+    POST.bloom = 1.6;
+    POST.diff = 0.3;
+    POST.rays = [640, 360, 0.6 * (1 - inv(0, 1.3, u))];
     fill('#0d2458');
     screen();
-    for (let i = 0; i < 70; i++) {
+    emit(() => { for (let i = 0; i < 70; i++) {
       const q = rnd(i, 1) * TAU, v = 0.2 + rnd(i, 2) * 0.9;
       const d = 1300 * v * Math.pow(0.08 + u, 0.55);
       const x = 640 + Math.cos(q) * d + Math.sin(t * 1.3 + i) * 20 - u * 60, y = 360 + Math.sin(q) * d * 0.7 + u * 40;
@@ -2135,7 +2286,7 @@
       g.fillStyle = '#ffffff';
       g.fill(PETAL);
       g.restore();
-    }
+    } });
     wash('#ffffff', Math.max(1 - ease.out(inv(0, 0.35, u)), 0.92 * ease.in(inv(0.55, 1.3, u))));
   }
   // E4 色調翻轉：高調的淡藍色遠景，術師的剪影站在橋上，風吹著披風
@@ -2164,23 +2315,31 @@
     daySky({ hy: 900, drift: t * 16 });
     const k = ease.io(inv(0.1, 0.95, u));
     view(0, -520, lerp(2.85, 3.15, u / 1.5));
-    heroFront(q12(t), { pose: 'side', windDir: -1, wind: 1.1, glow: 0.5, head: { yaw: lerp(0.75, 0.02, k), look: [lerp(0.9, 0, k), 0], mouth: u > 0.9 ? 1 : 0, scratch: 0.8 } });
+    cast(() => heroFront(q12(t), { pose: 'side', windDir: -1, wind: 1.1, glow: 0.5, head: { yaw: lerp(0.75, 0.02, k), look: [lerp(0.9, 0, k), 0], mouth: u > 0.9 ? 1 : 0, scratch: 0.8 } }));
     motes(t, 18, { col: '255,255,255', vx: -60, vy: -40, a: 0.8 });
     wash('#ffffff', 0.1);
     wash('#000000', ease.io(inv(0.8, 1.5, u)));
   }
 
+  // 高調的白天鏡頭：暗部提亮、對比低、光暈與顆粒收斂
+  const DAY = { grade: 1, bloom: 0.7, diff: 0.16, vig: 0.05, grain: 0.03, ca: 0.001 };
   const SHOTS = [
     [0, sEstablish], [1.8, sBackCast], [3.2, sEyes], [3.8, sFoeMS],
     [4.6, sFire], [5.3, sClash], [5.8, sHit], [6.1, sKnock], [6.5, sKneel], [8.6, sBoots],
     [9.4, sHoming], [11.0, sArcade], [12.7, sChase], [14.0, sShield],
     [15.2, sOverhead], [16.5, sFoeHold], [18.0, sMaskCU],
-    [18.6, sCircles], [20.0, sBarrage], [20.9, sPetals], [22.2, sAfter, 1], [23.5, sTurn, 1],
+    [18.6, sCircles], [20.0, sBarrage], [20.9, sPetals], [22.2, sAfter, DAY], [23.5, sTurn, DAY],
   ];
 
   /* ---------- 剪接點上的轉場（疊在畫面最上層） ---------- */
 
   const flashFx = k => wash('#ffffff', Math.sqrt(1 - Math.abs(k - 0.5) * 2));
+  // 反相的衝擊格：前半反相，後半刷白
+  const invertFx = k => {
+    if (k < 0.5) POST.inv = 1;
+    else wash('#ffffff', 1 - (k - 0.5) * 2);
+    POST.ca = 0.008;
+  };
   // 一條巨大的紅綢從鏡頭前掃過，遮住整個畫面的那一刻剛好換鏡頭
   const sweepFx = (k, t) => {
     screen();
@@ -2190,6 +2349,7 @@
   // 甩鏡：橫向的模糊拉線
   const whipFx = k => {
     const a = 1 - Math.abs(k - 0.5) * 2;
+    POST.blur = [-260 * a, 0];
     wash('#0a1a44', a * 0.8);
     screen();
     g.save();
@@ -2210,15 +2370,18 @@
     const a = 1 - Math.abs(k - 0.5) * 2;
     screen();
     const r = 200 + a * 1400;
-    const gr = g.createRadialGradient(560, 330, 0, 560, 330, r);
-    gr.addColorStop(0, `rgba(255,255,255,${a})`);
-    gr.addColorStop(0.5, `rgba(170,245,255,${a})`);
-    gr.addColorStop(1, 'rgba(90,190,255,0)');
-    g.fillStyle = gr;
-    g.fillRect(0, 0, 1280, 720);
+    POST.bloom = 1.8;
+    emit(() => {
+      const gr = g.createRadialGradient(560, 330, 0, 560, 330, r);
+      gr.addColorStop(0, `rgba(255,255,255,${a})`);
+      gr.addColorStop(0.5, `rgba(170,245,255,${a})`);
+      gr.addColorStop(1, 'rgba(90,190,255,0)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 1280, 720);
+    });
   };
   const FX = [
-    [4.6, 0.14, flashFx], [5.8, 0.12, flashFx], [9.4, 0.4, sweepFx], [11.0, 0.3, whipFx],
+    [4.6, 0.14, flashFx], [5.8, 0.16, invertFx], [9.4, 0.4, sweepFx], [11.0, 0.3, whipFx],
     [12.7, 0.26, lensFx], [15.2, 0.2, flashFx], [18.6, 0.2, flashFx],
   ];
 
@@ -2228,6 +2391,14 @@
     while (i > 0 && SHOTS[i][0] > t) i--;
     SX = SY = 0;
     SIL = null;
+    POST = { ...POST0, shock: [], ...(SHOTS[i][2] || {}) };
+    if (post) {
+      EG.setTransform(1, 0, 0, 1, 0, 0);
+      EG.globalAlpha = 1;
+      EG.globalCompositeOperation = 'source-over';
+      EG.fillStyle = '#000';
+      EG.fillRect(0, 0, ev.width, ev.height);
+    }
     g.setTransform(R, 0, 0, R, 0, 0);
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
@@ -2237,24 +2408,29 @@
     SX = SY = 0;
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
-    if (!SHOTS[i][2]) {
+    // 沒有 WebGL 時才在 2D 上畫暗角（有的話暗角交給撮影）
+    if (!post && !POST.grade) {
       g.setTransform(R, 0, 0, R, 0, 0);
       g.drawImage(VIGNETTE, 0, 0);
     }
     for (const [c, d, fx] of FX) {
       if (t >= c - d / 2 && t < c + d / 2) fx((t - c + d / 2) / d, t);
     }
+    // 顆粒每一格依時間換，拖回去重看一致
+    if (post) post.render({ ...POST, seed: (Math.floor(t * 24) % 64) * 17.3 });
   }
 
-  // 解析度跟著播放器大小（全螢幕時更清楚），上限 1.25 倍
+  // 解析度跟著播放器在螢幕上的實際像素（高 DPI 與全螢幕時更清楚），上限 1.6 倍（2048×1152，撮影後每格約 10ms 內）
   const frame = $('.tr-frame', root);
   new ResizeObserver(() => {
     const k = Math.min(frame.clientWidth / 1280, frame.clientHeight / 720) || 1;
-    const r = Math.round(Math.min(1.25, Math.max(0.5, k * (window.devicePixelRatio || 1))) * 20) / 20;
+    const r = Math.round(Math.min(1.6, Math.max(0.5, k * (window.devicePixelRatio || 1))) * 20) / 20;
     if (r === R) return;
     R = r;
     cv.width = Math.round(1280 * R);
     cv.height = Math.round(720 * R);
+    ev.width = Math.round(640 * R);
+    ev.height = Math.round(360 * R);
     render(lastT);
   }).observe(frame);
 
