@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "growth": {
+    "initialStage": 1,
+    "dryOnEnteringStage": 2,
+    "pauseWhenDry": true
+  },
+  "stages": [
+    { "id": "sprout", "label": "幼苗期", "shortLabel": "幼苗" },
+    { "id": "growing", "label": "成長期", "shortLabel": "成長" },
+    { "id": "mature", "label": "成熟期", "shortLabel": "成熟" }
+  ],
+  "crops": [
+    {
+      "id": "wheat",
+      "label": "小麥",
+      "seeds": 12,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "corn",
+      "label": "玉米",
+      "seeds": 34,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "tomato",
+      "label": "番茄",
+      "seeds": 56,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "carrot",
+      "label": "紅蘿蔔",
+      "seeds": 28,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "cabbage",
+      "label": "高麗菜",
+      "seeds": 17,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "pumpkin",
+      "label": "南瓜",
+      "seeds": 25,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "eggplant",
+      "label": "茄子",
+      "seeds": 19,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    },
+    {
+      "id": "pepper",
+      "label": "彩椒",
+      "seeds": 42,
+      "stageDurationSeconds": { "sprout": 60, "growing": 60, "mature": 0 }
+    }
+  ]
+}

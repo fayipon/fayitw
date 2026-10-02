@@ -1,6 +1,7 @@
 // Progress follows completed preparation stages, including their fallbacks.
 // It does not estimate network bytes or advance on a timer.
 const stages=[
+ ['config','正在讀取種子與成長設定…'],
  ['soil','正在鬆整田土…'],
  ['grass','正在鋪上柔軟的草地…'],
  ['fence','正在圍起小小農田…'],

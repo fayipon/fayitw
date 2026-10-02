@@ -478,3 +478,22 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Mobile navigation and touch controls. */
+.top { flex-wrap: wrap; }
+.logo, .home-back { min-height: 44px; flex-shrink: 0; }
+.top-links { width: 100%; margin-left: 0; gap: 8px; flex-wrap: wrap; }
+.top-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 10px; }
+.hub-grid { grid-template-columns: minmax(0, 1fr); }
+.hub-grid > li, .panel-row > * { min-width: 0; }
+.seg button, .chips button, .btn-ghost { min-height: 44px; }
+@media (min-width: 640px) {
+  .top-links { width: auto; margin-left: auto; }
+  .hub-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .hub-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .hub-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

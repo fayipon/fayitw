@@ -25,11 +25,12 @@ export function createDriftingClouds(scene,camera,source){
   camera.updateMatrixWorld();
   const depth=32,viewHeight=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/camera.zoom;
   const viewWidth=viewHeight*camera.aspect,scaleSpan=Math.min(viewWidth,viewHeight*.65);
+  const framingOffset=camera.view?.enabled?camera.view.offsetY/camera.view.fullHeight:0;
   for(const item of clouds){
    // Wrap only after the whole model leaves the screen, so there is no jump.
    const x=(item.start+.25+seconds*item.speed)%1.5-.25;
    const y=item.top+.0015*Math.sin(seconds*.07+item.start*10);
-   item.cloud.position.set((x-.5)*viewWidth,(.5-y)*viewHeight,-depth).applyMatrix4(camera.matrixWorld);
+   item.cloud.position.set((x-.5)*viewWidth,(.5-y-framingOffset)*viewHeight,-depth).applyMatrix4(camera.matrixWorld);
    item.cloud.quaternion.copy(camera.quaternion);item.cloud.rotateY(item.turn);
    item.cloud.scale.setScalar(scaleSpan*item.width/size.x);
   }

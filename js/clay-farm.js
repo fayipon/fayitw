@@ -1,3 +1,4 @@
+import { addCottageFlowers } from './clay-flowers.js';
 import { FIELD, DOCK, FARM_VIEW, fieldPoint } from './clay-layout.js';
 import { addTreeModels } from './clay-trees.js';
 import * as THREE from 'three';
@@ -10,9 +11,14 @@ import { createDriftingClouds } from './clay-clouds.js';
 import { createSoilBeds } from './clay-soil.js';
 import { createFarmLoading } from './clay-loading.js';
 import { createFarmDebug } from './clay-debug.js';
+import { loadFarmConfig } from './clay-config.js';
 
 const host = document.querySelector('#viewport');
 const loading = createFarmLoading();
+loading.start('config');
+let farmConfig;
+try { farmConfig=await loadFarmConfig(); }
+catch(error){loading.fail('作物設定載入失敗，請確認配置檔後重新載入。');throw error;}
 const notice = document.querySelector('#notice');
 const smokePuffs=[];
 let smokeElapsed=0;
@@ -82,7 +88,7 @@ let seed=19;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/42949
 const grassFallback = new THREE.Group();world.add(grassFallback);
 box(18,.55,16,'#9aaf67',0,-.5,-.7,.25,grassFallback);
 box(18,.32,16,'#b8c780',0,-.2,-.7,.2,grassFallback);
-const {terrainHeight,addRockClusters,addRiverTiles,updateRiver,addGrassCover,addCourtyardMeadow,
+const {landscape,terrainHeight,flowerPlacements,addRockClusters,addRiverTiles,updateRiver,addGrassCover,addCourtyardMeadow,
  replaceTrees,addLilyPads,addWaterFlowers,addRiverReeds,addFish}=createLandscape(scene,renderer,camera);
 const depthRenderer=createDepthRenderer(renderer,scene,camera);
 const {applyPathModel}=createFarmPaths(world,renderer,terrainHeight);
@@ -133,17 +139,8 @@ box(3.6,.24,2.8,'#367f9b',0,3.15,0,.12,shedFallback);
 for(const x of [-1.5,1.5])for(const z of [-1.1,1.1])box(.22,3.1,.22,'#a6753f',x,1.55,z,.07,shedFallback);
 for(let i=0;i<8;i++)box(.36,2.7,.16,i%2?'#a67440':'#b9844c',-1.35+i*.38,1.35,-1.1,.04,shedFallback);
 for(let i=0;i<6;i++)box(.82,.55,.72,'#d8af48',-.7+(i%2)*.86,.3+Math.floor(i/2)*.55,-.55,.09,shedFallback);
-// Flower clusters soften the building foundations and the field's outer edge.
-for(const [x,z] of [[-4.3,-4.5],[-3.5,-4.4],[1.5,-4.2],[2.5,-4.4],[-6.2,4.7],[6,4.2],[6.1,1.5]]){
- for(let j=0;j<5;j++){
-  const a=j*2.4,l=ball(x+Math.cos(a)*.22,.18,z+Math.sin(a)*.22,.2,'#75943c');l.scale.set(1,.65,1.8);
- }
- for(let j=0;j<3;j++){
-  const fx=x+(j-1)*.28,fz=z+(j%2)*.24;
-  for(let k=0;k<5;k++)ball(fx+Math.cos(k*1.256)*.095,.37,fz+Math.sin(k*1.256)*.095,.085,'#fff6db');
-  ball(fx,.4,fz,.055,'#e9b43b');
- }
-}
+// Reuse the cottage's sculpted flower bed instead of primitive flowers.
+addCottageFlowers(landscape,terrainHeight,flowerPlacements).catch(error=>console.error('Cottage flowers failed to load',error));
 for(const [x,z] of [[3.9,-4.9],[-3.8,-5.2]]){cylinder(x,.37,z,.32,.3,.72,'#a57d50');for(const y of [.15,.57]){const ring=mesh(new THREE.TorusGeometry(.315,.028,6,12),'#655f49',x,y,z);ring.rotation.x=Math.PI/2;}}
 // Keep the simple dock until the supplied asset has loaded successfully.
 const {x:bridgeX,z:bridgeZ,length:bridgeLength}=DOCK;
@@ -166,17 +163,25 @@ for(const {x,z,width} of pathStonePlacements){
 }
 function render(){skyClouds?.update(smokeElapsed);depthRenderer.render();}
 let zoom=1;
-function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.fov=w<h?THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(FARM_VIEW.fov/2))*.46/Math.min(camera.aspect,.46))):40;camera.zoom=zoom;camera.updateProjectionMatrix();renderer.setSize(w,h);depthRenderer.resize(w,h);render();}
+function resize(){
+ const w=host.clientWidth,h=host.clientHeight;
+ camera.aspect=w/h;
+ camera.fov=w<h?THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(FARM_VIEW.fov/2))*.46/Math.min(camera.aspect,.46))):40;
+ camera.zoom=zoom;
+ // Tall phone frames need less empty sky; lift the composition without
+ // changing the farm's scale, viewing angle or raycast coordinates.
+ const lift=Math.min(Math.max(0,h-w*1.65)*.22,h*.10);
+ camera.setViewOffset(w,h,0,lift,w,h);
+ renderer.setSize(w,h);depthRenderer.resize(w,h);render();
+}
 window.addEventListener('resize',resize);
 function changeZoom(delta){zoom=THREE.MathUtils.clamp(zoom+delta,.75,1.65);resize();}
-document.querySelector('#zoom-in').onclick=()=>changeZoom(.15);
-document.querySelector('#zoom-out').onclick=()=>changeZoom(-.15);
-document.querySelector('#reset').onclick=()=>{zoom=1;resize();};
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();changeZoom(e.deltaY<0?.06:-.06);},{passive:false});
 resize();
 loading.start('soil');
+let soilBeds=null;
 try {
- createSoilBeds(plots,placeholders.map(p=>p.position));
+ soilBeds=createSoilBeds(plots,placeholders.map(p=>p.position));
  for(const p of placeholders){plots.remove(p);p.geometry.dispose();}
  render();
 } catch(error){console.error(error);notice.textContent='土面材質建立失敗，目前顯示簡化土塊。重新整理可再試一次。';notice.hidden=false;render();}
@@ -475,7 +480,7 @@ try{
  skyClouds=createDriftingClouds(scene,camera,cloud);
 }catch(error){console.error(error);notice.textContent+=' 雲朵模型載入失敗，重新整理可再試一次。';notice.hidden=false;}
 softenClayRelief();
-farmCrops=createFarmDebug({plots,camera,renderer,finishModel:softenClayRelief,
+farmCrops=createFarmDebug({config:farmConfig,plots,camera,renderer,soilBeds,finishModel:softenClayRelief,
  onChange:()=>{
   renderer.shadowMap.needsUpdate=true;render();
   if(farmCrops&&!smokeFrame)syncSmokeAnimation();

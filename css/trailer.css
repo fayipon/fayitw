@@ -226,3 +226,15 @@
 .end-btn i { top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .8), transparent); }
 .end-copy small { position: relative; display: block; margin-top: 26px; color: rgba(255, 255, 255, .6); font-size: 20px; }
 .confetti { inset: 0; z-index: 6; width: 1280px; height: 720px; pointer-events: none; }
+
+/* Give mobile playback controls their own rows and full touch targets. */
+@media (max-width: 640px) {
+  .tr-controls { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px 12px; }
+  .tr-toggle, .tr-fs { width: 44px; height: 44px; }
+  .tr-toggle { grid-column: 1; grid-row: 1; }
+  .tr-time { grid-column: 2; grid-row: 1; text-align: center; }
+  .tr-fs { grid-column: 3; grid-row: 1; }
+  .tr-chapters { grid-column: 1 / -1; grid-row: 2; }
+  .tr-chapters button { min-height: 44px; }
+  .tr-cta > a { width: 100%; white-space: normal; text-align: center; }
+}

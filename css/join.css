@@ -333,3 +333,11 @@
 .p-ripple { left: 420px; top: 470px; width: 440px; height: 104px; border: 4px solid #fff3c4; border-radius: 26px; opacity: 0; }
 .p-hand { left: 690px; top: 500px; width: 90px; height: 90px; fill: #fff; stroke: #2a1200; stroke-width: .6; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5)); opacity: 0; transform-origin: 45% 30%; }
 .p-join-note { left: 0; right: 0; top: 612px; width: fit-content; margin-inline: auto; padding: 6px 18px; border-radius: 999px; background: rgba(8, 2, 18, .8); color: rgba(255, 255, 255, .75); font-size: 22px; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .jn-games { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .jn-events, .jn-feats, .jn-pay { grid-template-columns: minmax(0, 1fr); }
+  .jn-sec { padding-top: 40px; }
+  .jn-pay li { padding: 20px 16px; gap: 12px; }
+  .jn-join .btn-xl { width: 100%; padding-inline: 16px; font-size: 18px; white-space: normal; }
+}

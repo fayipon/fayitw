@@ -6,6 +6,7 @@ COPY *.html /usr/share/nginx/html/
 COPY css /usr/share/nginx/html/css
 COPY js /usr/share/nginx/html/js
 COPY assets /usr/share/nginx/html/assets
+COPY config /usr/share/nginx/html/config
 
 # CSS / JS 網址加上內容雜湊（style.css?v=1a2b3c4d），改版後瀏覽器與 Cloudflare 不會拿到舊檔
 RUN cd /usr/share/nginx/html && for f in css/*.css js/*.js; do \

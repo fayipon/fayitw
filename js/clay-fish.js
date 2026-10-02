@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DOCK } from './clay-layout.js';
 
 export function createRiverFish(parent,source,riverZ){
   source.updateMatrixWorld(true);
@@ -10,13 +11,13 @@ export function createRiverFish(parent,source,riverZ){
     parts.push({geometry,material:mesh.material});
   }});
   const school=new THREE.Group();school.name='Swimming clay koi — fish model 01';parent.add(school);
-  // Closed routes follow the stream on either side of the dock. Their lateral
-  // extent stays inside the deep channel, clear of banks and dock supports.
+  // Move four existing koi into the visible stretch downstream of the dock.
+  // Stagger their loops along the deep channel, clear of banks and supports.
   const routes=[
-    {center:-9.6,span:1.1,lane:-.22,length:.82,speed:.46,offset:.12,direction:1},
-    {center:-8.5,span:.9,lane:.24,length:.66,speed:.38,offset:.65,direction:-1},
-    {center:-1.2,span:2.4,lane:-.2,length:.84,speed:.49,offset:.18,direction:1},
-    {center:-1.9,span:1.5,lane:.22,length:.72,speed:.41,offset:.64,direction:-1},
+    {center:DOCK.x+2.2,span:1,lane:-.32,length:.82,speed:.46,offset:.12,direction:1},
+    {center:DOCK.x+3.6,span:1.2,lane:.34,length:.66,speed:.38,offset:.65,direction:-1},
+    {center:DOCK.x+5.7,span:1.25,lane:-.3,length:.84,speed:.49,offset:.18,direction:1},
+    {center:DOCK.x+7,span:1.05,lane:.3,length:.72,speed:.41,offset:.64,direction:-1},
     {center:2.5,span:1.9,lane:-.08,length:.78,speed:.44,offset:.31,direction:1},
   ];
   const swimmers=routes.map((route,i)=>{

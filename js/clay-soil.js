@@ -123,17 +123,21 @@ function addSoilGrain(parent,beds){
   const radius=.014+Math.pow(random(),2)*.041,height=radius*(.35+random()*.4);
   const c=Math.cos(bed.angle),s=Math.sin(bed.angle);
   points.push({x:bed.x+x*c+z*s,z:bed.z-x*s+z*c,y:soilHeight(x,z,bed.seed)+height*.42,
-   radius,height,angle:random()*6.28,color:bed.dry
-    ?['#9b825d','#ac9063','#b79c70','#a48b65','#bea67e'][i%5]
-    :i%17===0?'#a17c50':['#6a422a','#775032','#865935','#715036','#8e643e'][i%5]});
+   radius,height,angle:random()*6.28,plotIndex:bed.index,
+   dry:bed.dry,dryColor:['#9b825d','#ac9063','#b79c70','#a48b65','#bea67e'][i%5],
+   wetColor:i%17===0?'#a17c50':['#6a422a','#775032','#865935','#715036','#8e643e'][i%5]});
  }
  const batch=new THREE.InstancedMesh(geometry,material,points.length);batch.name='Small clay soil crumbs';
  points.forEach((p,i)=>{
   rotation.setFromEuler(new THREE.Euler(.2*Math.sin(i),p.angle,.15*Math.cos(i)));
   matrix.compose(new THREE.Vector3(p.x,p.y,p.z),rotation,new THREE.Vector3(p.radius,p.height,p.radius*(.65+.3*hash(i,7))));
-  batch.setMatrixAt(i,matrix);batch.setColorAt(i,new THREE.Color(p.color));
+  batch.setMatrixAt(i,matrix);batch.setColorAt(i,new THREE.Color(p.dry?p.dryColor:p.wetColor));
  });
  batch.castShadow=true;batch.receiveShadow=true;batch.computeBoundingSphere();parent.add(batch);
+ return (index,dry)=>{
+  points.forEach((point,i)=>{if(point.plotIndex===index)batch.setColorAt(i,new THREE.Color(dry?point.dryColor:point.wetColor));});
+  batch.instanceColor.needsUpdate=true;
+ };
 }
 
 function addGrassSeams(parent){
@@ -163,13 +167,30 @@ export function createSoilBeds(parent,centers){
  }));
  // Keep the dry patches stable across reloads, scattered among the original soil.
  const dryBeds=new Set([2,3,6,7,10]);
+ const meshes=new Map();
  const beds=centers.map((point,i)=>{
   const seed=17+i*13.7,angle=(hash(i,57)-.5)*.019,dry=dryBeds.has(i);
   const bed=new THREE.Mesh(bedGeometry(seed),materials[Number(dry)]);bed.name=`Sculpted soil bed ${i+1}`;
   bed.userData.soilState=dry?'dry':'original';
   bed.userData.plotIndex=i;
+  meshes.set(i,bed);
   bed.position.set(point.x,0,point.z);bed.rotation.y=angle;bed.castShadow=true;bed.receiveShadow=true;parent.add(bed);
-  return {x:point.x,z:point.z,seed,angle,dry};
+  return {index:i,x:point.x,z:point.z,seed,angle,dry};
  });
- addSoilGrain(parent,beds);addGrassSeams(parent);
+ const setGrainState=addSoilGrain(parent,beds);addGrassSeams(parent);
+ function setState(index,state){
+  const bed=meshes.get(index);
+  if(!bed||!['wet','dry'].includes(state)||bed.userData.soilState===state)return false;
+  const dry=state==='dry';
+  bed.userData.soilState=state;bed.material=materials[Number(dry)];setGrainState(index,dry);
+  return true;
+ }
+ return {
+  setState,
+  water(index){
+   const bed=meshes.get(index);
+   if(!bed||bed.userData.soilState!=='dry')return false;
+   return setState(index,'wet');
+  },
+ };
 }

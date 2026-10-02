@@ -32,7 +32,7 @@ if (-not (Test-Path $tar)) { $tar = 'tar' }
 Push-Location $root
 try {
     $pages = (Get-ChildItem -Filter *.html -File).Name
-    & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker @pages css js assets
+    & $tar -cf $archive Dockerfile .dockerignore compose.yaml docker @pages css js assets config
 }
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw '打包失敗' }

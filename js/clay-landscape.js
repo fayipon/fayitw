@@ -76,7 +76,7 @@ export function createLandscape(scene, renderer, camera) {
   const leafGeometry = new THREE.SphereGeometry(1, 8, 6);
   const stoneMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1 });
   const leafMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1 });
-  const stones = [], leaves = [], flowers = [];
+  const stones = [], leaves = [], flowerPlacements = [];
   const matrix = new THREE.Matrix4(), rotation = new THREE.Quaternion(), scale = new THREE.Vector3();
   function instances(geometry, material, points, castShadow = true) {
     const batch = new THREE.InstancedMesh(geometry, material, points.length);
@@ -96,19 +96,15 @@ export function createLandscape(scene, renderer, camera) {
     const y = terrainHeight(x, z);
     for (let i = 0; i < 14; i++) {
       const angle = i * 2.399, radius = size * (.14 + random() * .28);
-      leaves.push({ x: x + Math.cos(angle) * radius, y: y + size * (.09 + random() * .19), z: z + Math.sin(angle) * radius,
+      const leaf = { x: x + Math.cos(angle) * radius, y: y + size * (.09 + random() * .19), z: z + Math.sin(angle) * radius,
         sx: size * (.07 + random() * .12), sy: size * (.15 + random() * .14), sz: size * .075,
-        ry: angle, rz: .4 + random() * .5, color: ['#82944f', '#97a65c', '#6b8947'][i % 3] });
+        ry: angle, rz: .4 + random() * .5, color: ['#82944f', '#97a65c', '#6b8947'][i % 3] };
+      if(!flowersEnabled)leaves.push(leaf);
     }
     if (flowersEnabled) {
-      for (let i = 0; i < 3; i++) {
-        const fx = x + (random() - .5) * size * .5, fz = z + (random() - .5) * size * .5;
-        const fy = y + size * (.34 + random() * .1);
-        for (let p = 0; p < 5; p++) flowers.push({ x: fx + Math.cos(p * Math.PI * .4) * .055 * size,
-          y: fy, z: fz + Math.sin(p * Math.PI * .4) * .055 * size, sx: .052 * size, sy: .025 * size, sz: .034 * size,
-          ry: -p * Math.PI * .4, color: '#fff4d5' });
-        flowers.push({ x: fx, y: fy + .014, z: fz, sx: .025 * size, sy: .024 * size, sz: .025 * size, color: '#dfb653' });
-      }
+      flowerPlacements.push([x,z,size]);
+      // Preserve the seeded layout of all subsequent scenery.
+      for(let i=0;i<9;i++)random();
     }
   }
 
@@ -174,7 +170,7 @@ export function createLandscape(scene, renderer, camera) {
   }
   const riverPebbles=instances(pebbleGeometry, stoneMaterial, stones);
   instances(leafGeometry, leafMaterial, leaves);
-  instances(leafGeometry, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1 }), flowers, false);
+
 
   // Rounded, uneven crowns with a second layer of little leaf clusters.
   const crownGeometry = new THREE.SphereGeometry(1, 14, 10);
@@ -358,7 +354,7 @@ export function createLandscape(scene, renderer, camera) {
     addRiverBed(landscape,terrainHeight,riverZ,rockPieces);water.visible=false;
   }
   const aquatic=createAquaticPlants(landscape,terrainHeight,riverZ);
-  return { landscape, terrainHeight,
+  return { landscape, terrainHeight, flowerPlacements,
     addCourtyardMeadow(parent,start,end){
       const direction=end.clone().sub(start).normalize(),normal=new THREE.Vector2(-direction.y,direction.x);
       const positions=[],uvs=[],patchUvs=[],indices=[],along=40,across=12;

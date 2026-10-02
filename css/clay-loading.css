@@ -90,10 +90,10 @@
 .loading-back:focus-visible, #loading-retry:focus-visible { outline: 2px solid #718d4c; outline-offset: 5px; }
 #loading noscript { position: absolute; left: 5%; right: 5%; bottom: 20px; padding: 12px; border-radius: 12px; text-align: center; background: #fff5dd; }
 /* Keep the full portrait on wider screens with a still, softened surround. */
-@media (min-aspect-ratio: 3/4) {
+@container farm (min-aspect-ratio: 3/4) {
   .loading-composition { width: calc(100cqh * 941 / 1672); height: 100cqh; }
 }
-@media (max-height: 500px) {
+@container farm (max-height: 500px) {
   .loading-meter { bottom: max(4cqh, env(safe-area-inset-bottom)); }
   .loading-footer { margin-top: 7px; letter-spacing: .1em; }
 }
