@@ -1,0 +1,38 @@
+*{box-sizing:border-box}body{margin:0;color:#454c36;background:#e9e4cc;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}button,a{-webkit-tap-highlight-color:transparent}#farm{height:100svh;min-height:540px;position:relative;overflow:hidden}#viewport{position:absolute;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}.farm-header{position:absolute;z-index:2;top:32px;left:36px;right:36px;display:flex;align-items:center;gap:18px;pointer-events:none}.back{pointer-events:auto;display:grid;place-items:center;width:44px;height:44px;border:1px solid #777b5340;border-radius:50%;text-decoration:none;color:inherit;background:#fff9eaa8;font-size:24px}.farm-header p{font-size:9px;letter-spacing:3px;margin:0 0 8px;color:#7d8461}.farm-header h1{font-family:Georgia,"Microsoft JhengHei",serif;font-size:31px;letter-spacing:1px;margin:0}.farm-header h1 span{font-family:sans-serif;font-size:11px;font-weight:400;margin-left:16px;letter-spacing:3px}.weather{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px}.weather>span{font-size:36px;color:#a28a3a}.weather small{display:block;margin-top:6px;font-size:10px;color:#82866c}.scene-label{position:absolute;top:126px;left:99px;font-size:11px;letter-spacing:2px}.scene-label>span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#778b51;margin-right:8px}.scene-label i{font-style:normal;opacity:.5;margin-left:16px;font-size:9px}.farm-footer{position:absolute;bottom:28px;left:38px;right:38px;display:flex;align-items:end;justify-content:space-between;pointer-events:none}.farm-footer strong{font-size:15px;font-weight:500;letter-spacing:2px}.farm-footer p{font-size:11px;letter-spacing:1px;color:#858770;margin-bottom:0}.controls{display:flex;gap:6px;padding:7px;background:#fffbeaaf;border:1px solid #fff9ed;border-radius:18px;box-shadow:0 5px 30px #666a4220;pointer-events:auto}.controls button{width:40px;height:40px;border:0;background:transparent;border-radius:12px;color:#596444;font-size:24px;cursor:pointer}.controls button:hover{background:#dfe4cc}.controls button:focus-visible,.back:focus-visible{outline:3px solid #5e8052}#notice{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#fff7df;padding:12px 20px;border-radius:12px;font-size:12px;max-width:85%}@media(max-width:600px){.farm-header{top:22px;left:18px;right:18px;gap:12px}.farm-header h1{font-size:25px}.farm-header h1 span,.weather{display:none}.scene-label{left:76px;top:105px}.farm-footer{left:20px;right:20px;bottom:20px}.farm-footer strong{font-size:12px;letter-spacing:0}.farm-footer p{max-width:170px;font-size:10px;line-height:1.8}.controls button{width:32px;height:34px}}
+/* Keep the interface legible over the continuous landscape. */
+.farm-header{top:22px;left:24px;right:24px;padding:14px 18px;border-radius:22px;background:linear-gradient(100deg,#fff9e5e6,#fff9e5aa);backdrop-filter:blur(12px);box-shadow:0 8px 35px #2f412818}
+.scene-label{top:134px;left:50px;padding:10px 14px;background:#fff9e5dc;border-radius:30px;backdrop-filter:blur(8px)}
+.farm-footer>div:first-child{padding:15px 20px;border-radius:18px;background:#fff9e5db;backdrop-filter:blur(10px)}
+@media(max-width:600px){.farm-header{left:12px;right:12px;top:12px;padding:12px}.scene-label{top:111px;left:20px}.farm-footer>div:first-child{padding:10px 12px}.farm-footer{gap:8px;left:12px;right:12px;bottom:12px}}
+.farm-header{padding:0;background:none;box-shadow:none;backdrop-filter:none;align-items:center}
+.farm-header>div:not(.weather){padding:14px 18px;border-radius:18px;background:#fff9e5e8;backdrop-filter:blur(12px)}
+.weather{padding:12px 16px;border-radius:18px;background:#fff9e5d6;backdrop-filter:blur(10px)}
+@media(max-width:600px){.farm-header>div:not(.weather){padding:11px 14px}.farm-header{gap:8px}}
+
+/* Keep the scene within the phone viewport and controls easy to tap. */
+@media (max-width: 600px) {
+  #farm { height: 100dvh; min-height: 0; }
+  .farm-header { top: max(12px, env(safe-area-inset-top)); }
+  .back { flex-shrink: 0; }
+  .farm-footer { bottom: max(12px, env(safe-area-inset-bottom)); flex-direction: column; align-items: stretch; }
+  .farm-footer p { max-width: none; margin-top: 6px; }
+  .controls { align-self: flex-end; }
+  .controls button { width: 44px; height: 44px; }
+  #notice { bottom: 170px; width: max-content; max-width: calc(100% - 24px); }
+}
+@media (max-height: 500px) and (max-width: 900px) {
+  #farm { min-height: 0; }
+  .scene-label, .farm-footer > div:first-child { display: none; }
+}
+
+/* Let the portrait landscape occupy the full screen. */
+.farm-footer > div:first-child { display: none; }
+.farm-footer { align-items: flex-end; }
+.farm-header > div:not(.weather) { background: #fff9e5cf; }
+.scene-label { display: none; }
+@media (max-width: 600px) {
+  .farm-header > div:not(.weather) { padding: 8px 14px; }
+  .farm-header h1 { font-size: 21px; }
+  .farm-header p { font-size: 8px; margin-bottom: 5px; }
+  .controls { background: #fffbeaCF; }
+}

@@ -1,0 +1,7 @@
+{
+  "asset": "logo.png",
+  "tool": "Built-in image_gen",
+  "transparent_background": true,
+  "source": "../../backgrounds/clay-loading.png",
+  "prompt": "Use case: background-extraction.\nAsset type: separate transparent PNG game logo overlay.\nEdit target: the supplied Clay Farm loading screen. Extract ONLY the existing upper-center 'Clay FARM' logo: the entire irregular wooden plank sign, cream handmade clay 'Clay' lettering, terracotta 'FARM' lettering, attached green leaves, small top sprout, and white daisy on the right.\nPreserve the exact logo identity, spelling, proportions, warm softly lit clay texture, leaf placement and wooden shape. Remove every other part of the screen completely: sky, landscape, clouds, characters, loading bar, surrounding slogans, and tagline. Real transparent alpha background, no white/black matte or checkerboard. Clean soft anti-aliased edges with no blue halo. Center the logo alone in a tightly fitted landscape canvas, approximately 3:2, with only 3–4 percent transparent margin; do not redesign or add text."
+}

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clay 農場 — 田園小日子</title>
+<meta name="theme-color" content="#e9e4cc">
+<link rel="preload" as="image" href="assets/backgrounds/clay-loading-garden.png" fetchpriority="high">
+<link rel="preload" as="image" href="assets/ui/clay-farm/logo.png" fetchpriority="high">
+<link rel="stylesheet" href="css/clay-farm.css">
+<link rel="stylesheet" href="css/clay-loading.css">
+<link rel="stylesheet" href="css/clay-debug.css">
+<script type="importmap">{"imports":{"three":"./js/vendor/three/three.module.js","three/addons/":"./js/vendor/three/addons/"}}</script>
+</head>
+<body>
+<main id="farm" aria-label="Clay 農場 3D 場景" aria-busy="true">
+<div id="farm-scene" inert aria-hidden="true">
+<header class="farm-header"><a class="back" href="index.html" aria-label="回到首頁">←</a><div><p> A LITTLE WORLD OF CLAY </p><h1>Clay 農場<span>田園小日子</span></h1></div><div class="weather"><span>☀</span><div>晴朗的午後<small>適合慢慢生活的一天</small></div></div></header>
+<div id="viewport"></div>
+<div class="scene-label"><span></span> 我的小小農場 <i>01 / 田園</i></div>
+<footer class="farm-footer"><div><strong>把日子，種成喜歡的樣子。</strong><p>一塊田、一間小屋，和一整個悠閒的午後。</p></div><div class="controls" aria-label="場景控制"><button id="zoom-out" aria-label="縮小">−</button><button id="reset" aria-label="還原視角">⌂</button><button id="zoom-in" aria-label="放大">＋</button></div></footer>
+<p id="notice" role="status" hidden></p>
+<button id="debug-toggle" class="farm-debug-toggle" aria-expanded="false" aria-controls="debug-panel">DEBUG</button>
+<section id="debug-panel" class="farm-debug-panel" aria-labelledby="debug-title" hidden>
+ <header class="debug-heading"><div><span>FARM TOOLS</span><h2 id="debug-title">作物實驗室</h2></div><button id="debug-close" aria-label="關閉 DEBUG 工具">×</button></header>
+ <p class="debug-hint">點選田地，或選擇下方田格。</p>
+ <label class="debug-plot-picker" for="debug-plot">田格<select id="debug-plot" aria-label="指定種植田格"></select></label>
+ <label class="debug-plot-picker debug-crop-picker" for="debug-crop">作物<select id="debug-crop" aria-label="選擇作物"></select></label>
+ <div class="debug-state-row"><span>生長狀態</span><strong id="debug-state">尚未種植</strong></div>
+ <ol class="debug-stages" aria-label="作物生長階段"><li data-crop-stage="0">幼苗</li><li data-crop-stage="1">成長</li><li data-crop-stage="2">成熟</li></ol>
+ <div class="debug-actions"><button id="debug-plant" disabled>種下小麥</button><button id="debug-grow" disabled>催熟一階</button></div>
+ <button id="debug-clear" class="debug-clear" disabled>清除這一格</button>
+ <p id="debug-message" role="status" aria-live="polite">選擇作物，在指定田格種植。</p>
+ <button id="debug-retry" hidden>重新載入模型</button>
+</section>
+</div>
+<section id="loading" aria-labelledby="loading-title">
+ <div class="loading-composition">
+  <img class="loading-art" src="assets/backgrounds/clay-loading-garden.png" width="941" height="1672" alt="" fetchpriority="high" decoding="async">
+ </div>
+ <div class="loading-brand">
+  <img class="loading-logo" src="assets/ui/clay-farm/logo.png" width="1536" height="1024" alt="Clay Farm" fetchpriority="high" decoding="async">
+ </div>
+ <div class="loading-meter">
+  <div class="loading-meter-label" aria-hidden="true">
+   <span id="loading-stage">正在準備田園小日子…</span>
+   <span id="loading-percent">0%</span>
+  </div>
+  <div class="loading-track">
+   <progress id="loading-progress" max="100" value="0" aria-label="農場載入進度"></progress>
+  </div>
+  <p class="loading-footer" aria-hidden="true">PLANT · WATER · HARVEST · SMILE</p>
+ </div>
+ <div class="loading-message">
+  <h1 id="loading-title">Clay Farm — 田園小日子</h1>
+  <p id="loading-status" role="status" aria-live="polite">正在準備田園小日子…</p>
+  <button id="loading-retry" hidden>重新載入</button>
+  <a class="loading-back" href="index.html">← 返回首頁</a>
+ </div>
+ <noscript>請開啟 JavaScript，讓小農場動起來。</noscript>
+</section>
+</main>
+<script type="module">
+import { createFarmLoading } from './js/clay-loading.js';
+import('./js/clay-farm.js').catch(error=>{
+ console.error(error);
+ if(!document.querySelector('#loading').classList.contains('has-error')){
+  createFarmLoading().fail('載入暫時中斷了，請重新載入小農場。');
+ }
+});
+</script>
+</body></html>
