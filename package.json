@@ -5,6 +5,15 @@
   "description": "FAYI — Motion Graphic 風格網站",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/serve.mjs 5173"
+    "dev": "node scripts/serve.mjs 5173",
+    "optimize:farm": "node scripts/optimize-farm-assets.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "draco3dgltf": "^1.5.7",
+    "meshoptimizer": "^1.3.0",
+    "sharp": "^0.35.5"
   }
 }

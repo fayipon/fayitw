@@ -126,7 +126,7 @@ body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden;
 }
 .crop-choice-icon {
  display: block; width: 100%; aspect-ratio: 1; margin-top: -9px;
- background: url('../assets/ui/clay-farm/crop-icons.png') no-repeat;
+ background: url('../assets/ui/clay-farm/crop-icons.webp') no-repeat;
  background-size: 400% 200%; pointer-events: none;
 }
 .crop-choice-count {

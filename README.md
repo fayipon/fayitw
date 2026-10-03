@@ -46,6 +46,17 @@ npm run dev
 
 這份 JSON 是遊戲配置，供未來編輯器讀寫；作物 ID 與階段 ID 為穩定鍵值，時間單位統一為秒。模型尺寸等渲染參數留在程式中，倒數剩餘時間等執行狀態不寫回配置檔。
 
+## Clay 農場素材
+
+原始模型與載入畫面圖片放在 `assets-src/`（不會打包上線），網站用的是壓縮後輸出到 `assets/` 同一路徑的版本。新增或替換素材時，把原檔放進 `assets-src/`，然後：
+
+```bash
+npm install
+npm run optimize:farm
+```
+
+腳本（`scripts/optimize-farm-assets.mjs`）會把模型減面、貼圖縮成 1024（作物與小魚 512）並轉 WebP、再用 Draco 壓縮；每個模型的目標面數寫在腳本最上面。減面只刪頂點、不搬動座標，所以 `clay-farm.js` 依局部座標切割欄杆、移除煙囪煙霧等處理照常運作。也可以只處理部分模型：`npm run optimize:farm -- cottage fence`。頁面透過 `js/clay-models.js` 讀取模型，一開始就並行下載全部場景模型，再依序組裝。
+
 ## 動態層
 
 | 層 | 做法 |
@@ -97,7 +108,9 @@ assets/games/         遊戲方圖（500×500）與盃賽徽章
 assets/clips/         介紹動畫用的實機錄影片段
 assets/posters/       首頁入口卡片的縮圖（各頁實際畫面截圖，640×360）
 assets/chars/         站點預告的角色圖（PG Soft 官網主視覺與去背貼紙）
+assets-src/           Clay 農場的原始模型與圖片（不上線，壓縮後輸出到 assets/）
 scripts/serve.mjs     本機靜態伺服器
+scripts/optimize-farm-assets.mjs  Clay 農場素材壓縮（減面、WebP、Draco）
 scripts/deploy.ps1    部署腳本（主機用 -Server 指定）
 Dockerfile            nginx 映像
 docker/nginx.conf     nginx 設定（快取、gzip）

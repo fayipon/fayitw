@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadModel } from './clay-models.js';
 import { FIELD } from './clay-layout.js';
 import { createGrowthState, advanceGrowth, growthRemainingMs, formatGrowthTime } from './clay-growth.js';
 import { createCropProgress } from './clay-crop-progress.js';
@@ -83,7 +83,7 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
  const facing=crops.getWorldQuaternion(new THREE.Quaternion()).invert()
   .multiply(camera.getWorldQuaternion(new THREE.Quaternion()));
  const swayAxis=new THREE.Vector3(0,0,1).applyQuaternion(facing);
- const planted=new Map(),templates=new Map(),readyTypes=new Set(),readyModels=new Map(),loader=new GLTFLoader();
+ const planted=new Map(),templates=new Map(),readyTypes=new Set(),readyModels=new Map();
  let selected=0,selectedType=config.crops[0].id,opened=false,busy=false,loadError=false;
  const desktopTools=matchMedia('(min-width: 1100px)');
  const sceneHost=panel.parentElement;
@@ -230,7 +230,7 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
  async function loadStage(type,stageIndex){
   const crop=CROP_TYPES[type],stage=STAGES[stageIndex],key=`${type}:${stage.id}`;
   if(!templates.has(key))templates.set(key,(async()=>{
-   const {scene:model}=await loader.loadAsync(`assets/models/clay-farm/${type}-${stage.id}.glb`);
+   const {scene:model}=await loadModel(`${type}-${stage.id}`);
    const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
    if(!Number.isFinite(size.y)||size.y<=0)throw new Error(`Invalid crop bounds: ${key}`);
    const center=bounds.getCenter(new THREE.Vector3());

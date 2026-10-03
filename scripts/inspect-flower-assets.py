@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 def read_model(name):
-    raw=Path('assets/models/clay-farm/'+name+'.glb').read_bytes()
+    raw=Path('assets-src/models/clay-farm/'+name+'.glb').read_bytes()
     length=struct.unpack_from('<I',raw,12)[0]
     doc=json.loads(raw[20:20+length]); binary=raw[28+length:]
     def accessor(index):

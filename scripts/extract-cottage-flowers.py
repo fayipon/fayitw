@@ -41,5 +41,5 @@ out={'asset':{'version':'2.0','generator':'Cottage front flower extraction'},'sc
 header=json.dumps(out,separators=(',',':')).encode();header+=b' '*((-len(header))%4)
 data+=b'\0'*((-len(data))%4)
 result=struct.pack('<III',0x46546c67,2,28+len(header)+len(data))+struct.pack('<II',len(header),0x4e4f534a)+header+struct.pack('<II',len(data),0x004e4942)+data
-Path('assets/models/clay-farm/cottage-flowers.glb').write_bytes(result)
+Path('assets-src/models/clay-farm/cottage-flowers.glb').write_bytes(result)
 print(f'Extracted {len(selected)} triangles, {len(result)} bytes')

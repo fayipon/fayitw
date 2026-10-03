@@ -2,7 +2,7 @@ import { addCottageFlowers } from './clay-flowers.js';
 import { FIELD, DOCK, FARM_VIEW, fieldPoint } from './clay-layout.js';
 import { addTreeModels } from './clay-trees.js';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadModel, preloadModels } from './clay-models.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { createLandscape, createDepthRenderer } from './clay-landscape.js';
 import { createFarmPaths, isFarmPath } from './clay-paths.js';
@@ -13,6 +13,10 @@ import { createFarmLoading } from './clay-loading.js';
 import { createFarmDebug } from './clay-debug.js';
 import { loadFarmConfig } from './clay-config.js';
 
+// Download every scene model in parallel; the stages below still assemble them in order.
+preloadModels(['grass-tile','fence','trellis-fence-panel','apple-tree','cottage','tool-shed','hay-bale',
+ 'windmill-tower','windmill-sails','landscape-rocks','dock','river-tile','dirt-path',
+ 'lily-pads','water-plants','river-reeds','fish-01','tree-small','tree-medium','tree-large','fluffy-cloud']);
 const host = document.querySelector('#viewport');
 const loading = createFarmLoading();
 loading.start('config');
@@ -187,7 +191,7 @@ try {
 } catch(error){console.error(error);notice.textContent='土面材質建立失敗，目前顯示簡化土塊。重新整理可再試一次。';notice.hidden=false;render();}
 loading.start('grass');
 try {
- const {scene:grass}=await new GLTFLoader().loadAsync('assets/models/clay-farm/grass-tile.glb');
+ const {scene:grass}=await loadModel('grass-tile');
  const bounds=new THREE.Box3().setFromObject(grass),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  // Four shared tiles cover the soil footprint and its narrow grassy border.
  const grassWidth=FIELD.columns*FIELD.pitch+.95,grassDepth=FIELD.rows*FIELD.pitch+.95+FIELD.frontFenceOffset;
@@ -204,7 +208,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'草地模型載入失敗，目前保留簡化草地。重新整理可再試一次。';notice.hidden=false;}
 loading.start('fence');
 try {
- const {scene:fence}=await new GLTFLoader().loadAsync('assets/models/clay-farm/fence.glb');
+ const {scene:fence}=await loadModel('fence');
  const bounds=new THREE.Box3().setFromObject(fence),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const group=new THREE.Group();group.name='Farm fence GLB';
  const uniformScale=.70/size.y;
@@ -254,7 +258,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'欄杆模型載入失敗，目前保留簡化圍欄。重新整理可再試一次。';notice.hidden=false;}
 loading.start('trellis');
 try{
- const {scene:panel}=await new GLTFLoader().loadAsync('assets/models/clay-farm/trellis-fence-panel.glb');
+ const {scene:panel}=await loadModel('trellis-fence-panel');
  const bounds=new THREE.Box3().setFromObject(panel),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const start=new THREE.Vector2(-13.4,-1.5),end=new THREE.Vector2(-5.9,-9.6);
  const direction=end.clone().sub(start),length=direction.length();direction.normalize();
@@ -276,7 +280,7 @@ try{
 }catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'風車後方的木格柵載入失敗，重新整理可再試一次。';notice.hidden=false;}
 loading.start('apple');
 try {
- const {scene:appleTree}=await new GLTFLoader().loadAsync('assets/models/clay-farm/apple-tree.glb');
+ const {scene:appleTree}=await loadModel('apple-tree');
  const bounds=new THREE.Box3().setFromObject(appleTree),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const scale=5.8/size.y;
  appleTree.name='Apple tree GLB';appleTree.scale.setScalar(scale);
@@ -287,7 +291,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'蘋果樹模型載入失敗，目前保留簡化樹木。重新整理可再試一次。';notice.hidden=false;}
 loading.start('cottage');
 try {
- const {scene:cottage}=await new GLTFLoader().loadAsync('assets/models/clay-farm/cottage.glb');
+ const {scene:cottage}=await loadModel('cottage');
  softenTerracotta(cottage);
  const bounds=new THREE.Box3().setFromObject(cottage),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  // Deepen the house toward the rear while anchoring its front steps to the path.
@@ -330,7 +334,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'農舍模型載入失敗，目前保留簡化房屋。重新整理可再試一次。';notice.hidden=false;}
 loading.start('shed');
 try {
- const {scene:shed}=await new GLTFLoader().loadAsync('assets/models/clay-farm/tool-shed.glb');
+ const {scene:shed}=await loadModel('tool-shed');
  const bounds=new THREE.Box3().setFromObject(shed),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const scale=2.85/size.y;
  // Preserve the artist's proportions; the open front faces the field and camera.
@@ -347,7 +351,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'棚屋模型載入失敗，目前保留簡化棚屋。重新整理可再試一次。';notice.hidden=false;}
 loading.start('hay');
 try {
- const {scene:hay}=await new GLTFLoader().loadAsync('assets/models/clay-farm/hay-bale.glb');
+ const {scene:hay}=await loadModel('hay-bale');
  const bounds=new THREE.Box3().setFromObject(hay),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  hay.traverse(m=>{if(m.isMesh){
   m.castShadow=true;m.receiveShadow=true;
@@ -380,11 +384,7 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'稻草模型載入失敗，重新整理可再試一次。';notice.hidden=false;}
 loading.start('windmill');
 try {
- const loader=new GLTFLoader();
- const loaded=await Promise.allSettled([
-  loader.loadAsync('assets/models/clay-farm/windmill-tower.glb'),
-  loader.loadAsync('assets/models/clay-farm/windmill-sails.glb'),
- ]);
+ const loaded=await Promise.allSettled([loadModel('windmill-tower'),loadModel('windmill-sails')]);
  const failure=loaded.find(result=>result.status==='rejected');
  if(failure)throw failure.reason;
  const tower=loaded[0].value.scene,sails=loaded[1].value.scene;
@@ -418,12 +418,12 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'風車模型載入失敗，目前保留簡化風車。';notice.hidden=false;}
 loading.start('rocks');
 try {
- const {scene:rocks}=await new GLTFLoader().loadAsync('assets/models/clay-farm/landscape-rocks.glb');
+ const {scene:rocks}=await loadModel('landscape-rocks');
  addRockClusters(rocks,pathStonePlacements);pathStoneFallback.visible=false;
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'石塊模型載入失敗，目前保留簡化石頭。';notice.hidden=false;}
 loading.start('dock');
 try {
- const {scene:dock}=await new GLTFLoader().loadAsync('assets/models/clay-farm/dock.glb');
+ const {scene:dock}=await loadModel('dock');
  const bounds=new THREE.Box3().setFromObject(dock),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const scale=bridgeLength/size.x;
  // The long axis is X; turn it toward the stream and seat the deck at the path.
@@ -438,13 +438,13 @@ try {
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'碼頭模型載入失敗，目前保留簡化木平台。';notice.hidden=false;}
 loading.start('river');
 try {
- const {scene:river}=await new GLTFLoader().loadAsync('assets/models/clay-farm/river-tile.glb');
+ const {scene:river}=await loadModel('river-tile');
  addRiverTiles(river);
  riverReady=true;
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'河流模型載入失敗，目前保留原本水面。';notice.hidden=false;}
 loading.start('paths');
 try {
- const {scene:path}=await new GLTFLoader().loadAsync('assets/models/clay-farm/dirt-path.glb');
+ const {scene:path}=await loadModel('dirt-path');
  applyPathModel(path);
 } catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'路徑材質載入失敗，目前保留泥土小路。';notice.hidden=false;}
 loading.start('waterPlants');
@@ -453,8 +453,7 @@ const aquaticAssets=[
  {file:'water-plants',label:'荷花',place:addWaterFlowers},
  {file:'river-reeds',label:'水草',place:addRiverReeds},
 ];
-const aquaticLoader=new GLTFLoader();
-const aquaticResults=await Promise.allSettled(aquaticAssets.map(asset=>aquaticLoader.loadAsync(`assets/models/clay-farm/${asset.file}.glb`)));
+const aquaticResults=await Promise.allSettled(aquaticAssets.map(asset=>loadModel(asset.file)));
 aquaticResults.forEach((result,i)=>{
  try{
   if(result.status==='rejected')throw result.reason;
@@ -463,12 +462,12 @@ aquaticResults.forEach((result,i)=>{
 });
 loading.start('fish');
 try{
- const {scene:fish}=await new GLTFLoader().loadAsync('assets/models/clay-farm/fish-01.glb');
+ const {scene:fish}=await loadModel('fish-01');
  addFish(fish);fishReady=true;
 }catch(error){console.error(error);notice.textContent+=(notice.textContent?' ':'')+'小魚模型載入失敗，重新整理可再試一次。';notice.hidden=false;}
 loading.start('trees');
 try{
- const sources=await Promise.all(['small','medium','large'].map(async size=>(await new GLTFLoader().loadAsync(`assets/models/clay-farm/tree-${size}.glb`)).scene));
+ const sources=await Promise.all(['small','medium','large'].map(async size=>(await loadModel(`tree-${size}`)).scene));
  replaceTrees(sources);addTreeModels(world,sources,simpleTrees.filter(tree=>tree.z>=2));simpleTrees.forEach(tree=>world.remove(tree.object));
 }catch(error){console.error(error);notice.textContent+=' 樹木模型載入失敗，目前保留簡易樹木。';notice.hidden=false;}
 loading.start('backdrop');
@@ -476,7 +475,7 @@ try{await depthRenderer.ready;}
 catch(error){console.error(error);notice.textContent+=' 遠景圖片載入失敗，重新整理可再試一次。';notice.hidden=false;}
 loading.start('clouds');
 try{
- const {scene:cloud}=await new GLTFLoader().loadAsync('assets/models/clay-farm/fluffy-cloud.glb');
+ const {scene:cloud}=await loadModel('fluffy-cloud');
  skyClouds=createDriftingClouds(scene,camera,cloud);
 }catch(error){console.error(error);notice.textContent+=' 雲朵模型載入失敗，重新整理可再試一次。';notice.hidden=false;}
 softenClayRelief();

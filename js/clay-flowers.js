@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadModel } from './clay-models.js';
 
 // Real petals and foliage extracted from cottage.glb; never recolor the leaves.
 export async function addCottageFlowers(parent,terrainHeight,landscapePlacements=[]){
- const {scene:source}=await new GLTFLoader().loadAsync('assets/models/clay-farm/cottage-flowers.glb');
+ const {scene:source}=await loadModel('cottage-flowers');
  const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3());
  const colors=['#fff2d2','#ed70a0','#a779dc','#74b4ef','#ee936d','#f2cd60'];
  const placements=[...landscapePlacements,[-4.3,-4.5,1],[-3.5,-4.4,1],[1.5,-4.2,1],[2.5,-4.4,1],[-6.2,4.7,1],[6,4.2,1],[6.1,1.5,1]];
