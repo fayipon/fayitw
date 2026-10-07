@@ -7,6 +7,7 @@ import { createRiverFish } from './clay-fish.js';
 import { addRiverBed } from './clay-riverbed.js';
 import { splitLandscapeRocks, addRockInstances } from './clay-rocks.js';
 import { RIVER_BASE, riverCenter, DOCK, fieldPoint } from './clay-layout.js';
+import { SKY_CLOUD_LAYER } from './clay-clouds.js';
 
 // Deterministic, lightweight scenery. Artist-supplied farm models remain separate.
 export function createLandscape(scene, renderer, camera) {
@@ -407,10 +408,15 @@ export function createDepthRenderer(renderer, scene, camera) {
   const target = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true, samples: 2 });
   target.depthTexture = new THREE.DepthTexture(1, 1);
   target.depthTexture.type = THREE.UnsignedIntType;
+  const cloudTarget = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true, samples: 2 });
+  cloudTarget.depthTexture = new THREE.DepthTexture(1, 1);
+  cloudTarget.depthTexture.type = THREE.UnsignedIntType;
+  const clearColor = new THREE.Color();
   const uniforms = {
     backdropColor:{value:null},backdropReady:{value:0},backdropHeight:{value:.42},backdropScale:{value:new THREE.Vector2(1,1)},
     backdropPixel:{value:new THREE.Vector2()},
     sceneColor: { value: target.texture }, sceneDepth: { value: target.depthTexture },
+    cloudColor: { value: cloudTarget.texture }, cloudDepth: { value: cloudTarget.depthTexture },
     worldFromClip: { value: new THREE.Matrix4() },
     pixel: { value: new THREE.Vector2() }, nearPlane: { value: camera.near }, farPlane: { value: camera.far },
     focus: { value: 40 },
@@ -419,11 +425,25 @@ export function createDepthRenderer(renderer, scene, camera) {
     vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
     fragmentShader: `
       uniform sampler2D sceneColor,sceneDepth,backdropColor;
+      uniform sampler2D cloudColor,cloudDepth;
       uniform mat4 worldFromClip;
       uniform vec2 pixel;
       uniform float nearPlane,farPlane,focus,backdropReady,backdropHeight;
       uniform vec2 backdropScale,backdropPixel;
       varying vec2 vUv;
+      vec4 softCloud(vec2 uv,float foregroundDepth){
+        // A Gaussian kernel in CSS pixels softens both the surface and silhouette.
+        // Accumulate premultiplied color so transparent edges cannot form dark halos.
+        vec4 result=vec4(0.);
+        for(int x=-2;x<=2;x++)for(int y=-2;y<=2;y++){
+          float wx=x==0?6.:(abs(x)==1?4.:1.);
+          float wy=y==0?6.:(abs(y)==1?4.:1.);
+          vec2 sampleUv=uv+vec2(float(x),float(y))*backdropPixel*2.8;
+          if(texture2D(cloudDepth,sampleUv).r<=foregroundDepth)
+            result+=texture2D(cloudColor,sampleUv)*wx*wy;
+        }
+        return result/256.;
+      }
       vec3 softBackdrop(vec2 uv){
         // Blur only the painted valley, at the same visual strength on all pixel densities.
         vec2 stepUv=backdropPixel*backdropScale*vec2(1.,1./backdropHeight)*2.6;
@@ -470,6 +490,14 @@ export function createDepthRenderer(renderer, scene, camera) {
         gl_FragColor=vec4(color*vignette,1.);
         #include <tonemapping_fragment>
         if(vistaMask>0.)gl_FragColor.rgb=mix(gl_FragColor.rgb,softBackdrop(vistaUv),vistaMask);
+        vec4 cloud=softCloud(vUv,sampleDepth);
+        if(cloud.a>.001){
+          vec3 cloudLight=cloud.rgb/cloud.a*vignette;
+          #ifdef TONE_MAPPING
+            cloudLight=toneMapping(cloudLight);
+          #endif
+          gl_FragColor.rgb=mix(gl_FragColor.rgb,cloudLight,cloud.a);
+        }
         #include <colorspace_fragment>
         // Grade the 3D farm and painted valley together in display space.
         // Keep the soil states distinct while calming the vivid green/cyan tones.
@@ -502,6 +530,7 @@ export function createDepthRenderer(renderer, scene, camera) {
     resize(width, height) {
       const ratio = renderer.getPixelRatio();viewportAspect=width/height;uniforms.backdropHeight.value=width>height?.35:.42;fitBackdrop();
       target.setSize(Math.round(width * ratio), Math.round(height * ratio));
+      cloudTarget.setSize(target.width,target.height);
       uniforms.pixel.value.set(1 / target.width, 1 / target.height);
       uniforms.backdropPixel.value.set(1 / width, 1 / height);
     },
@@ -542,6 +571,15 @@ export function createDepthRenderer(renderer, scene, camera) {
       uniforms.worldFromClip.value.multiplyMatrices(camera.matrixWorld,camera.projectionMatrixInverse);
       uniforms.focus.value = -new THREE.Vector3(0, .1, .5).applyMatrix4(camera.matrixWorldInverse).z;
       renderer.setRenderTarget(target);renderer.render(scene, camera);
+      // Render just the sky clouds against transparency; the farm stays in focus.
+      const background=scene.background,layerMask=camera.layers.mask,clearAlpha=renderer.getClearAlpha();
+      renderer.getClearColor(clearColor);
+      try {
+        scene.background=null;camera.layers.set(SKY_CLOUD_LAYER);renderer.setClearColor(0,0);
+        renderer.setRenderTarget(cloudTarget);renderer.render(scene,camera);
+      } finally {
+        scene.background=background;camera.layers.mask=layerMask;renderer.setClearColor(clearColor,clearAlpha);
+      }
       renderer.setRenderTarget(null);renderer.render(quadScene, quadCamera);
     },
   };

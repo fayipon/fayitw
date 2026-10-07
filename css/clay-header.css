@@ -1,0 +1,137 @@
+@font-face {
+ font-family: "Farm Nunito";
+ src: url('../assets/fonts/nunito-latin-900.woff2') format('woff2');
+ font-style: normal; font-weight: 900; font-display: swap;
+}
+/* A compact clay-and-wood status bar, scaled to the portrait farm. */
+.farm-topbar {
+ position: absolute; z-index: 8; top: max(13px, env(safe-area-inset-top)); left: 8px; right: 8px;
+ display: grid; grid-template-columns: 40px minmax(0, 1.4fr) minmax(0, 1fr) 40px;
+ align-items: center; gap: 6px; height: 53px; padding: 5px 6px;
+ border: 2px solid #a96837; border-radius: 24px;
+ background:
+  repeating-linear-gradient(2deg, #c0824300 0 8px, #96552e22 9px, #ffe0a233 10px, #c0824300 12px),
+  linear-gradient(#e9b47c, #d89a60 52%, #ca884e);
+ box-shadow: inset 0 3px 2px #ffe2ae, inset 0 -3px 2px #9e592f80, 0 3px 1px #74402466, 0 5px 12px #573d2b38;
+ color: #62351f; font-family: "Farm Nunito", "Trebuchet MS", "Microsoft JhengHei", sans-serif;
+}
+.farm-topbar-button, .farm-topbar-pill {
+ border: 1px solid #d49a60; color: #63351f;
+ background: linear-gradient(#fff1d4, #ffe3b5 62%, #f3cc94);
+ box-shadow: inset 0 2px 1px #fff9e7, inset 0 -2px 1px #d9a56b, 0 2px 2px #96532f66;
+}
+.farm-topbar-button {
+ display: grid; place-items: center; flex: none; width: 40px; height: 40px;
+ padding: 0; border-radius: 50%; text-decoration: none; cursor: pointer;
+ font: 900 29px/1 "Farm Nunito", "Trebuchet MS", sans-serif; text-shadow: 0 1px #fff6d6;
+ transition: filter .15s, transform .15s;
+}
+.farm-topbar-button:hover { filter: brightness(1.06); }
+.farm-topbar-button:active { transform: translateY(1px); }
+.farm-topbar-button:focus-visible { outline: 3px solid #448139; outline-offset: 2px; }
+.farm-topbar-back svg { width: 28px; height: 28px; fill: none; stroke: #94592f; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px #fff5d2); }
+.farm-topbar-player { display: flex; align-items: center; min-width: 0; height: 100%; }
+.farm-topbar-avatar {
+ position: relative; z-index: 1; flex: none; width: 55px; height: 55px; margin: -8px -10px -8px -2px;
+ border: 3px solid #ffe5b2; border-radius: 50%;
+ background: linear-gradient(#b2dbe1, #d6e9d1); box-shadow: 0 0 0 1px #c58a50, inset 0 2px 4px #47818c55, 0 3px 3px #8b522d66;
+}
+.farm-topbar-avatar img { display: block; width: 112%; height: 112%; max-width: none; margin: -9% -6% -3%; object-fit: contain; }
+.farm-topbar-pill { display: flex; align-items: center; justify-content: center; gap: 4px; height: 38px; min-width: 0; border-radius: 17px; }
+.farm-topbar-pill strong {
+ font-size: clamp(14px, 4.2cqw, 18px); font-weight: 900; line-height: 1;
+ letter-spacing: .01em; white-space: nowrap; color: #703a21;
+ text-shadow: 0 1px 0 #fff7e5, 0 -1px 0 #a0602520;
+}
+.farm-topbar-vip { flex: 1; padding: 0 8px 0 13px; gap: 3px; }
+.farm-topbar-sprout { flex: none; width: 22px; height: 26px; filter: drop-shadow(0 2px 1px #9b723e33); }
+.farm-topbar-balance { padding: 0 8px 0 4px; gap: 5px; }
+.farm-topbar-coin { flex: none; width: 29px; height: 29px; filter: drop-shadow(0 2px 1px #ae6d2866); }
+.farm-topbar-balance strong { font-variant-numeric: lining-nums tabular-nums; letter-spacing: .025em; }
+.farm-topbar-help { color: #965b30; }
+@container farm (max-width: 370px) {
+ .farm-topbar { left: 5px; right: 5px; grid-template-columns: 35px minmax(0, 1.3fr) minmax(0, 1fr) 35px; gap: 4px; padding-inline: 5px; }
+ .farm-topbar-button { width: 35px; height: 38px; font-size: 26px; }
+ .farm-topbar-avatar { width: 46px; height: 49px; }
+ .farm-topbar-vip { padding-inline: 11px 5px; gap: 2px; }
+ .farm-topbar-sprout { width: 17px; }
+ .farm-topbar-balance { padding-inline: 3px 5px; gap: 2px; }
+ .farm-topbar-coin { width: 25px; height: 25px; }
+}
+.farm-rules {
+ width: min(406px, calc(100vw - 24px)); max-height: min(760px, calc(100dvh - 36px)); padding: 0; overflow: hidden;
+ border: 3px solid #b47540; border-radius: 24px; color: #633b24;
+ background: linear-gradient(135deg, #fff0d5, #ffdfb3);
+ box-shadow: inset 0 2px 2px #fff9e9, 0 12px 40px #37201766;
+}
+.farm-rules[open] { display: flex; flex-direction: column; }
+.farm-rules::backdrop { background: #21352f66; backdrop-filter: blur(3px); }
+.farm-rules-heading { flex: none; margin: 0; padding: 18px 17px 15px; border-bottom: 1px solid #d4a66b66; background: #fff0d5b3; }
+.farm-rules header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.farm-rules h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: .025em; }
+.farm-rules-heading p { margin: 6px 0 0; color: #987048; font-size: 12px; line-height: 1.6; }
+.farm-rules-heading .farm-topbar-button { width: 40px; height: 40px; }
+.farm-rules-scroll {
+ min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable;
+ padding: 15px 10px 17px 15px; scrollbar-width: thin; scrollbar-color: #bd8851 #f0d1a1;
+}
+.farm-rules-scroll::-webkit-scrollbar { width: 7px; }
+.farm-rules-scroll::-webkit-scrollbar-track { margin-block: 12px; background: #f0d1a1; border-radius: 10px; }
+.farm-rules-scroll::-webkit-scrollbar-thumb { border: 1px solid #f0d1a1; border-radius: 10px; background: #bd8851; }
+.farm-rules-scroll:focus-visible { outline: 2px solid #879650; outline-offset: -4px; border-radius: 12px; }
+.farm-rules-steps { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.farm-rule {
+ display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 10px;
+ padding: 14px 11px 14px 6px; border: 1px solid #e4bd87; border-radius: 19px;
+ background: linear-gradient(130deg, #fffcf0e6, #ffe9c9cc); box-shadow: inset 0 2px 1px #fffdf5, 0 2px 3px #b5804230;
+}
+.farm-rule-art { position: relative; height: 124px; isolation: isolate; }
+.farm-rule-art::before { content: ""; position: absolute; inset: 13px 2px 7px; z-index: -1; border-radius: 50%; background: radial-gradient(ellipse, #e2eabd, #eff1ce00 72%); }
+.farm-rule-water .farm-rule-art::before { background: radial-gradient(ellipse, #d1e9db, #e8f0d800 72%); }
+.farm-rule-harvest .farm-rule-art::before { background: radial-gradient(ellipse, #ffe2a1, #fff0cc00 72%); }
+.farm-rule-illustration { display: block; position: absolute; inset: 0; background: url('../assets/ui/clay-farm/guide-steps.webp') 0 50% / 300% auto no-repeat; transform-origin: 50% 83%; }
+.farm-rule-water .farm-rule-illustration { background-position-x: 50%; }
+.farm-rule-harvest .farm-rule-illustration { background-position-x: 100%; }
+.farm-rule-step { display: block; font-size: 10px; font-weight: 800; letter-spacing: .09em; color: #8c9a50; }
+.farm-rule-water .farm-rule-step { color: #528e90; }
+.farm-rule-harvest .farm-rule-step { color: #b67c35; }
+.farm-rule h3 { margin: 5px 0 7px; font-size: 17px; font-weight: 900; line-height: 1.4; }
+.farm-rule p { margin: 0; font-size: 13px; line-height: 1.8; color: #8a6648; overflow-wrap: anywhere; }
+.farm-rule p strong { color: #694329; font-weight: 800; }
+.farm-rule-tip { display: inline-block; margin-top: 9px; padding: 4px 8px; border-radius: 8px; background: #eee9c6; color: #718044; font-size: 10px; font-weight: 700; }
+.farm-rule-water .farm-rule-tip { background: #e1eee5; color: #568483; }
+.farm-rule-harvest .farm-rule-tip { background: #fae6bd; color: #a37637; }
+.farm-rules-note { display: flex; gap: 6px; margin: 15px 5px 0; color: #977650; font-size: 11px; line-height: 1.8; }
+.farm-rule-ground { position: absolute; bottom: 16px; left: 28%; width: 44%; height: 7px; z-index: -1; border-radius: 50%; background: #98764d20; }
+.farm-rule-drop { position: absolute; top: 42%; left: 32%; width: 5px; height: 8px; border-radius: 70% 35% 60% 50%; background: #64bcced9; opacity: 0; }
+.farm-rule-drop:nth-of-type(3) { left: 42%; }
+.farm-rule-drop:nth-of-type(4) { left: 52%; }
+.farm-rule-spark { position: absolute; right: 11%; top: 18%; color: #e6b34a; font-size: 19px; opacity: .7; }
+.farm-rule-spark:last-child { left: 11%; right: auto; top: 35%; font-size: 13px; }
+.farm-rules[open] .farm-rule-plant .farm-rule-illustration { animation: guide-grow 4s ease-in-out infinite; }
+.farm-rules[open] .farm-rule-water .farm-rule-illustration { animation: guide-water 4s ease-in-out infinite; }
+.farm-rules[open] .farm-rule-drop { animation: guide-drop 2.2s ease-in infinite; }
+.farm-rules[open] .farm-rule-drop:nth-of-type(3) { animation-delay: .35s; }
+.farm-rules[open] .farm-rule-drop:nth-of-type(4) { animation-delay: .7s; }
+.farm-rules[open] .farm-rule-harvest .farm-rule-illustration { animation: guide-harvest 4.5s ease-in-out infinite; }
+.farm-rules[open] .farm-rule-spark { animation: guide-spark 3s ease-in-out infinite; }
+.farm-rules[open] .farm-rule-spark:last-child { animation-delay: .8s; }
+@keyframes guide-grow { 0%, 100% { transform: scale(.91); } 55%, 75% { transform: translateY(-3px) scale(1.025); } }
+@keyframes guide-water { 0%, 100% { transform: rotate(2deg); } 45%, 70% { transform: rotate(-4deg) translateY(-2px); } }
+@keyframes guide-drop { 0%, 15% { opacity: 0; transform: translateY(-3px) scale(.8); } 30% { opacity: .9; } 80%, 100% { opacity: 0; transform: translate(-6px, 27px) scale(.65); } }
+@keyframes guide-harvest { 0%, 45%, 100% { transform: translateY(0); } 58% { transform: translateY(-6px) rotate(-2deg); } 72% { transform: translateY(0) rotate(1deg); } 84% { transform: translateY(-2px); } }
+@keyframes guide-spark { 0%, 100% { opacity: .25; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.1); } }
+@media (max-width: 370px) {
+ .farm-rules-heading { padding: 15px 13px 12px; }
+ .farm-rules h2 { font-size: 20px; }
+ .farm-rules-heading p { font-size: 11px; }
+ .farm-rules-scroll { padding-left: 10px; padding-right: 6px; }
+ .farm-rule { grid-template-columns: 82px minmax(0, 1fr); gap: 6px; padding-inline: 3px 9px; }
+ .farm-rule-art { height: 100px; }
+ .farm-rule h3 { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .farm-rules[open] .farm-rule .farm-rule-art span { animation: none; }
+ .farm-rule-drop { display: none; }
+}
+#farm-scene:has(.farm-rules[open]) .plot-actions { visibility: hidden; }

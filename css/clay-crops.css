@@ -1,85 +1,20 @@
-.farm-footer { justify-content: flex-end; }
-.farm-debug-toggle {
- position: absolute; z-index: 4; left: 20px; bottom: max(20px, env(safe-area-inset-bottom));
- min-height: 44px; padding: 0 17px; border: 1px solid #fff9e7; border-radius: 16px;
- background: #fff7dedb; backdrop-filter: blur(12px); color: #626c43;
- font: 600 11px/1 sans-serif; letter-spacing: 1.6px; cursor: pointer;
- box-shadow: 0 4px 18px #4d503518;
-}
-.farm-debug-toggle[aria-expanded="true"] { color: #fff9e5; background: #71804c; }
-.farm-debug-panel {
- position: absolute; z-index: 5; right: 12px; top: 100px;
- width: min(270px, calc(100% - 24px)); max-height: calc(100% - 184px); overflow-y: auto;
- padding: 16px; border: 1px solid #fff9e9; border-radius: 20px;
- color: #50573d; background: #fbf5e4f2; backdrop-filter: blur(16px);
- box-shadow: 0 12px 36px #3f422d28; scrollbar-width: thin;
-}
-.farm-debug-panel[hidden], #debug-retry[hidden] { display: none; }
-.debug-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.debug-heading span { font-size: 8px; letter-spacing: 2px; color: #97977c; }
-.debug-heading h2 { margin: 4px 0 0; font-size: 17px; font-weight: 600; letter-spacing: 1px; }
-#debug-close { width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: #e9e8d5; color: #7a8060; font-size: 24px; cursor: pointer; }
-.debug-hint { margin: 12px 0; color: #919176; font-size: 11px; line-height: 1.7; }
-.debug-plot-picker { display: flex; align-items: center; gap: 14px; font-size: 12px; }
-.debug-crop-picker { margin-top: 8px; }
-.debug-plot-picker select { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid #d9ddbd; border-radius: 10px; background: #fffcef; color: #535f3b; font: inherit; cursor: pointer; }
-.debug-state-row { display: flex; justify-content: space-between; margin: 16px 0 9px; font-size: 11px; color: #8a8e73; }
-#debug-state { font-weight: 500; color: #667b46; }
-.debug-soil-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 12px; }
-.debug-soil-controls button { min-height: 40px; border: 1px solid #d9ddbd; border-radius: 10px; background: #fffcef; color: #8b8e72; font: inherit; font-size: 12px; cursor: pointer; }
-.debug-soil-controls [data-debug-soil="wet"][aria-pressed="true"] { background: #528f9a; border-color: #528f9a; color: #fffbea; }
-.debug-soil-controls [data-debug-soil="dry"][aria-pressed="true"] { background: #bb895a; border-color: #bb895a; color: #fffbea; }
-.debug-stages { display: flex; gap: 5px; padding: 0; margin: 0 0 16px; list-style: none; }
-.debug-stages li { flex: 1; padding: 8px 0; text-align: center; border-radius: 8px; background: #e9e8d6; color: #a3a28a; font-size: 11px; }
-.debug-stages .is-complete { background: #e2e8ca; color: #7e9155; }
-.debug-stages .is-current { background: #82965b; color: #fffbea; }
-.debug-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.debug-actions button, #debug-retry { min-height: 42px; border: 0; border-radius: 11px; background: #75884f; color: #fffbea; font: inherit; font-size: 12px; cursor: pointer; }
-#debug-grow { background: #bb895a; }
-.debug-clear { width: 100%; min-height: 36px; margin-top: 6px; border: 0; background: none; color: #9c8363; font: inherit; font-size: 11px; cursor: pointer; }
-#debug-message { margin: 6px 0 0; min-height: 32px; font-size: 11px; line-height: 1.6; color: #8b8e72; }
-#debug-retry { width: 100%; margin-top: 8px; }
-.farm-debug-panel button:disabled, .debug-plot-picker select:disabled { opacity: .4; cursor: not-allowed; }
-.farm-debug-panel button:focus-visible, .debug-plot-picker select:focus-visible, .farm-debug-toggle:focus-visible { outline: 2px solid #687e49; outline-offset: 3px; }
 canvas.is-picking-plot { cursor: crosshair; }
-@container farm (max-width: 600px) {
- .farm-debug-toggle { left: 12px; bottom: max(20px, env(safe-area-inset-bottom)); }
- .farm-debug-panel { top: max(88px, calc(env(safe-area-inset-top) + 76px)); max-height: calc(100% - 170px); }
-}
-@container farm (max-height: 500px) {
- .farm-debug-panel { top: 12px; max-height: calc(100% - 86px); }
-}
 
-/* Outside the phone container, centered in the desktop's right-hand surround. */
-.farm-debug-toggle[hidden] { display: none; }
-.farm-debug-panel.is-docked {
- position: fixed;
- left: calc(75% + 107.5px); right: auto; top: 50%;
- transform: translate(-50%, -50%);
- width: min(380px, calc((100vw - 430px) / 2 - 48px));
- max-height: calc(100dvh - 48px);
- padding: 24px;
- border-radius: 24px;
- background: #fbf5e4ed;
- box-shadow: 0 18px 60px #253c3938;
+.farm-dock {
+ position: absolute; z-index: 6; left: 0; right: 0;
+ bottom: max(10px, env(safe-area-inset-bottom));
+ height: min(38cqh, 290px); pointer-events: none;
 }
-.is-docked #debug-close { display: none; }
-.is-docked .debug-heading h2 { font-size: 22px; }
-.is-docked .debug-hint { margin-block: 16px; font-size: 12px; }
-.is-docked .debug-plot-picker select { height: 44px; }
-.is-docked .debug-actions button { min-height: 46px; }
-body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden; }
-
-/* Contextual field actions, available independently of the debug panel. */
 .plot-actions {
- position: absolute; z-index: 6; left: 12px; right: 12px;
- bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px));
+ position: absolute; left: 12px; right: 12px; bottom: 0;
+ pointer-events: auto;
  padding: 14px 16px; border: 1px solid #fff9e9; border-radius: 22px;
  background: #fff9eaf2; color: #50573d; backdrop-filter: blur(16px);
  box-shadow: 0 10px 36px #3f422d30;
- max-height: calc(100% - 180px); overflow-y: auto;
+ max-height: 100%; overflow-y: auto;
+ overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #bd8851 #f0d1a1;
 }
-.plot-actions [hidden], .plot-actions[hidden], .debug-water[hidden], .debug-harvest[hidden] { display: none; }
+.plot-actions [hidden], .plot-actions[hidden] { display: none; }
 .plot-action-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .plot-action-heading > div { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
 #plot-action-title { font-size: 14px; }
@@ -87,11 +22,7 @@ body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden;
 #plot-soil-state.is-dry { background: #f5e4ca; color: #9b6838; }
 #plot-action-close { flex: none; width: 36px; height: 36px; border: 0; border-radius: 12px; background: #ecebdc; color: #7a8060; font-size: 23px; cursor: pointer; }
 #plot-action-status { margin: 8px 0 12px; font-size: 12px; line-height: 1.7; }
-#plot-retry, .debug-water, .debug-harvest { min-height: 44px; padding: 0 20px; border: 0; border-radius: 12px; background: #75884f; color: #fffbea; font: inherit; font-size: 13px; cursor: pointer; }
-.debug-water { width: 100%; background: #528f9a; }
-.debug-water { margin-top: 8px; }
-.debug-harvest { width: 100%; margin-top: 8px; color: #603d1d; background: linear-gradient(#f6d581, #dfad4b); font-weight: 700; }
-#debug-harvest-count { color: #996624; font-weight: 600; }
+#plot-retry { min-height: 44px; padding: 0 20px; border: 0; border-radius: 12px; background: #75884f; color: #fffbea; font: inherit; font-size: 13px; cursor: pointer; }
 #plot-retry { width: 100%; margin-top: 8px; }
 .plot-actions button:disabled, .plot-actions select:disabled { opacity: .45; cursor: not-allowed; }
 .plot-actions :focus-visible { outline: 2px solid #687e49; outline-offset: 3px; }
@@ -112,13 +43,14 @@ body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden;
 :is(.is-choosing-crop, .is-crop-status) #plot-action-close { position: absolute; right: 0; top: 1px; width: 32px; height: 32px; border: 1px solid #985120; color: #fff1cd; background: #ac5b2e; box-shadow: inset 0 2px #e4a369; }
 :is(.is-choosing-crop, .is-crop-status) #plot-action-status { order: 2; margin: 7px 3px 0; color: #fff0cd; text-align: center; font-size: 11px; line-height: 1.5; text-shadow: 0 1px #8e4e2b; }
 :is(.is-choosing-crop, .is-crop-status) #plot-retry { order: 3; }
+.is-choosing-crop .plot-action-heading { display: none; }
 .plot-planting {
  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px;
  padding: 9px; border: 2px solid #edbd82; border-radius: 20px;
  background: #ffdfae; box-shadow: inset 0 2px 4px #a9603155, 0 2px 1px #8e431a66;
 }
 .crop-choice {
- position: relative; display: grid; place-items: center; min-width: 0; aspect-ratio: .93;
+ position: relative; display: grid; place-items: center; min-width: 0; height: clamp(58px, 10.5cqh, 78px);
  padding: 0; border: 1px solid #e2ae70; border-radius: 17px; cursor: pointer;
  background: radial-gradient(ellipse at 50% 30%, #fff3d7, #ffdfac 80%);
  box-shadow: inset 0 3px 2px #fff9e9, inset 0 -3px 3px #d2955455, 0 2px 2px #ac652d55;
@@ -129,6 +61,7 @@ body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden;
  background: url('../assets/ui/clay-farm/crop-icons.webp') no-repeat;
  background-size: 400% 200%; pointer-events: none;
 }
+.crop-choice .crop-choice-icon { width: min(100%, clamp(54px, 10cqh, 74px)); }
 .crop-choice-count {
  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
  min-width: 44px; padding: 1px 7px 2px; border: 1px solid #e4b17a; border-radius: 99px;
@@ -182,9 +115,10 @@ body:has(#farm:not(.is-ready)) .farm-debug-panel.is-docked { visibility: hidden;
  .crop-status-overview { gap: 9px; }
  .crop-status-fact { flex-direction: column; gap: 3px; text-align: center; }
 }
-@media (max-width: 1099px) {
- #farm-scene:has(.farm-debug-panel:not([hidden])) .plot-actions { display: none; }
-}
-@container farm (max-height: 500px) {
- .plot-actions { bottom: 76px; max-height: calc(100% - 90px); }
+@container farm (max-height: 620px) {
+ .farm-dock { height: 34cqh; }
+ .plot-planting { grid-template-columns: repeat(8, 62px); gap: 6px; padding: 7px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #bd8851 #ffe6bf; overscroll-behavior-x: contain; }
+ .crop-choice { height: 64px; }
+ .crop-choice .crop-choice-icon { width: 60px; }
+ .crop-choice-count { min-width: 38px; font-size: 14px; bottom: 3px; }
 }

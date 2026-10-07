@@ -10,8 +10,9 @@ import { addNaturalGrass } from './clay-grass.js';
 import { createDriftingClouds } from './clay-clouds.js';
 import { createSoilBeds } from './clay-soil.js';
 import { createFarmLoading } from './clay-loading.js';
-import { createFarmDebug } from './clay-debug.js';
+import { createFarmCrops } from './clay-crops.js';
 import { loadFarmConfig } from './clay-config.js';
+import { fitFarmView } from './clay-framing.js';
 
 // Download every scene model in parallel; the stages below still assemble them in order.
 preloadModels(['grass-tile','fence','trellis-fence-panel','apple-tree','cottage','tool-shed','hay-bale',
@@ -166,19 +167,38 @@ for(const {x,z,width} of pathStonePlacements){
  const stone=ball(x,terrainHeight(x,z)+.04,z,width*.5,'#b9b6a0',pathStoneFallback);stone.scale.set(1,.42,.8);
 }
 function render(){skyClouds?.update(smokeElapsed);depthRenderer.render();}
-let zoom=1;
+let zoom=1,lastView='';
+const dockSpace=document.querySelector('#farm-dock'),farmHeader=document.querySelector('.farm-topbar');
+const fieldFramePoints=[];
+for(const x of [-fieldHalfWidth-.25,fieldHalfWidth+.25])for(const z of [fieldBack-.25,fieldFront+.25])for(const y of [0,3.3]){
+ fieldFramePoints.push(plots.localToWorld(new THREE.Vector3(x,y,z)));
+}
 function resize(){
  const w=host.clientWidth,h=host.clientHeight;
+ if(!w||!h)return;
+ // Reserve the largest panel once per viewport. Selecting, watering or
+ // harvesting a plot changes panel contents, never the field's framing.
+ const hostBounds=host.getBoundingClientRect(),dockBounds=dockSpace.getBoundingClientRect();
+ const safe={left:14,right:w-14,top:farmHeader.getBoundingClientRect().bottom-hostBounds.top+14,
+  bottom:dockBounds.top-hostBounds.top-16};
+ const view=[w,h,safe.top,safe.bottom,zoom].join(':');
+ if(view===lastView)return;
+ lastView=view;
  camera.aspect=w/h;
  camera.fov=w<h?THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(FARM_VIEW.fov/2))*.46/Math.min(camera.aspect,.46))):40;
  camera.zoom=zoom;
- // Tall phone frames need less empty sky; lift the composition without
- // changing the farm's scale, viewing angle or raycast coordinates.
+ // Start with less empty sky on tall phones, then fit the complete field
+ // between the header and dock while keeping the same viewing angle.
  const lift=Math.min(Math.max(0,h-w*1.65)*.22,h*.10);
- camera.setViewOffset(w,h,0,lift,w,h);
+ fitFarmView(camera,fieldFramePoints,w,h,safe,lift);
  renderer.setSize(w,h);depthRenderer.resize(w,h);render();
 }
-window.addEventListener('resize',resize);
+let resizeFrame=0;
+function scheduleResize(){cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(resize);}
+window.addEventListener('resize',scheduleResize);
+window.visualViewport?.addEventListener('resize',scheduleResize);
+const layoutObserver=new ResizeObserver(scheduleResize);
+for(const element of [host,dockSpace,farmHeader])layoutObserver.observe(element);
 function changeZoom(delta){zoom=THREE.MathUtils.clamp(zoom+delta,.75,1.65);resize();}
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();changeZoom(e.deltaY<0?.06:-.06);},{passive:false});
 resize();
@@ -479,7 +499,7 @@ try{
  skyClouds=createDriftingClouds(scene,camera,cloud);
 }catch(error){console.error(error);notice.textContent+=' 雲朵模型載入失敗，重新整理可再試一次。';notice.hidden=false;}
 softenClayRelief();
-farmCrops=createFarmDebug({config:farmConfig,plots,camera,renderer,soilBeds,finishModel:softenClayRelief,
+farmCrops=createFarmCrops({config:farmConfig,plots,camera,renderer,soilBeds,finishModel:softenClayRelief,
  onChange:()=>{
   renderer.shadowMap.needsUpdate=true;render();
   if(farmCrops&&!smokeFrame)syncSmokeAnimation();

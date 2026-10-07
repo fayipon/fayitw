@@ -10,14 +10,14 @@ import { createPlotActions } from './clay-plot-actions.js';
 
 // Model dimensions belong to rendering; seed inventory and timing come from JSON.
 const CROP_MODELS={
- wheat:{heights:[.68,1.3,1.82],width:1.95,idleSway:.05},
- corn:{heights:[.72,1.4,1.9],width:1.85,idleSway:.04},
- tomato:{heights:[.68,1.3,1.72],width:1.85,idleSway:.032},
- carrot:{heights:[.68,1.25,1.65],width:1.85,idleSway:.038},
- cabbage:{heights:[.6,1,1.35],width:1.85,idleSway:.018},
- pumpkin:{heights:[.5,.85,1.1],width:1.85,idleSway:.016},
- eggplant:{heights:[.65,1.2,1.65],width:1.85,idleSway:.034},
- pepper:{heights:[.65,1.2,1.65],width:1.85,idleSway:.034},
+ wheat:{heights:[.68,1.3,1.82],width:1.95,idleSway:.21},
+ corn:{heights:[.72,1.4,1.9],width:1.85,idleSway:.19},
+ tomato:{heights:[.68,1.3,1.72],width:1.85,idleSway:.16},
+ carrot:{heights:[.68,1.25,1.65],width:1.85,idleSway:.20},
+ cabbage:{heights:[.6,1,1.35],width:1.85,idleSway:.13},
+ pumpkin:{heights:[.5,.85,1.1],width:1.85,idleSway:.12},
+ eggplant:{heights:[.65,1.2,1.65],width:1.85,idleSway:.18},
+ pepper:{heights:[.65,1.2,1.65],width:1.85,idleSway:.18},
 };
 
 function cropMaterial(source,type){
@@ -50,18 +50,9 @@ function cropMaterial(source,type){
 // Screen-facing labels: A–C go down-left, 1–4 go down-right.
 const plotLabel=index=>`${String.fromCharCode(65+Math.floor(index/FIELD.columns))}${index%FIELD.columns+1}`;
 
-export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishModel,onChange}){
+export function createFarmCrops({config,plots,camera,renderer,soilBeds,finishModel,onChange}){
  const STAGES=config.stages;
  const CROP_TYPES=Object.fromEntries(config.crops.map(crop=>[crop.id,{...CROP_MODELS[crop.id],...crop}]));
- const toggle=document.querySelector('#debug-toggle'),panel=document.querySelector('#debug-panel');
- const close=document.querySelector('#debug-close'),select=document.querySelector('#debug-plot');
- const cropSelect=document.querySelector('#debug-crop');
- const plant=document.querySelector('#debug-plant'),grow=document.querySelector('#debug-grow');
- const clear=document.querySelector('#debug-clear'),retry=document.querySelector('#debug-retry');
- const message=document.querySelector('#debug-message'),state=document.querySelector('#debug-state');
- const soilState=document.querySelector('#debug-soil-state'),debugWater=document.querySelector('#debug-water');
- const debugHarvest=document.querySelector('#debug-harvest'),harvestCount=document.querySelector('#debug-harvest-count');
- const soilButtons=[...document.querySelectorAll('[data-debug-soil]')];
  const actions=document.querySelector('#plot-actions'),actionTitle=document.querySelector('#plot-action-title');
  const actionSoil=document.querySelector('#plot-soil-state'),actionStatus=document.querySelector('#plot-action-status');
  const planting=document.querySelector('#plot-planting');
@@ -69,25 +60,17 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
  const statusUI=Object.fromEntries(['icon','plot','name','badge','progress','step','water','moisture','ready-icon','ready','care','stage','stage-label']
   .map(key=>[key,document.querySelector(`#crop-status-${key}`)]));
  const seeds=Object.fromEntries(config.crops.map(crop=>[crop.id,crop.seeds])),cropCards=new Map();
- const harvestCounts=Object.fromEntries(config.crops.map(crop=>[crop.id,0]));
  const plotRetry=document.querySelector('#plot-retry');
- const stageList=document.querySelector('.debug-stages');stageList.replaceChildren();
- const stageLabels=STAGES.map((stage,i)=>{
-  const label=document.createElement('li');label.dataset.cropStage=i;label.textContent=stage.shortLabel;stageList.append(label);return label;
- });
  const beds=plots.children.filter(object=>Number.isInteger(object.userData.plotIndex));
  const bedByIndex=new Map(beds.map(bed=>[bed.userData.plotIndex,bed]));
- const crops=new THREE.Group();crops.name='Debug crops';plots.add(crops);
+ const crops=new THREE.Group();crops.name='Farm crops';plots.add(crops);
  const plotActions=createPlotActions({water:()=>createWateringEffect(plots),harvest:()=>createHarvestEffect(plots)});
  // Roll in the camera's image plane so the model's front never turns away.
  const facing=crops.getWorldQuaternion(new THREE.Quaternion()).invert()
   .multiply(camera.getWorldQuaternion(new THREE.Quaternion()));
  const swayAxis=new THREE.Vector3(0,0,1).applyQuaternion(facing);
  const planted=new Map(),templates=new Map(),readyTypes=new Set(),readyModels=new Map();
- let selected=0,selectedType=config.crops[0].id,opened=false,busy=false,loadError=false;
- const desktopTools=matchMedia('(min-width: 1100px)');
- const sceneHost=panel.parentElement;
- let docked=false;
+ let selected=0,selectedType=config.crops[0].id,busy=false,loadError=false,idlePicker=true;
  let motionSeconds=0;
  let actionError='';
 
@@ -106,14 +89,8 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
  }));
  guide.name='Selected farm plot';guide.rotation.x=-Math.PI/2;guide.visible=false;plots.add(guide);
 
- // Keep the dropdown in the same 3 × 4 order the user sees from the camera.
- for(let number=0;number<FIELD.columns;number++)for(let letter=0;letter<FIELD.rows;letter++){
-  const index=letter*FIELD.columns+number;
-  if(bedByIndex.has(index))select.add(new Option(`田格 ${plotLabel(index)}`,String(index)));
- }
  for(const [id,crop] of Object.entries(CROP_TYPES)){
   const i=crop.iconIndex;
-  cropSelect.add(new Option(crop.label,id));
   const card=document.createElement('button');card.type='button';card.className='crop-choice';
   card.dataset.crop=id;card.title=crop.label;
   const icon=document.createElement('span');icon.className='crop-choice-icon';icon.setAttribute('aria-hidden','true');
@@ -133,37 +110,23 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
 
  function refresh(){
   const current=planted.get(selected),stage=current?.stage??-1;
+  const showingSeeds=idlePicker||!current;
   const locked=busy||plotActions.has(selected);
   const dry=isDry();
-  soilState.textContent=dry?(stage===STAGES.length-1?'乾枯':'乾枯 · 待澆水'):'濕潤';
-  for(const button of soilButtons){
-   button.setAttribute('aria-pressed',String(button.dataset.debugSoil===(dry?'dry':'wet')));
-   button.disabled=locked;
-  }
-  state.textContent=stage<0?'尚未種植':`${CROP_TYPES[current.type].label} · ${STAGES[stage].label}`;
-  harvestCount.textContent=`${CROP_TYPES[selectedType].label} ×${harvestCounts[selectedType]}`;
-  stageLabels.forEach((label,i)=>{
-   label.classList.toggle('is-current',i===stage);label.classList.toggle('is-complete',i<stage);
-   if(i===stage)label.setAttribute('aria-current','step');else label.removeAttribute('aria-current');
-  });
-  plant.disabled=!readyTypes.has(selectedType)||locked||seeds[selectedType]===0;
-  plant.textContent=current?(current.type===selectedType?'重新播種':`改種${CROP_TYPES[selectedType].label}`):`種下${CROP_TYPES[selectedType].label}`;
-  const growthPaused=dry&&config.growth.pauseWhenDry;
-  grow.disabled=locked||stage<0||stage===STAGES.length-1||growthPaused;
-  grow.textContent=stage===STAGES.length-1?'已成熟':current&&growthPaused?'請先澆水':'催熟一階';
-  clear.disabled=!current||locked;retry.hidden=!loadError;
-  cropSelect.disabled=locked;select.disabled=busy;
-  panel.setAttribute('aria-busy',String(locked));
-  actions.classList.toggle('is-choosing-crop',!current);
-  actions.classList.toggle('is-crop-status',!!current);
+  actions.hidden=false;
+  actions.classList.toggle('is-choosing-crop',showingSeeds);
+  actions.classList.toggle('is-crop-status',!showingSeeds);
+  actions.setAttribute('aria-label',showingSeeds?'選擇要種植的作物':'作物狀態');
+  // The card already explains growth and care; reserve this line for errors.
+  actionStatus.hidden=!actionError;
   const watering=plotActions.get(selected)==='water',harvesting=plotActions.get(selected)==='harvest';
   actions.classList.toggle('is-watering',watering);
   actions.classList.toggle('is-harvesting',harvesting);
   actionTitle.textContent=harvesting?'正在收穫…':watering?'正在澆水…':current?'作物狀態':'選擇要種植的作物';
   actionSoil.textContent=dry?'乾枯':'濕潤';actionSoil.classList.toggle('is-dry',dry);
   actionStatus.textContent=actionError||(harvesting?'把成熟的作物收進籃子…':watering?'水滴正在滋潤土壤…':busy?`正在準備${CROP_TYPES[selectedType].label}…`:current?actionDescription():`田格 ${plotLabel(selected)} · ${dry?'種植後土壤會變濕潤':'點選作物即可種植'}`);
-  planting.hidden=!!current;
-  cropStatus.hidden=!current;
+  planting.hidden=!showingSeeds;
+  cropStatus.hidden=showingSeeds;
   if(current){
    const mature=stage===STAGES.length-1;
    const iconIndex=CROP_TYPES[current.type].iconIndex;
@@ -185,10 +148,6 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
    card.setAttribute('aria-label',`種植${CROP_TYPES[id].label}，剩餘 ${seeds[id]} 顆種子`);
    card.classList.toggle('is-preparing',busy&&id===selectedType);
   }
-  debugWater.hidden=!current||!dry||stage===STAGES.length-1;debugWater.disabled=locked;
-  debugWater.textContent=watering?'澆水中…':'澆水';
-  debugHarvest.hidden=stage!==STAGES.length-1;debugHarvest.disabled=locked;
-  debugHarvest.textContent=harvesting?'收穫中…':`收穫${current?CROP_TYPES[current.type].label:''}`;
   plotRetry.hidden=!loadError;plotRetry.disabled=locked;
   actions.setAttribute('aria-busy',String(locked));
  }
@@ -207,24 +166,15 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
   statusUI.progress.setAttribute('aria-valuetext',`${STAGES[crop.stage].label}，${caption}${mature&&!dry?'':` ${clock}`}`);
  }
 
- function selectionMessage(){
-  const current=planted.get(selected),label=CROP_TYPES[selectedType].label;
-  if(plotActions.get(selected)==='water'){message.textContent='正在為作物澆水…';return;}
-  if(plotActions.get(selected)==='harvest'){message.textContent=`正在收穫${CROP_TYPES[current.type].label}…`;return;}
-  message.textContent=current&&current.type!==selectedType
-   ?`這格目前種${CROP_TYPES[current.type].label}；改種${label}會從幼苗開始。`
-   :actionDescription();
- }
-
  function choose(index,showActions=false){
   const bed=bedByIndex.get(index);if(!bed||busy)return;
-  selected=index;select.value=String(index);
+  selected=index;
   const current=planted.get(index);if(current)selectedType=current.type;
-  cropSelect.value=selectedType;loadError=false;actionError='';selectionMessage();
-  if(showActions)actions.hidden=false;
+  loadError=false;actionError='';
+  if(showActions){idlePicker=false;actions.hidden=false;}
   guide.position.set(bed.position.x,.26,bed.position.z);guide.rotation.z=bed.rotation.y;
-  guide.visible=opened||!actions.hidden;refresh();onChange();
-  if(opened||!actions.hidden)prepare();
+  refresh();guide.visible=!actions.hidden;onChange();
+  if(!actions.hidden)prepare();
  }
 
  async function loadStage(type,stageIndex){
@@ -288,13 +238,11 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
  async function prepare(){
   if(readyTypes.has(selectedType)||busy)return;
   const type=selectedType,label=CROP_TYPES[type].label;
-  busy=true;loadError=false;actionError='';message.textContent=`正在準備${label}的三個生長階段…`;refresh();
+  busy=true;loadError=false;actionError='';refresh();
   try{
    readyModels.set(type,await Promise.all(STAGES.map((_,i)=>loadStage(type,i))));readyTypes.add(type);
-   selectionMessage();
   }catch(error){
    console.error(`${type} models failed to load`,error);loadError=true;
-   message.textContent=`${label}載入失敗，請按「重新載入模型」。`;
    actionError=`${label}暫時載入失敗，請重新載入作物。`;
   }finally{busy=false;refresh();}
  }
@@ -322,7 +270,7 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
    crops.add(node);planted.set(index,{
     type,stage,growth,node,progress,thirstyFace,idle:node.getObjectByName('Crop idle pivot'),born:motionSeconds,
     phase:index*2.39996323+CROP_TYPES[type].iconIndex*.83,
-    speed:.9+((index*3)%7)*.035,amplitude:CROP_TYPES[type].idleSway*[1,.9,.8][stage],
+    speed:1.65+((index*3)%7)*.06,amplitude:CROP_TYPES[type].idleSway*[1,1.05,1][stage],
    });
    refreshCropIndicator(planted.get(index));
  }
@@ -333,25 +281,24 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
   try{
    replaceCrop(selected,type,createGrowthState(CROP_TYPES[type],STAGES,false,Date.now()));
    soilBeds.setState(selected,'wet');
-   selectedType=type;cropSelect.value=type;seeds[type]--;
-   selectionMessage();
+   selectedType=type;seeds[type]--;
    onChange();
   }catch(error){
-   console.error('Unable to place crop',error);message.textContent=actionError='放置失敗，請再試一次。';
+   console.error('Unable to place crop',error);actionError='放置失敗，請再試一次。';
   }finally{busy=false;refresh();}
  }
 
- function tickGrowth(now=Date.now(),forceIndex=null){
+ function tickGrowth(now=Date.now()){
   let changed=false,selectedChanged=false;
   for(const [index,crop] of planted){
    const next={...crop.growth};
-   if(advanceGrowth(next,CROP_TYPES[crop.type],config,now,index===forceIndex)){
+   if(advanceGrowth(next,CROP_TYPES[crop.type],config,now)){
     replaceCrop(index,crop.type,next);
     soilBeds.setState(index,next.dry?'dry':'wet');
     changed=true;if(index===selected)selectedChanged=true;
    }else crop.growth=next;
   }
-  if(selectedChanged){selectionMessage();refresh();}
+  if(selectedChanged)refresh();
   if(!actions.hidden)refreshGrowthClock(now);
   const indicatorChanged=refreshCropIndicators(now);
   if(changed||indicatorChanged)onChange();
@@ -388,43 +335,30 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
   if(crop){crop.growth.dry=state==='dry';crop.growth.updatedAt=now;}
   refreshCropIndicators(now);
   if(index===selected)actionError='';
-  selectionMessage();refresh();onChange();
+  refresh();onChange();
  }
 
  async function plantFromPicker(type){
   if(busy||plotActions.has(selected)||planted.has(selected)||seeds[type]===0)return;
   const index=selected;
-  selectedType=type;cropSelect.value=type;actionError='';loadError=false;refresh();
+  selectedType=type;actionError='';loadError=false;refresh();
   await prepare();
-  // Closing the picker during loading cancels planting; a failed load uses no seeds.
+  // A failed load uses no seeds.
   if(actions.hidden||selected!==index||planted.has(index)||!readyTypes.has(type))return;
-  place(type);
+  idlePicker=false;place(type);
   if(planted.has(index)&&!actions.hidden){
    document.querySelector('#plot-action-close').focus({preventScroll:true});
   }
  }
 
- function setOpen(value,focus=true){
-  opened=docked||value;panel.hidden=!opened;toggle.setAttribute('aria-expanded',String(opened));
-  guide.visible=opened||!actions.hidden;onChange();
-  if(opened){choose(selected);if(focus)select.focus({preventScroll:true});}
-  else if(focus)toggle.focus({preventScroll:true});
+ function showSeedPicker(){
+  const empty=beds.find(bed=>!planted.has(bed.userData.plotIndex));
+  idlePicker=true;
+  if(empty)choose(empty.userData.plotIndex);
+  refresh();guide.visible=!actions.hidden;onChange();
  }
- function syncToolPlacement(){
-  const hadFocus=panel.contains(document.activeElement);
-  docked=desktopTools.matches;
-  (docked?document.body:sceneHost).append(panel);
-  panel.classList.toggle('is-docked',docked);toggle.hidden=docked;
-  setOpen(docked,false);
-  if(hadFocus)(docked?select:toggle).focus({preventScroll:true});
- }
- toggle.onclick=()=>setOpen(!opened);close.onclick=()=>setOpen(false);
- select.onchange=()=>choose(Number(select.value));
- cropSelect.onchange=()=>{
-  selectedType=cropSelect.value;loadError=false;actionError='';selectionMessage();refresh();prepare();
- };
  document.querySelector('#plot-action-close').onclick=()=>{
-  actions.hidden=true;guide.visible=opened;onChange();renderer.domElement.focus({preventScroll:true});
+  showSeedPicker();renderer.domElement.focus({preventScroll:true});
  };
  async function water(){
   // Watering is for existing crops; planting already moistens an empty plot.
@@ -432,7 +366,7 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
   const index=selected,crop=planted.get(index);
   if(crop.stage===STAGES.length-1)return;
   const action=plotActions.start(index,'water');if(!action)return;
-  actionError='';refreshCropIndicators();refresh();selectionMessage();
+  actionError='';refreshCropIndicators();refresh();
   try{
    const animation=action.effect.play(bedByIndex.get(index),crop.node.userData.cropHeight);
    onChange();await animation;
@@ -442,53 +376,33 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
    console.error('Unable to water crop',error);
    if(index===selected)actionError='澆水暫時失敗，請再點擊田格。';
   }finally{
-   plotActions.finish(action);refreshCropIndicators();selectionMessage();refresh();onChange();
+   plotActions.finish(action);refreshCropIndicators();refresh();onChange();
   }
  }
- debugWater.onclick=water;
  async function harvest(){
   const index=selected,crop=planted.get(index);
   if(busy||!crop||crop.stage!==STAGES.length-1)return;
   const action=plotActions.start(index,'harvest');if(!action)return;
-  actionError='';refreshCropIndicators();refresh();selectionMessage();
-  let completed=false;
+  actionError='';refreshCropIndicators();refresh();
   try{
    const animation=action.effect.play(bedByIndex.get(index),crop.idle,crop.node.userData.cropHeight,CROP_TYPES[crop.type].label);
    onChange();await animation;
    // Commit this captured crop once, after the collection animation finishes.
    if(planted.get(index)===crop){
     crops.remove(crop.node);crop.progress?.dispose();planted.delete(index);
-    harvestCounts[crop.type]++;completed=true;
    }
   }catch(error){
    console.error('Unable to harvest crop',error);
    if(index===selected)actionError='收穫暫時失敗，請再點擊田格。';
   }finally{
-   plotActions.finish(action);refreshCropIndicators();selectionMessage();refresh();
-   if(completed&&index===selected){
-    message.textContent=actionStatus.textContent=`已收穫${CROP_TYPES[crop.type].label} ×1，可以重新種植了！`;
-   }
+   plotActions.finish(action);refreshCropIndicators();refresh();
    onChange();
   }
  }
- debugHarvest.onclick=harvest;
- // Debug overrides can set either soil condition even on an empty plot.
- for(const button of soilButtons)button.onclick=()=>{
-  if(busy||plotActions.has(selected))return;
-  setPlotSoil(button.dataset.debugSoil);
- };
- plant.onclick=()=>place(selectedType);
- grow.onclick=()=>{if(!busy&&!plotActions.has(selected))tickGrowth(Date.now(),selected);};
- clear.onclick=()=>{
-  const crop=planted.get(selected);if(!crop||busy||plotActions.has(selected))return;
-  crops.remove(crop.node);crop.progress?.dispose();planted.delete(selected);actionError='';message.textContent=`${plotLabel(selected)} 已清空。`;refresh();onChange();
- };
- retry.onclick=prepare;
  plotRetry.onclick=prepare;
  document.addEventListener('keydown',event=>{
   if(event.key!=='Escape')return;
-  if(!actions.hidden){event.preventDefault();document.querySelector('#plot-action-close').click();}
-  else if(opened&&!docked){event.preventDefault();setOpen(false);}
+  if(!actions.hidden&&!idlePicker){event.preventDefault();document.querySelector('#plot-action-close').click();}
  });
 
  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart=null;
@@ -504,16 +418,13 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
   camera.updateMatrixWorld();plots.updateMatrixWorld(true);raycaster.setFromCamera(pointer,camera);
   const hit=raycaster.intersectObjects(beds,false)[0];if(!hit)return;
   choose(hit.object.userData.plotIndex,true);
-  // Mature crops can be collected even if a debug override dried the soil.
-  // Merely changing the debug selection never triggers a farm action.
+  // Mature crops can be collected regardless of soil moisture.
   const crop=planted.get(selected);
   if(crop?.stage===STAGES.length-1)void harvest();
   else if(crop&&isDry())void water();
  });
  renderer.domElement.classList.add('is-picking-plot');renderer.domElement.tabIndex=0;
  choose(selected);
- desktopTools.addEventListener('change',syncToolPlacement);
- syncToolPlacement();
  // Gameplay keeps time even with reduced motion or a throttled background tab.
  setInterval(()=>tickGrowth(),1000);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tickGrowth();});
@@ -527,8 +438,9 @@ export function createFarmDebug({config,plots,camera,renderer,soilBeds,finishMod
     let angle=0;
     if(animate){
      const time=seconds*crop.speed,fade=THREE.MathUtils.smoothstep(seconds-crop.born,0,.8);
-     // Two slow waves and per-plot phases avoid a synchronized rocking field.
-     angle=crop.amplitude*fade*(.8*Math.sin(time+crop.phase)+.2*Math.sin(time*1.73+crop.phase*.61));
+     // A clear side-to-side sweep with a small follow-through; each plant keeps
+     // its own rhythm, and the soil-level pivot leaves roots and shadows still.
+     angle=crop.amplitude*fade*(.9*Math.sin(time+crop.phase)+.1*Math.sin(time*2+crop.phase+.6));
     }
     crop.idle.quaternion.setFromAxisAngle(swayAxis,angle);
    }

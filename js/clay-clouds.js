@@ -1,16 +1,20 @@
 import * as THREE from 'three';
 
+export const SKY_CLOUD_LAYER=1;
+
 // Real clay meshes sit above the distant ground; their sky layout stays stable
 // on phones and when zooming. Their shared geometry is loaded only once.
 export function createDriftingClouds(scene,camera,source){
  const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
- source.traverse(mesh=>{if(mesh.isMesh){
+ source.traverse(mesh=>{mesh.layers.set(SKY_CLOUD_LAYER);if(mesh.isMesh){
   mesh.castShadow=false;mesh.receiveShadow=false;
   for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]){
    material.metalness=0;material.roughness=1;material.fog=false;
    if(material.normalScale)material.normalScale.set(.3,.3);
   }
  }});
+ // Light the isolated cloud pass exactly like the original scene.
+ scene.traverse(object=>{if(object.isLight)object.layers.enable(SKY_CLOUD_LAYER);});
  const group=new THREE.Group();group.name='Slow drifting clay clouds';scene.add(group);
  const clouds=[
   {start:.81,top:.055,width:.22,speed:.0066,turn:-.12},

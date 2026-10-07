@@ -7,19 +7,59 @@
 <link rel="preload" as="image" href="assets/backgrounds/clay-loading-garden.webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/ui/clay-farm/logo.webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/ui/clay-farm/crop-icons.webp">
+<link rel="preload" as="image" href="assets/ui/clay-farm/farmer-avatar.webp">
+<link rel="preload" as="font" href="assets/fonts/nunito-latin-900.woff2" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/clay-farm.css">
+<link rel="stylesheet" href="css/clay-header.css">
 <link rel="stylesheet" href="css/clay-loading.css">
-<link rel="stylesheet" href="css/clay-debug.css">
+<link rel="stylesheet" href="css/clay-crops.css">
 <script type="importmap">{"imports":{"three":"./js/vendor/three/three.module.js","three/addons/":"./js/vendor/three/addons/"}}</script>
 </head>
 <body>
 <main id="farm" aria-label="Clay 農場 3D 場景" aria-busy="true">
 <div id="farm-scene" inert aria-hidden="true">
-<header class="farm-header"><a class="back" href="index.html" aria-label="回到首頁">←</a><div><p> A LITTLE WORLD OF CLAY </p><h1>Clay 農場<span>田園小日子</span></h1></div><div class="weather"><span>☀</span><div>晴朗的午後<small>適合慢慢生活的一天</small></div></div></header>
+<header class="farm-topbar" aria-label="農場狀態">
+ <a class="farm-topbar-button farm-topbar-back" href="index.html" aria-label="回到首頁">
+  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M19 7 10 16l9 9M11 16h14"/></svg>
+ </a>
+ <div class="farm-topbar-player">
+  <div class="farm-topbar-avatar"><img src="assets/ui/clay-farm/farmer-avatar.webp" width="160" height="160" alt="農夫頭像"></div>
+  <div class="farm-topbar-pill farm-topbar-vip" aria-label="VIP 等級 10">
+   <svg class="farm-topbar-sprout" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="sprout-leaf" x2="0" y2="1"><stop stop-color="#a5da51"/><stop offset="1" stop-color="#388c30"/></linearGradient></defs><path d="M15 23C4 25 1 14 4 9c8-1 14 5 11 14ZM17 21C15 10 23 3 29 5c2 9-4 16-12 16Z" fill="url(#sprout-leaf)" stroke="#498d35" stroke-width="1.2"/><path d="m8 14 8 10m8-14-8 14v5" fill="none" stroke="#377e2f" stroke-width="2.5" stroke-linecap="round"/></svg>
+   <strong>VIP 10</strong>
+  </div>
+ </div>
+ <div class="farm-topbar-pill farm-topbar-balance" aria-label="餘額 1,250 金幣">
+  <svg class="farm-topbar-coin" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="coin-gold" x2="0" y2="1"><stop stop-color="#ffe985"/><stop offset=".45" stop-color="#ffce42"/><stop offset="1" stop-color="#eaaa20"/></linearGradient></defs><circle cx="20" cy="20" r="17" fill="url(#coin-gold)" stroke="#c58024" stroke-width="2.5"/><circle cx="20" cy="20" r="12.5" fill="none" stroke="#fff0a0" stroke-width="2"/><path d="M24 12c-10-5-15 15-4 16 3 0 5-2 6-4M21 10l-1 4" fill="none" stroke="#c47c16" stroke-width="3.5" stroke-linecap="round"/></svg>
+  <strong>1,250</strong>
+ </div>
+ <button id="farm-rules-open" class="farm-topbar-button farm-topbar-help" type="button" aria-label="遊戲規則" aria-haspopup="dialog" aria-controls="farm-rules">?</button>
+</header>
+<dialog id="farm-rules" class="farm-rules" aria-labelledby="farm-rules-title">
+ <form method="dialog" class="farm-rules-heading"><header><div><h2 id="farm-rules-title">農場小指南</h2><p>播種、照顧，收穫自己的小日子。</p></div><button class="farm-topbar-button" aria-label="關閉遊戲規則" autofocus>×</button></header></form>
+ <div class="farm-rules-scroll" role="region" aria-label="農場圖文步驟，可上下捲動" tabindex="0">
+  <ol class="farm-rules-steps">
+   <li class="farm-rule farm-rule-plant">
+    <div class="farm-rule-art" aria-hidden="true"><span class="farm-rule-illustration"></span><span class="farm-rule-ground"></span></div>
+    <div class="farm-rule-copy"><span class="farm-rule-step">STEP 01 · 播種</span><h3>種下第一顆種子</h3><p>點選空田格，再從種子框選擇作物。每次播種會使用 <strong>1 顆種子</strong>。</p><span class="farm-rule-tip">選田格 → 選作物</span></div>
+   </li>
+   <li class="farm-rule farm-rule-water">
+    <div class="farm-rule-art" aria-hidden="true"><span class="farm-rule-illustration"></span><span class="farm-rule-drop"></span><span class="farm-rule-drop"></span><span class="farm-rule-drop"></span></div>
+    <div class="farm-rule-copy"><span class="farm-rule-step">STEP 02 · 澆水</span><h3>讓作物喝飽水</h3><p>看到缺水提示，<strong>點選田格澆水</strong>。土壤乾燥時會暫停成長，喝飽水就能繼續長大。</p><span class="farm-rule-tip">缺水時，點一下</span></div>
+   </li>
+   <li class="farm-rule farm-rule-harvest">
+    <div class="farm-rule-art" aria-hidden="true"><span class="farm-rule-illustration"></span><span class="farm-rule-spark">✦</span><span class="farm-rule-spark">✦</span></div>
+    <div class="farm-rule-copy"><span class="farm-rule-step">STEP 03 · 收穫</span><h3>把豐收裝進籃子</h3><p>作物上方出現籃子，就可以<strong>點選田格收穫</strong>。收穫後，空田格可以再次播種。</p><span class="farm-rule-tip">籃子出現 → 收穫</span></div>
+   </li>
+  </ol>
+  <p class="farm-rules-note"><span aria-hidden="true">🌱</span> 點選作物，也能查看成長進度與土壤狀態。</p>
+ </div>
+</dialog>
 <div id="viewport"></div>
 <div class="scene-label"><span></span> 我的小小農場 <i>01 / 田園</i></div>
 <p id="notice" role="status" hidden></p>
-<section id="plot-actions" class="plot-actions" aria-labelledby="plot-action-title" hidden>
+<div id="farm-dock" class="farm-dock">
+<section id="plot-actions" class="plot-actions" aria-label="選擇要種植的作物" hidden>
  <header class="plot-action-heading"><div><strong id="plot-action-title">田格 A1</strong><span id="plot-soil-state"></span></div><button id="plot-action-close" aria-label="關閉農田操作">×</button></header>
  <p id="plot-action-status" role="status" aria-live="polite"></p>
  <div id="plot-planting" class="plot-planting" role="group" aria-label="選擇要種植的作物"></div>
@@ -40,24 +80,7 @@
  </div>
  <button id="plot-retry" hidden>重新載入作物</button>
 </section>
-<button id="debug-toggle" class="farm-debug-toggle" aria-expanded="false" aria-controls="debug-panel">DEBUG</button>
-<section id="debug-panel" class="farm-debug-panel" aria-labelledby="debug-title" hidden>
- <header class="debug-heading"><div><span>FARM TOOLS</span><h2 id="debug-title">作物實驗室</h2></div><button id="debug-close" aria-label="關閉 DEBUG 工具">×</button></header>
- <p class="debug-hint">點選田地，或選擇下方田格。</p>
- <label class="debug-plot-picker" for="debug-plot">田格<select id="debug-plot" aria-label="指定種植田格"></select></label>
- <label class="debug-plot-picker debug-crop-picker" for="debug-crop">作物<select id="debug-crop" aria-label="選擇作物"></select></label>
- <div class="debug-state-row"><span>生長狀態</span><strong id="debug-state">尚未種植</strong></div>
- <div class="debug-state-row"><span>已收穫</span><strong id="debug-harvest-count"></strong></div>
- <div class="debug-state-row"><span>土壤狀態</span><strong id="debug-soil-state"></strong></div>
- <div class="debug-soil-controls" role="group" aria-label="調整所選田格的土壤狀態"><button type="button" data-debug-soil="wet" aria-pressed="false">濕潤</button><button type="button" data-debug-soil="dry" aria-pressed="false">乾枯</button></div>
- <ol class="debug-stages" aria-label="作物生長階段"><li data-crop-stage="0">幼苗</li><li data-crop-stage="1">成長</li><li data-crop-stage="2">成熟</li></ol>
- <div class="debug-actions"><button id="debug-plant" disabled>種下小麥</button><button id="debug-grow" disabled>催熟一階</button></div>
- <button id="debug-water" class="debug-water" hidden>澆水</button>
- <button id="debug-harvest" class="debug-harvest" hidden>收穫</button>
- <button id="debug-clear" class="debug-clear" disabled>清除這一格</button>
- <p id="debug-message" role="status" aria-live="polite">選擇作物，在指定田格種植。</p>
- <button id="debug-retry" hidden>重新載入模型</button>
-</section>
+</div>
 </div>
 <section id="loading" aria-labelledby="loading-title">
  <div class="loading-composition">
@@ -94,4 +117,5 @@ import('./js/clay-farm.js').catch(error=>{
  }
 });
 </script>
+<script type="module" src="js/clay-header.js"></script>
 </body></html>

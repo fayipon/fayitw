@@ -1,0 +1,5 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Asset type: transparent avatar for a cozy clay farm game's top status bar. Create a single centered head-and-shoulders portrait of a cheerful young adult farmer in handcrafted 3D clay style: warm peach skin, small black bead eyes, short dark brown hair, rosy cheeks, friendly open smile, wide honey straw hat with a pale blue hat band, cream shirt and green overall straps. Front facing with a tiny natural tilt. Soft rounded clay forms, matte surface, warm light from upper left. Composition: square, hat and shoulders fully inside frame with about 5% transparent padding, large face readable at 48 px. No frame, no circle, no lettering, no UI, no other objects. Actual transparent background.",
+  "output": "farmer-avatar.webp"
+}
