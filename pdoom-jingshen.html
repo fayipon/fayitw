@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>精神版 I'm Upping My P(doom) — FAYI</title>
+  <meta name="description" content="精神版 I'm Upping My P(doom)：同一首歌拍成一場時裝秀，東北精神小妹走過洗浴中心、雪夜燒烤攤、迪廳與鐵西老廠房，11 套 Look。影片由 Leonardo（Seedance 2.0）生成且不帶任何字，Look 卡、吊牌、歌詞、翻牌看板與 P(DOOM) 倒數全部由程式即時疊上，聲音是原曲。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Michroma&family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <link rel="stylesheet" href="css/trailer.css">
+  <link rel="stylesheet" href="css/pdoom.css">
+  <link rel="stylesheet" href="css/pdoom-jingshen.css">
+  <script src="js/pdoom-jingshen-type.js" defer></script>
+  <script src="js/pdoom-jingshen.js" defer></script>
+</head>
+<body class="aff tr-page pd-page pj-page">
+  <header class="aff-top">
+    <a class="logo" href="index.html"><span class="logo-mark"></span>FAYI</a>
+    <a class="home-back" href="index.html"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>返回首頁</a>
+    <span class="top-title">精神版 I'm Upping My P(doom)</span>
+  </header>
+
+  <main>
+    <section class="tr container" aria-labelledby="pj-title">
+      <header class="tr-head">
+        <p class="eyebrow">Music video · 2:37 · SS27</p>
+        <h1 id="pj-title">精神版 I'm Upping My <em>P(doom)</em></h1>
+        <p>同一首 P(doom)，這次拍成一場時裝秀：東北精神小妹穿著黑貂、東北大花與軍大衣，走過洗浴中心、雪夜燒烤攤、迪廳和鐵西老廠房，一共 11 套 Look。前半是雪夜，後半是雪地白茫茫。影片本身沒有任何字，Look 卡、吊牌、歌詞、翻牌看板與 P(DOOM) 倒數全部由程式跟著拍點即時疊上去。</p>
+      </header>
+
+      <!-- 16:9 MV：剪好的影片（含原曲）畫在 canvas 上，再疊上程式做的 HUD、字卡與歌詞 -->
+      <div class="tr-player pj-player">
+        <div class="tr-frame">
+          <div class="mg" aria-hidden="true"></div>
+          <button class="pd-unmute" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            <span>點一下開聲音</span>
+          </button>
+          <button class="tr-big-play" type="button" aria-label="播放" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+        </div>
+        <div class="tr-controls">
+          <button class="tr-toggle" type="button" aria-label="暫停" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M9 6v12M15 6v12"/><path class="i-play" d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+          <ol class="tr-chapters" aria-label="段落"></ol>
+          <span class="tr-time" aria-hidden="true">0:00</span>
+          <button class="pd-sound" type="button" aria-label="開啟聲音" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9.5l5 5M22 9.5l-5 5"/></svg>
+          </button>
+          <button class="tr-fs" type="button" aria-label="全螢幕" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+        <p class="tr-caption" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="container pj-index" aria-labelledby="pj-index-title">
+      <header class="pd-sec-head">
+        <p class="eyebrow">Lookbook · SS27</p>
+        <h2 id="pj-index-title">11 套 Look</h2>
+        <p>同一張臉、三套衣服輪著換：黑貂配漁網襪、東北大花棉襖、軍大衣配三條槓運動褲；每個 Look 都配一張吊牌，寫著材質、含金量和當時的 P(DOOM)。</p>
+      </header>
+      <ol class="pj-looks">
+        <li><img src="assets/pdoom-jingshen/stills/char-d.webp" alt="雪夜縣城街頭，她穿黑貂、戴兩條大金鏈子，手臂滿是刺青" width="688" height="387" loading="lazy"><b>黑貂</b><span>Sparks of AGI：雪夜街頭、眼睛裡的火花、網咖。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/style-d.webp" alt="金色羅馬柱的洗浴中心大廳，她走紅毯，兩排光頭兄弟站在兩側" width="688" height="387" loading="lazy"><b>洗浴中心</b><span>The boss：她走紅毯，兩排兄弟同時鞠躬。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-kang.webp" alt="貼著碎花壁紙的小房間，她穿東北大花棉襖盤腿坐在炕上" width="688" height="387" loading="lazy"><b>東北大花</b><span>Trapped in the Chinese room：炕頭小屋，門縫塞進一張白紙。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-train.webp" alt="綠皮火車的硬座車廂，她把腳翹在對面座位" width="688" height="387" loading="lazy"><b>綠皮火車</b><span>A stable training run：夜車穿過雪地。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-guihuo.webp" alt="雪夜街道上一排裝了彩色燈條的鬼火機車" width="688" height="387" loading="lazy"><b>鬼火</b><span>Optimizing, accelerating：彩色燈條拉成長長的光。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-stage.webp" alt="紅絲絨布幕的二人轉舞台，她轉著紅手絹，兩側冷焰火" width="688" height="387" loading="lazy"><b>二人轉</b><span>The Omega Point：紅手絹拋上去，冷焰火噴起來。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-factory.webp" alt="積雪的鐵西老鋼廠，她穿軍大衣走過生鏽的機器" width="688" height="387" loading="lazy"><b>軍大衣</b><span>Von Neumann's obsolete：鐵西老廠房，雪從破屋頂落下。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-paperclips.webp" alt="白色攝影棚裡，她坐在一座銀色迴紋針山上" width="688" height="387" loading="lazy"><b>迴紋針</b><span>As paperclips fill the room：迴紋針從天而降。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-pool.webp" alt="廢棄泳池的方格磁磚上，她抱著膝蓋坐著" width="688" height="387" loading="lazy"><b>空泳池</b><span>Orthogonality thesis blues：一格一格正交的藍磁磚。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-loom.webp" alt="老紡織廠的織布機之間，她穿東北大花站著" width="688" height="387" loading="lazy"><b>織布機</b><span>Just as foretold by Loom：織布機一起動起來。</span></li>
+        <li><img src="assets/pdoom-jingshen/stills/s-clones.webp" alt="白茫茫的雪原上，幾十個她排成方陣" width="688" height="387" loading="lazy"><b>複製人</b><span>Recursive self-upgrade：幾十個她同時轉頭看鏡頭，END OF SHOW。</span></li>
+      </ol>
+    </section>
+
+    <section class="container pd-brief" aria-labelledby="pj-brief-title">
+      <header class="pd-sec-head">
+        <p class="eyebrow">How it's made</p>
+        <h2 id="pj-brief-title">怎麼做出來的</h2>
+      </header>
+      <dl class="pd-map">
+        <div><dt>先定人物</dt><dd>定裝照做了兩輪：第一輪不夠精神小妹，第二輪加滿刺青（龍、錦鯉、牡丹花臂，脖子上一隻東北虎）、黑口罩拉到下巴、大金鏈子。選定一張臉，三套衣服在 11 個 Look 之間換。</dd></div>
+        <div><dt>劇照變影片</dt><dd>31 個場景各先用 Leonardo（Nano Banana Pro）生成一張劇照，再交給 Seedance 2.0 從那一格開始拍 5 秒。提示詞要求招牌和螢幕全部留白，畫面裡不放字。</dd></div>
+        <div><dt>東北諧音梗</dt><dd>Chinese room 是炕頭小屋、training run 是綠皮火車、atoms rearranging 是自動麻將桌洗牌、transformers 是變電站的變壓器、Loom 是織布機、bag of shrooms 是一袋東北榛蘑。</dd></div>
+        <div><dt>時裝秀的 HUD</dt><dd>左上 Look 編號、右上翻牌的 P(DOOM) 百分比、左側刻度尺、底部跑馬燈的數字一直跳、臉上的追蹤框、網點與底片顆粒；前半雪夜用白字，後半雪地換成黑字。</dd></div>
+        <div><dt>字全是程式畫的</dt><dd>歌詞在左下逐字出現，正在唱的字變橘色（白底段落改成反白）；重點字放大成窄體大字；Look 卡、吊牌（洗標與條碼）、訓練 loss 曲線、終端機、勾選框、高速公路的翻牌看板，最後用馬賽克收尾。</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · 歌曲〈I'm Upping My P(doom)〉經授權使用；演員為 AI 生成的原創角色；與 Anthropic 無關的同人作品</span>
+      <a href="index.html#pages">所有頁面 →</a>
+    </div>
+  </footer>
+</body>
+</html>

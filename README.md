@@ -5,6 +5,7 @@
 | 頁面 | 內容 |
 |---|---|
 | `index.html` | 首頁：所有頁面的入口卡片 |
+| `pdoom-jingshen.html` | 精神版 I'm Upping My P(doom)：同一首歌拍成時裝秀，東北精神小妹 11 套 Look（洗浴中心、雪夜燒烤、迪廳社會搖、鐵西老廠房）；Seedance 2.0 生成的 31 段影片不帶任何字，Look 卡、吊牌、歌詞、翻牌看板、資料卡與時裝秀 HUD 由程式即時疊上 |
 | `pdoom.html` | I'm Upping My P(doom) 的真人 MV：主歌是日系 16mm 的東京日常，副歌切進 K-pop 布景與群舞；Seedance 2.0 生成的 16 段影片照剪接表剪成一支含原曲的影片，鼓點推鏡、閃白、故障、調色、HUD、章節卡與 P(doom) 儀表由程式即時疊上 |
 | `claude-pop.html` | Claude Pop：真人 × 剪紙的音樂錄影帶。原創歌曲在瀏覽器裡即時合成，從 104 BPM 一路加速到 330 BPM，在「奇點」一刀切斷；演員與場景是 Leonardo 生成的真人劇照，鏡頭、跟拍子切動作、對嘴、複製人海、歌詞排版與迷因由程式做出來，下方附演員表與原始需求對照 |
 | `clay-farm.html` | Clay 農場：透視 3D 場景、3 × 4 方形土塊農田、GLB 農舍／藍瓦工具棚／蘋果樹／風車、旋轉葉片與炊煙，搭配前景水岸、湖谷圖片遠景、緩慢飄動的黏土雲與景深，可縮放與還原視角 |
@@ -82,6 +83,14 @@ npm run optimize:farm
 
 費用參考（2026-10）：Seedance 2.0 一段 5 秒 720p 約 1,512 點。
 
+### 精神版
+
+`pdoom-jingshen.html` 是同一首歌的另一支 MV，畫面照時裝秀 MV 的拍法（35mm 閃光燈、網點與顆粒，前半東北雪夜、後半雪地白茫茫），主角是東北精神小妹。流程跟上面一樣，檔名換成 `pdoom-jingshen`：
+
+1. 劇照與影片：`node scripts/pdoom-jingshen-leonardo.mjs 名稱`（`stills` = 全部劇照、`videos` = 全部影片）。定裝照是 `char-d`，其他劇照都帶它當長相參考；提示詞要求招牌與螢幕留白，畫面裡不放字。原檔在 `assets-src/pdoom-jingshen/`。
+2. 剪接：改 `assets/pdoom-jingshen/edl.json`，然後 `python scripts/pdoom-edit.py 原曲.mp3 --name pdoom-jingshen`。鏡頭可以加 `face: [x, y, w, h]`（或逐點的 `[[鏡頭內秒數, x, y, w, h], ...]`）畫臉部追蹤框。
+3. HUD、片頭片尾、馬賽克收尾在 `js/pdoom-jingshen.js`；夜景白字、雪地黑字由鏡頭的片段決定（`WHITE_CLIPS`）。歌詞、Look 卡、吊牌與每句的資料卡在 `js/pdoom-jingshen-type.js`。
+
 ## 動態層
 
 | 層 | 做法 |
@@ -104,6 +113,7 @@ index.html            首頁（所有頁面入口）
 lab.html              Banner 實驗台
 cat.html              貓抓蝴蝶（水墨短片）
 pdoom.html            P(doom) 真人 MV
+pdoom-jingshen.html   精神版 P(doom) MV（時裝秀）
 claude-pop.html       Claude Pop（真人 × 剪紙的音樂錄影帶）
 teaser.html           站點預告
 join.html             推廣頁（註冊）
@@ -119,6 +129,7 @@ css/teaser.css        站點預告的分鏡樣式
 css/cat.css           貓抓蝴蝶頁面樣式
 css/claude-pop.css    Claude Pop 頁面樣式（聲音按鈕、演員表、需求對照）
 css/pdoom.css         P(doom) MV 頁面樣式（聲音按鈕、兩種畫面的劇照、製作說明）
+css/pdoom-jingshen.css 精神版的主色與 Look 索引（其餘沿用 pdoom.css）
 js/slides.js          每張 banner 的文案與特效座標
 js/banner.js          MotionBanner 元件（輪播、轉場、動態層、粒子）
 js/main.js            實驗台控制面板
@@ -136,19 +147,22 @@ js/claude-pop-kit.js  Claude Pop 的剪紙工具箱：紙的陰影、撕邊、�
 js/claude-pop.js      Claude Pop 的 26 個鏡頭（真人劇照 + 動態）、HUD、跟著音軌走的播放器
 js/pdoom.js           P(doom) MV：把剪好的影片畫到 canvas 上，疊動態效果、字卡、HUD 與 P(doom) 儀表
 js/pdoom-lyrics.js    P(doom) MV 的歌詞動態排版：每一句一段剪紙排版（共用 claude-pop-kit.js），重拍帶動鏡頭震動
+js/pdoom-jingshen.js  精神版 P(doom) MV：影片畫到 canvas、調色、網點、時裝秀 HUD、片頭片尾與馬賽克收尾
+js/pdoom-jingshen-type.js 精神版的字：左下逐字歌詞、大字、Look 卡、吊牌、資料卡與翻牌看板
 js/slot-trailers.js   老虎機的遊戲資料與分鏡樣板
 assets/banners/       主視覺圖（960×436）
 assets/games/         遊戲方圖（500×500）與盃賽徽章
 assets/clips/         介紹動畫用的實機錄影片段
 assets/claude-pop/    Claude Pop 的真人劇照與去背（Leonardo 生成的原創角色，photos.json 記尺寸與人物外框）
 assets/pdoom/         P(doom) MV 的影片（pdoom.mp4，含原曲）、剪接表 edl.json 與頁面劇照
+assets/pdoom-jingshen/ 精神版的影片（pdoom-jingshen.mp4，含原曲）、剪接表與 Look 劇照
 assets/posters/       首頁入口卡片的縮圖（各頁實際畫面截圖，640×360）
 assets/chars/         站點預告的角色圖（PG Soft 官網主視覺與去背貼紙）
 assets-src/           Clay 農場的原始模型與圖片、Claude Pop 與 P(doom) 的 Leonardo 原檔（不上線，壓縮後輸出到 assets/）
 scripts/serve.mjs     本機靜態伺服器
 scripts/optimize-farm-assets.mjs  Clay 農場素材壓縮（減面、WebP、Draco）
 scripts/claude-pop-*   Claude Pop 真人劇照：Leonardo 生成、去背、轉 WebP
-scripts/pdoom-*        P(doom) MV：Leonardo 生成劇照與 Seedance 影片、照剪接表剪成影片
+scripts/pdoom-*        P(doom) MV 與精神版：Leonardo 生成劇照與 Seedance 影片、照剪接表剪成影片
 scripts/deploy.ps1    部署腳本（主機用 -Server 指定）
 Dockerfile            nginx 映像
 docker/nginx.conf     nginx 設定（快取、gzip）

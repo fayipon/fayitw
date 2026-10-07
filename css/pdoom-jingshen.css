@@ -1,0 +1,19 @@
+/* =========================================================
+   精神版 P(doom) MV（pdoom-jingshen.html）
+   播放器沿用 trailer.css，聲音按鈕、開聲音提示、劇照與製作說明沿用 pdoom.css；
+   這裡只把主色換成時裝秀的橘，並補上 Look 索引
+   ========================================================= */
+
+.pj-page { --pd-hot: #f2642e; --pd-amber: #ffd2b8; }
+.pj-page .tr-frame { box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255, 255, 255, .1), 0 0 100px -40px var(--pd-hot); }
+.pj-page .tr-toggle, .pj-page .tr-big-play svg { color: #1c0802; fill: #1c0802; }
+.pj-page .tr-big-play svg { box-shadow: 0 0 40px rgba(242, 100, 46, .6); }
+
+/* Look 索引：11 套造型，像時裝秀的 lookbook */
+.pj-index { padding-block: clamp(40px, 6vw, 72px) 0; }
+.pj-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; max-width: 1180px; list-style: none; counter-reset: look; }
+.pj-looks li { display: grid; gap: 8px; align-content: start; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.pj-looks img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; }
+.pj-looks b { display: flex; align-items: baseline; gap: 8px; font-size: 15px; }
+.pj-looks b::before { counter-increment: look; content: "LOOK " counter(look, decimal-leading-zero); color: var(--pd-hot); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+.pj-looks span { color: var(--muted); font-size: 13px; line-height: 1.6; }
