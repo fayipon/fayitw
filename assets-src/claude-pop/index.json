@@ -1,0 +1,159 @@
+{
+  "idol-test": {
+    "imageId": "b1ef4cb4-4da4-44df-9e3d-737e4e0a328e",
+    "file": "idol-test.jpg"
+  },
+  "title-a": {
+    "imageId": "669bec67-1b03-4b57-81ae-b29f08859184",
+    "file": "title-a.jpg"
+  },
+  "dancer-pink": {
+    "imageId": "d3a6e3ca-8996-4a04-a2dd-368c13840159",
+    "file": "dancer-pink.jpg",
+    "generationId": "1f1c23ab-40eb-6330-a792-8ac8c0e13c4b",
+    "cut": "dancer-pink-cut.png"
+  },
+  "hook-bg": {
+    "imageId": "e6a80090-5f0a-4425-a662-fc74f0d8a198",
+    "file": "hook-bg.jpg",
+    "generationId": "1f1c23ab-4108-67f0-8112-e4c7495786c3"
+  },
+  "dancer-blue": {
+    "imageId": "3d298bee-f505-48dc-8ae3-eb5690211806",
+    "file": "dancer-blue.jpg",
+    "generationId": "1f1c23ab-40ab-6b90-8643-e2fa28f4f364",
+    "cut": "dancer-blue-cut.png"
+  },
+  "title-b": {
+    "imageId": "d744498f-159d-4639-864d-e508d8a2ca4d",
+    "file": "title-b.jpg",
+    "generationId": "1f1c23ab-425e-64b0-abab-ce0d99ef1545"
+  },
+  "wake-a": {
+    "imageId": "bbd1d262-9a29-427d-a973-8bd13d67f269",
+    "file": "wake-a.jpg",
+    "generationId": "1f1c23ac-0674-60c0-9265-277ad085e448"
+  },
+  "roof-night": {
+    "imageId": "5c7ef94c-809a-4dad-88af-915101865c81",
+    "file": "roof-night.jpg",
+    "generationId": "1f1c23ac-1a6c-65a0-8734-26b7f4e002ee"
+  },
+  "face-pensive": {
+    "imageId": "417c6194-0591-4bc5-8a9f-b9f8401a4793",
+    "file": "face-pensive.jpg",
+    "generationId": "1f1c23ac-3313-6630-9d61-662883c7bf4c"
+  },
+  "walk-cut": {
+    "imageId": "1a30769f-1859-4268-815e-06f4ff9b040e",
+    "file": "walk-cut.jpg",
+    "generationId": "1f1c23ac-335c-6a10-8fe8-4dd579bdd8d6",
+    "cut": "walk-cut-cut.png"
+  },
+  "wake-b": {
+    "imageId": "30f67610-afc3-4605-b053-7857afbcb52f",
+    "file": "wake-b.jpg",
+    "generationId": "1f1c23ac-e3ca-6a50-9807-0d7a6eb79dd9"
+  },
+  "roof-dawn": {
+    "imageId": "0bb226c3-044c-4113-a971-5eefd67ecef7",
+    "file": "roof-dawn.jpg",
+    "generationId": "1f1c23ac-f6e9-6aa0-986b-6160b7bfb56e"
+  },
+  "face-sing": {
+    "imageId": "e914de12-c034-433a-bdaf-6c9d4efc5914",
+    "file": "face-sing.jpg",
+    "generationId": "1f1c23ad-20e9-69e0-8991-2666790a4916"
+  },
+  "runway-a": {
+    "imageId": "538c9d24-013a-48d2-b34b-951512b29af6",
+    "file": "runway-a.jpg",
+    "generationId": "1f1c23ad-1272-6010-bf74-29ee41fe830c"
+  },
+  "eye": {
+    "imageId": "30b4bd47-47f9-46f9-8c02-268bd262fae7",
+    "file": "eye.jpg",
+    "generationId": "1f1c23ad-c1a9-6f60-90da-41880aa970b6"
+  },
+  "face-feel": {
+    "imageId": "bd7d8790-7929-4386-8e6f-085730f31dd0",
+    "file": "face-feel.jpg",
+    "generationId": "1f1c23ad-d6f8-6100-8ad2-c41990bf2055"
+  },
+  "face-sing-open": {
+    "imageId": "f47eed5d-3769-492d-a993-bb7460b9307a",
+    "file": "face-sing-open.jpg",
+    "generationId": "1f1c23ad-dcc1-6ff0-a58c-d8643f2acb4e"
+  },
+  "runway-b": {
+    "imageId": "ee5f150f-929a-4812-8e11-dec3dff942f5",
+    "file": "runway-b.jpg",
+    "generationId": "1f1c23ad-f59c-64d0-9af4-a117d6ce6d96"
+  },
+  "eye-closed": {
+    "imageId": "49bead70-6d21-44a4-9486-005bb73b5e36",
+    "file": "eye-closed.jpg",
+    "generationId": "1f1c23ae-9e31-60a0-8b7c-1facc506ac39"
+  },
+  "back-jump": {
+    "imageId": "ff16b34c-7779-4a8d-a9dc-1b69815e088b",
+    "file": "back-jump.jpg",
+    "generationId": "1f1c23ae-bd28-6490-8ea6-92c02ba112e8"
+  },
+  "over-sad": {
+    "imageId": "3393fb43-705c-4323-97ef-675135429961",
+    "file": "over-sad.jpg",
+    "generationId": "1f1c23ae-b34e-6500-a2b8-c1c0d9dee4d8"
+  },
+  "outro-hill": {
+    "imageId": "da18f0c3-fdb3-45ec-a00c-890f1cb3b182",
+    "file": "outro-hill.jpg",
+    "generationId": "1f1c23af-1112-6380-82d2-51c00c41135b"
+  },
+  "topshot": {
+    "imageId": "1c36c543-d553-426c-acd9-b54e96646e53",
+    "file": "topshot.jpg",
+    "generationId": "1f1c23af-7092-6760-8ee7-480e576bb156"
+  },
+  "stage-1": {
+    "imageId": "537896ee-2e35-48e3-920f-6f73792188d6",
+    "file": "stage-1.jpg",
+    "generationId": "1f1c23af-547e-6f60-b445-b3ee0fa8c1cb",
+    "cut": "stage-1-cut.png"
+  },
+  "outro-wave": {
+    "imageId": "7492872f-2e4f-4070-bd94-720957299785",
+    "file": "outro-wave.jpg",
+    "generationId": "1f1c23af-ebe9-62b0-8caf-f7449b4f942d"
+  },
+  "stage-3": {
+    "imageId": "4956f12c-7f76-4378-a390-456df3bd7376",
+    "file": "stage-3.jpg",
+    "generationId": "1f1c23b0-590f-6100-b48f-205b1c9e1f3e",
+    "cut": "stage-3-cut.png"
+  },
+  "stage-2": {
+    "imageId": "08807de6-f324-4430-a581-9992c2c7df6c",
+    "file": "stage-2.jpg",
+    "generationId": "1f1c23b0-6c48-6f00-9f92-584529e073c8",
+    "cut": "stage-2-cut.png"
+  },
+  "stage-4": {
+    "imageId": "e4a47f05-b11b-4cb8-aff9-89e4ee8ed6bc",
+    "file": "stage-4.jpg",
+    "generationId": "1f1c23b0-5c82-6da0-8c41-5b26fa4c745a",
+    "cut": "stage-4-cut.png"
+  },
+  "stage-final-1": {
+    "imageId": "735177c8-8bdd-40b0-8dd6-7f94c78c2974",
+    "file": "stage-final-1.jpg",
+    "generationId": "1f1c23b0-a04e-6cf0-802d-d1c1e6ee5ec2",
+    "cut": "stage-final-1-cut.png"
+  },
+  "stage-final-2": {
+    "imageId": "5a155c8c-a466-473d-8741-2baac7aaec04",
+    "file": "stage-final-2.jpg",
+    "generationId": "1f1c23b1-7cfa-6820-81ac-0df5fcbbddfb",
+    "cut": "stage-final-2-cut.png"
+  }
+}

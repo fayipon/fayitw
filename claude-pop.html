@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Pop — FAYI</title>
+  <meta name="description" content="Claude Pop：真人 × 剪紙的音樂錄影帶。原創歌曲在瀏覽器裡即時合成，速度從 104 BPM 一路加快到 330 BPM；演員與場景是 Leonardo 生成的真人劇照，鏡頭、對嘴、歌詞排版與網路迷因由 JavaScript 即時做出來。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Instrument+Serif:ital@0;1&family=Inter:wght@500;700;800&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@900&text=%E9%80%83%E3%81%92%E3%81%A1%E3%82%83%E3%83%80%E3%83%A1%E3%81%A0%E7%AC%AC%E5%85%AD%E8%A9%B1ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,'!?&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <link rel="stylesheet" href="css/trailer.css">
+  <link rel="stylesheet" href="css/claude-pop.css">
+  <script src="js/claude-pop-song.js" defer></script>
+  <script src="js/claude-pop-kit.js" defer></script>
+  <script src="js/claude-pop.js" defer></script>
+</head>
+<body class="aff tr-page cp-page">
+  <header class="aff-top">
+    <a class="logo" href="index.html"><span class="logo-mark"></span>FAYI</a>
+    <a class="home-back" href="index.html"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>返回首頁</a>
+    <span class="top-title">Claude Pop</span>
+  </header>
+
+  <main>
+    <section class="tr container" aria-labelledby="cp-title">
+      <header class="tr-head">
+        <p class="eyebrow">Real cast × paper motion · music video</p>
+        <h1 id="cp-title">Claude <em>Pop</em></h1>
+        <p>一首越唱越快的歌，從 104 BPM 一路加速到 330 BPM，然後在奇點那一刻整首切斷。歌曲是原創的，在瀏覽器裡即時合成；演員和場景是 Leonardo 生成的真人劇照，鏡頭推移、跟拍子切動作、對嘴、複製人海、歌詞排版和網路迷因，全部由程式在 canvas 上即時做出來。</p>
+      </header>
+
+      <!-- 16:9 音樂錄影帶：畫面由 claude-pop.js 畫在 canvas 上，時間跟著合成出來的音軌走 -->
+      <div class="tr-player cp-player">
+        <div class="tr-frame">
+          <div class="mg" aria-hidden="true"></div>
+          <button class="cp-unmute" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            <span>點一下開聲音</span>
+          </button>
+          <button class="tr-big-play" type="button" aria-label="播放" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+        </div>
+        <div class="tr-controls">
+          <button class="tr-toggle" type="button" aria-label="暫停" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M9 6v12M15 6v12"/><path class="i-play" d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+          <ol class="tr-chapters" aria-label="段落"></ol>
+          <span class="tr-time" aria-hidden="true">0:00</span>
+          <button class="cp-sound" type="button" aria-label="開啟聲音" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9.5l5 5M22 9.5l-5 5"/></svg>
+          </button>
+          <button class="tr-fs" type="button" aria-label="全螢幕" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+        <p class="tr-caption" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="container cp-sheet" aria-labelledby="cp-sheet-title">
+      <header class="cp-sec-head">
+        <p class="eyebrow">Cast</p>
+        <h2 id="cp-sheet-title">演員表</h2>
+        <p>三位都是原創角色，不是真人。主角代表 Claude：齊瀏海鮑伯頭、橘色八角星髮夾、泡泡袖白襯衫、黑色背帶與及膝長靴，腰間掛著識別證；兩位伴舞照 K-pop 團體的代表色分成藍與粉。照片用 Leonardo（Nano Banana Pro）生成，片中每一個鏡頭都帶著主角這張定裝照當長相參考，所以是同一個人。</p>
+      </header>
+      <ul class="cp-cast">
+        <li><img src="assets/claude-pop/idol-test.webp" alt="主角定裝照：黑色鮑伯頭、橘色星星髮夾、泡泡袖白襯衫與黑色背帶" width="1024" height="1024" loading="lazy"><b>主角</b><span>LEAD · CLAUDE</span></li>
+        <li><img src="assets/claude-pop/dancer-blue.webp" alt="藍色伴舞定裝照：高馬尾、寶藍色泡泡袖上衣、白色百褶裙與白長靴" width="1024" height="1024" loading="lazy"><b>伴舞・藍</b><span>DANCER · BLUE</span></li>
+        <li><img src="assets/claude-pop/dancer-pink.webp" alt="粉色伴舞定裝照：雙丸子頭、桃紅色泡泡袖上衣、黑色百褶裙" width="1024" height="1024" loading="lazy"><b>伴舞・粉</b><span>DANCER · PINK</span></li>
+        <li class="is-wide"><img src="assets/claude-pop/stage-3.webp" alt="三人在霓虹八角星前的舞台上雙手舉高" width="1376" height="768" loading="lazy"><b>副歌舞台</b><span>STAGE · 4 POSES × BEAT</span></li>
+      </ul>
+      <ul class="cp-swatches" aria-label="色票">
+        <li style="--c:#efe9dd"><b>紙</b><span>#EFE9DD</span></li>
+        <li style="--c:#141210"><b>墨</b><span>#141210</span></li>
+        <li style="--c:#f26a36"><b>星橘</b><span>#F26A36</span></li>
+        <li style="--c:#3550c8"><b>Riso 藍</b><span>#3550C8</span></li>
+        <li style="--c:#ff6fa3"><b>螢光粉</b><span>#FF6FA3</span></li>
+        <li style="--c:#ffd23f"><b>向日葵黃</b><span>#FFD23F</span></li>
+      </ul>
+    </section>
+
+    <section class="container cp-brief" aria-labelledby="cp-brief-title">
+      <header class="cp-sec-head">
+        <p class="eyebrow">From the brief</p>
+        <h2 id="cp-brief-title">原始需求怎麼變成這一頁</h2>
+        <p>原本的 prompt 是寫給代理人的完整製作流程：用圖片模型做角色表與場景，再用 Seedance 生成影片當底片，最後用 JavaScript 做動態與排版。這一頁保留「真人、場景交給生成模型，動態交給程式」的分工，但只生成靜態劇照，不生成影片。</p>
+      </header>
+      <dl class="cp-map">
+        <div><dt>真人與場景</dt><dd>用 Leonardo 生成 28 張真人劇照，其中 9 張另外去背；每一個鏡頭都帶著主角的定裝照當長相參考。動態全部交給程式，所以頁面很輕（約 1.8 MB），也能精準對拍。</dd></div>
+        <div><dt>同一首歌</dt><dd>參考影片的歌有版權，這裡改用原創詞曲：鼓、貝斯、和弦、琶音與用母音共振峰合成的「人聲」，全部在瀏覽器裡即時合成，不載入任何音檔。</dd></div>
+        <div><dt>動態由 JS 做</dt><dd>鏡頭推移、每一拍切一個舞蹈動作、走廊裡左右腳交替、撕紙轉場、漏光、黑邊；再疊上紙紋、網點與錯版印刷的字。</dd></div>
+        <div><dt>代表 Claude 的主角</dt><dd>向日葵般的八角星變成髮夾、舞台的霓虹，還有她瞳孔裡的倒影；兩位伴舞照 K-pop 團體的代表色分成藍與粉。</dd></div>
+        <div><dt>速度越來越快</dt><dd>每一段都比上一段快：104 → 112 → 120 → 128 → 136 → 148 BPM，奇點段從 150 加速到 330；右上角的 BPM 與 tokens/s 跟著往上跳。再副歌時去背的三人組每拍複製一倍，指數成長。</dd></div>
+        <div><dt>時事與迷因</dt><dd>line goes up、數學被吃掉的 Navier–Stokes、feel the AGI、it's so over / we're so back、新世紀福音戰士的「get in the robot」與「逃げちゃダメだ」。</dd></div>
+        <div><dt>網路粗獷風插入</dt><dd>「時間軸」段落改成 Web 1.0 網頁、貼紙、投票卡與片名卡，硬切，不轉場。</dd></div>
+        <div><dt>歌詞上畫面、大小有變化</dt><dd>開場是滿版巨字，主歌像字幕，副歌的 FASTER 夾在舞者和背景之間（去背疊回原位）、「vertical」直著排，時間軸段落變成貼紙與網頁標題。</dd></div>
+        <div><dt>對嘴與對拍</dt><dd>唱歌特寫有閉嘴與張嘴兩張照片，張嘴那張跟著合成人聲的音量淡入淡出；畫面、歌詞、嘴型、聲音共用同一張拍點表，所以永遠對得上。</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · Claude Pop：原創歌曲與動畫，演員為 AI 生成的原創角色；與 Anthropic 無關的同人作品</span>
+      <a href="index.html#pages">所有頁面 →</a>
+    </div>
+  </footer>
+</body>
+</html>

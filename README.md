@@ -5,6 +5,7 @@
 | 頁面 | 內容 |
 |---|---|
 | `index.html` | 首頁：所有頁面的入口卡片 |
+| `claude-pop.html` | Claude Pop：真人 × 剪紙的音樂錄影帶。原創歌曲在瀏覽器裡即時合成，從 104 BPM 一路加速到 330 BPM，在「奇點」一刀切斷；演員與場景是 Leonardo 生成的真人劇照，鏡頭、跟拍子切動作、對嘴、複製人海、歌詞排版與迷因由程式做出來，下方附演員表與原始需求對照 |
 | `clay-farm.html` | Clay 農場：透視 3D 場景、3 × 4 方形土塊農田、GLB 農舍／藍瓦工具棚／蘋果樹／風車、旋轉葉片與炊煙，搭配前景水岸、湖谷圖片遠景、緩慢飄動的黏土雲與景深，可縮放與還原視角 |
 | `lab.html` | Banner 實驗台：圖片主視覺 banner 的動態層，每一層都能開關比較 |
 | `cat.html` | 貓抓蝴蝶：水墨短片，霧裡走出的長毛黑貓追一隻發光的白蝴蝶；毛由數千撮筆觸堆出，水墨由 WebGL 流體模擬與著色器產生 |
@@ -57,6 +58,19 @@ npm run optimize:farm
 
 腳本（`scripts/optimize-farm-assets.mjs`）會把模型減面、貼圖縮成 1024（作物與小魚 512）並轉 WebP、再用 Draco 壓縮；每個模型的目標面數寫在腳本最上面。減面只刪頂點、不搬動座標，所以 `clay-farm.js` 依局部座標切割欄杆、移除煙囪煙霧等處理照常運作。也可以只處理部分模型：`npm run optimize:farm -- cottage fence`。頁面透過 `js/clay-models.js` 讀取模型，一開始就並行下載全部場景模型，再依序組裝。
 
+## Claude Pop 真人劇照
+
+`claude-pop.html` 的演員與場景是用 [Leonardo](https://leonardo.ai/) API 生成的原創角色劇照（Nano Banana Pro），動態全部由 `js/claude-pop.js` 做。原檔放在 `assets-src/claude-pop/`（不會打包上線），網站用的是轉好的 WebP（`assets/claude-pop/`，約 1.8 MB）。
+
+要重新生成或加新的劇照：
+
+1. 在 Leonardo 的 API 頁面建立 API key，設成環境變數 `LEONARDO_API_KEY`（不要寫進程式或貼到別處）。
+2. 在 `scripts/claude-pop-leonardo.mjs` 的 `JOBS` 加一筆（`refs` 帶主角定裝照 `idol-test` 當長相參考），然後 `node scripts/claude-pop-leonardo.mjs 名稱`；已經生成過的會跳過。
+3. 要把字夾在人後面或當貼紙用的，再去背：`node scripts/claude-pop-rembg.mjs 名稱`。
+4. 轉成網頁用的檔案：`python scripts/claude-pop-photos.py assets-src/claude-pop assets/claude-pop`。
+
+費用參考（2026-10）：一張 1376×768 的劇照約 140 點 API 額度，去背一張約 70 點。
+
 ## 動態層
 
 | 層 | 做法 |
@@ -78,6 +92,7 @@ npm run optimize:farm
 index.html            首頁（所有頁面入口）
 lab.html              Banner 實驗台
 cat.html              貓抓蝴蝶（水墨短片）
+claude-pop.html       Claude Pop（真人 × 剪紙的音樂錄影帶）
 teaser.html           站點預告
 join.html             推廣頁（註冊）
 affiliate.html        遊戲介紹頁
@@ -90,6 +105,7 @@ css/slots.css         老虎機分鏡樣式
 css/join.css          推廣頁與推廣動畫樣式
 css/teaser.css        站點預告的分鏡樣式
 css/cat.css           貓抓蝴蝶頁面樣式
+css/claude-pop.css    Claude Pop 頁面樣式（聲音按鈕、演員表、需求對照）
 js/slides.js          每張 banner 的文案與特效座標
 js/banner.js          MotionBanner 元件（輪播、轉場、動態層、粒子）
 js/main.js            實驗台控制面板
@@ -102,15 +118,20 @@ js/affiliate.js       遊戲介紹頁（輪播、介紹切換、遊戲庫篩選�
 js/ink-gl.js          水墨引擎（WebGL2）：GPU 流體模擬、宣紙著色器、水墨濾鏡
 js/mg-player.js       動畫播放器（縮放、段落、影片同步、自動播放、全螢幕），各動畫頁共用
 js/trailer.js         賽馬介紹動畫的分鏡
+js/claude-pop-song.js Claude Pop 的歌：段落、拍點表、和弦、旋律與歌詞，以及 Web Audio 合成器
+js/claude-pop-kit.js  Claude Pop 的剪紙工具箱：紙的陰影、撕邊、錯版字、翻牌、吊牌、網點
+js/claude-pop.js      Claude Pop 的 26 個鏡頭（真人劇照 + 動態）、HUD、跟著音軌走的播放器
 js/slot-trailers.js   老虎機的遊戲資料與分鏡樣板
 assets/banners/       主視覺圖（960×436）
 assets/games/         遊戲方圖（500×500）與盃賽徽章
 assets/clips/         介紹動畫用的實機錄影片段
+assets/claude-pop/    Claude Pop 的真人劇照與去背（Leonardo 生成的原創角色，photos.json 記尺寸與人物外框）
 assets/posters/       首頁入口卡片的縮圖（各頁實際畫面截圖，640×360）
 assets/chars/         站點預告的角色圖（PG Soft 官網主視覺與去背貼紙）
-assets-src/           Clay 農場的原始模型與圖片（不上線，壓縮後輸出到 assets/）
+assets-src/           Clay 農場的原始模型與圖片、Claude Pop 的 Leonardo 原檔（不上線，壓縮後輸出到 assets/）
 scripts/serve.mjs     本機靜態伺服器
 scripts/optimize-farm-assets.mjs  Clay 農場素材壓縮（減面、WebP、Draco）
+scripts/claude-pop-*   Claude Pop 真人劇照：Leonardo 生成、去背、轉 WebP
 scripts/deploy.ps1    部署腳本（主機用 -Server 指定）
 Dockerfile            nginx 映像
 docker/nginx.conf     nginx 設定（快取、gzip）

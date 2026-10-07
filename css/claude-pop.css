@@ -1,0 +1,87 @@
+/* =========================================================
+   Claude Pop（claude-pop.html）：剪紙風音樂錄影帶
+   播放器的版面沿用 trailer.css；畫面由 claude-pop.js 畫在 canvas 上，
+   這裡只補聲音按鈕、開聲音提示、角色表與需求對照
+   ========================================================= */
+
+.cp-page { --cp-orange: #f26a36; --cp-paper: #efe9dd; }
+.cp-page .tr-head h1 { letter-spacing: .02em; }
+.cp-page .tr-head h1 em { color: var(--cp-orange); font-style: normal; }
+.cp-page .tr-frame { background: #141210; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .85), 0 0 0 1px rgba(239, 233, 221, .14), 0 0 90px -40px var(--cp-orange); }
+.cp-page .tr-chapters .bar i { background: var(--cp-orange); }
+.cp-page .tr-toggle, .cp-page .tr-big-play svg { background: var(--cp-orange); color: #1a0d06; fill: #1a0d06; box-shadow: none; }
+.cp-page .tr-big-play svg { box-shadow: 0 0 40px rgba(242, 106, 54, .6); }
+.cp-page :focus-visible { outline-color: var(--cp-orange); }
+
+.mg.cp-film { background: #141210; }
+.mg.cp-film canvas { position: absolute; inset: 0; width: 1280px; height: 720px; }
+
+/* 聲音按鈕：載入（合成）中、靜音、開聲音三種狀態 */
+.cp-sound { display: grid; flex-shrink: 0; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line-2); border-radius: 50%; color: var(--text); transition: border-color .25s, color .25s; }
+.cp-sound svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cp-sound .spk { fill: currentColor; stroke: none; }
+.cp-sound .on { display: none; }
+.cp-sound[aria-pressed="true"] { border-color: var(--cp-orange); color: var(--cp-orange); }
+.cp-sound[aria-pressed="true"] .on { display: block; }
+.cp-sound[aria-pressed="true"] .off { display: none; }
+.cp-sound.is-busy { opacity: .55; cursor: progress; }
+
+/* 畫面左下的「開聲音」提示（像社群平台的自動播放影片） */
+.cp-unmute {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: rgba(20, 18, 16, .78);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.cp-unmute svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cp-unmute svg path:first-child { fill: currentColor; stroke: none; }
+.cp-unmute[hidden] { display: none; }
+
+/* 段落標題 */
+.cp-sec-head { max-width: 760px; margin-bottom: 20px; }
+.cp-sec-head h2 { margin: 6px 0 8px; font-size: clamp(24px, 3vw, 34px); font-weight: 900; line-height: 1.25; }
+.cp-sec-head > p:last-child { color: var(--muted); }
+
+/* 演員表：三張定裝照 + 一張舞台劇照 */
+.cp-sheet { padding-block: clamp(40px, 6vw, 72px) 0; }
+.cp-cast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr); gap: 12px; max-width: 1180px; list-style: none; }
+.cp-cast li { display: grid; grid-template-rows: 1fr auto auto; gap: 2px; overflow: hidden; padding-bottom: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.cp-cast img { width: 100%; height: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: center 20%; margin-bottom: 10px; }
+.cp-cast .is-wide img { aspect-ratio: auto; object-position: center; }
+.cp-cast b { padding-inline: 14px; font-size: 15px; }
+.cp-cast span { padding-inline: 14px; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+@media (max-width: 760px) {
+  .cp-cast { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cp-cast .is-wide { grid-column: 1 / -1; }
+}
+.cp-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-width: 1180px; margin-top: 14px; list-style: none; }
+.cp-swatches li { display: grid; grid-template-columns: 36px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.cp-swatches li::before { content: ""; grid-row: 1 / 3; width: 36px; height: 36px; border-radius: 8px; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.cp-swatches b { font-size: 14px; }
+.cp-swatches span { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+/* 需求對照 */
+.cp-brief { padding-block: clamp(40px, 6vw, 72px) clamp(56px, 8vw, 96px); }
+.cp-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; max-width: 1180px; }
+.cp-map > div { display: grid; gap: 6px; align-content: start; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.cp-map dt { font-size: 17px; font-weight: 900; }
+.cp-map dt::before { content: "✶ "; color: var(--cp-orange); }
+.cp-map dd { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+@media (max-width: 640px) {
+  .cp-unmute { left: 8px; bottom: 8px; padding: 6px 12px 6px 8px; font-size: 12px; }
+  .tr-controls .cp-sound { grid-column: 3; grid-row: 1; width: 44px; height: 44px; }
+  .cp-page .tr-controls { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
+  .cp-page .tr-fs { grid-column: 4; }
+}
