@@ -8,10 +8,8 @@ COPY js /usr/share/nginx/html/js
 COPY assets /usr/share/nginx/html/assets
 COPY config /usr/share/nginx/html/config
 
-# CSS / JS 網址加上內容雜湊（style.css?v=1a2b3c4d），改版後瀏覽器與 Cloudflare 不會拿到舊檔
-RUN cd /usr/share/nginx/html && for f in css/*.css js/*.js; do \
-      v=$(md5sum "$f" | cut -c1-8); \
-      sed -i "s#\"$f\"#\"$f?v=$v\"#g" *.html; \
-    done
+# HTML 入口與模組內的相對 import 共用版本，依賴更新也會換網址。
+COPY docker/version-assets.sh /tmp/version-assets.sh
+RUN sh /tmp/version-assets.sh /usr/share/nginx/html && rm /tmp/version-assets.sh
 
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -q --spider http://127.0.0.1/ || exit 1
