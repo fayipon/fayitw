@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P(doom) MV — FAYI</title>
+  <meta name="description" content="I'm Upping My P(doom) 的真人 MV：主歌是日系 16mm 底片感的東京日常，副歌切進 K-pop 布景與群舞。影片片段用 Leonardo（Seedance 2.0）生成，剪接、變速、閃光、故障、HUD、字卡與會動的歌詞由程式即時疊上，聲音是原曲。">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Instrument+Serif:ital@0;1&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700;900&text=%E7%AC%AC%E4%B8%80%E8%A9%B1%E7%81%AB%E8%8A%B1%E4%BA%8C%E7%9B%AE%E8%A6%9A%E3%82%81%E4%B8%89%E7%9C%A0%E3%82%8C%E3%81%AA%E3%81%84%E5%A4%9C%E6%9D%B1%E4%BA%AC%E9%83%BD%E4%B8%8B%E5%8C%97%E6%B2%A2%E3%82%B3%E3%83%B3%E3%83%93%E3%83%8B%E8%87%AA%E5%AE%85%E5%B1%8B%E4%B8%8A%E6%B8%8B%E8%B0%B7%E6%9C%80%E7%B5%82%E9%9B%BB%E8%BB%8A%E6%95%99%E5%AE%A4%E3%82%BF%E3%82%AF%E3%82%B7%E3%83%BC%E6%AD%BB%E7%A5%9E%E3%81%AE&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <link rel="stylesheet" href="css/trailer.css">
+  <link rel="stylesheet" href="css/pdoom.css">
+  <script src="js/claude-pop-kit.js" defer></script>
+  <script src="js/pdoom-lyrics.js" defer></script>
+  <script src="js/pdoom.js" defer></script>
+</head>
+<body class="aff tr-page pd-page">
+  <header class="aff-top">
+    <a class="logo" href="index.html"><span class="logo-mark"></span>FAYI</a>
+    <a class="home-back" href="index.html"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>返回首頁</a>
+    <span class="top-title">P(doom) MV</span>
+  </header>
+
+  <main>
+    <section class="tr container" aria-labelledby="pd-title">
+      <header class="tr-head">
+        <p class="eyebrow">Music video · 2:37</p>
+        <h1 id="pd-title">I'm Upping My <em>P(doom)</em></h1>
+        <p>主歌是日系 16mm 底片感的東京日常：平交道、便利商店、末班電車、夕陽教室；副歌一進來就切到 K-pop 的布景與群舞，P(doom) 每到副歌就往上跳一段。影片片段由 Leonardo 的 Seedance 2.0 生成，剪接、變速、閃光、故障、調色、HUD、字卡與歌詞由程式跟著拍點即時疊上去。</p>
+      </header>
+
+      <!-- 16:9 MV：剪好的影片（含原曲）畫在 canvas 上，再疊上程式做的動態效果 -->
+      <div class="tr-player pd-player">
+        <div class="tr-frame">
+          <div class="mg" aria-hidden="true"></div>
+          <button class="pd-unmute" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            <span>點一下開聲音</span>
+          </button>
+          <button class="tr-big-play" type="button" aria-label="播放" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+        </div>
+        <div class="tr-controls">
+          <button class="tr-toggle" type="button" aria-label="暫停" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M9 6v12M15 6v12"/><path class="i-play" d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+          <ol class="tr-chapters" aria-label="段落"></ol>
+          <span class="tr-time" aria-hidden="true">0:00</span>
+          <button class="pd-sound" type="button" aria-label="開啟聲音" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9.5l5 5M22 9.5l-5 5"/></svg>
+          </button>
+          <button class="tr-fs" type="button" aria-label="全螢幕" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+        <p class="tr-caption" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="container pd-sets" aria-labelledby="pd-sets-title">
+      <header class="pd-sec-head">
+        <p class="eyebrow">Two looks</p>
+        <h2 id="pd-sets-title">主歌在東京，副歌在舞台</h2>
+        <p>同一位主角（橘色八角星髮夾、泡泡袖白襯衫、黑色背帶）在兩種畫面之間來回：主歌用 16mm 底片的顆粒、暈光與上下黑邊；副歌拉開成滿版，飽和、俐落、跟著鼓點推鏡與閃光。</p>
+      </header>
+      <div class="pd-looks">
+        <figure class="pd-look">
+          <figcaption><b>日系・主歌</b><span>16MM · 2.39:1 · HALATION</span></figcaption>
+          <ul>
+            <li><img src="assets/pdoom/stills/style-j1.webp" alt="傍晚的平交道，電車從她身後駛過" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/style-j2.webp" alt="深夜便利商店的零食走道，她拿著汽水看向鏡頭" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/s-train.webp" alt="深夜空蕩的電車車廂，她一個人坐著" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/s-classroom.webp" alt="夕陽下的教室，黑板畫滿神經網路" width="688" height="387" loading="lazy"></li>
+          </ul>
+        </figure>
+        <figure class="pd-look">
+          <figcaption><b>K-pop・副歌</b><span>16:9 · BEAT PUSH · STROBE</span></figcaption>
+          <ul>
+            <li><img src="assets/pdoom/stills/s-pink-group.webp" alt="粉紅色機房布景裡的五人隊形" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/s-chrome-dance.webp" alt="鉻金屬八角星前的群舞" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/style-k3.webp" alt="紅色 LED 牆上的儀表指到 99%" width="688" height="387" loading="lazy"></li>
+            <li><img src="assets/pdoom/stills/s-paperclips.webp" alt="她站在一座金色迴紋針山上" width="688" height="387" loading="lazy"></li>
+          </ul>
+        </figure>
+      </div>
+    </section>
+
+    <section class="container pd-brief" aria-labelledby="pd-brief-title">
+      <header class="pd-sec-head">
+        <p class="eyebrow">How it's made</p>
+        <h2 id="pd-brief-title">怎麼做出來的</h2>
+      </header>
+      <dl class="pd-map">
+        <div><dt>先定風格</dt><dd>先生成 K-pop 與日系各三張劇照比較，最後決定混搭：主歌日系、副歌 K-pop。主角沿用 Claude Pop 真人版的定裝照當長相參考，所以是同一個人。</dd></div>
+        <div><dt>劇照變影片</dt><dd>每一個場景先用 Leonardo（Nano Banana Pro）生成一張劇照，再交給 Seedance 2.0 從那一格開始拍 5 秒，總共 16 段、80 秒素材。</dd></div>
+        <div><dt>剪接跟著拍子</dt><dd>原曲 88 BPM。剪接表把 80 秒素材拆成一個個鏡頭，切點都落在拍點上，副歌變速、主歌放慢，同一段素材在不同位置用不同的入點與速度。</dd></div>
+        <div><dt>動態由程式疊</dt><dd>每一格都經過 canvas：鼓點推鏡、震動、閃白、頻閃、色散故障、橫向撕裂、暈光、底片顆粒、黑邊開合，以及 HUD、字卡與 P(doom) 儀表。</dd></div>
+        <div><dt>歌詞是畫面的一部分</dt><dd>每一句一個版型，排在人物旁邊、跟著歌詞的意思動：drop 印在便利商店收據上、Chinese room 被框起來、rearranging 的字母打亂再排好、1E30 FLOPs 的數字一直多一個零、backward 在黑板上倒著寫、von Neumann 被劃掉蓋章、sharp left turn 整排急轉、迴紋針從天上掉下來、引信燒出 FUSE、thesis 直著穿過 Orthogonality、[MASK] 遮罩滑開、recursive 一層層往內縮。主歌用斜體襯線字，副歌用粗的窄體字，正在唱的字墊一塊主色。</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · 歌曲〈I'm Upping My P(doom)〉經授權使用；演員為 AI 生成的原創角色；與 Anthropic 無關的同人作品</span>
+      <a href="index.html#pages">所有頁面 →</a>
+    </div>
+  </footer>
+</body>
+</html>

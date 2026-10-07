@@ -1,0 +1,77 @@
+/* =========================================================
+   P(doom) MV（pdoom.html）
+   播放器的版面沿用 trailer.css；畫面由 pdoom.js 畫在 canvas 上，
+   這裡只補聲音按鈕、開聲音提示、兩種畫面的劇照與製作說明
+   ========================================================= */
+
+.pd-page { --pd-hot: #ff3d6e; --pd-amber: #ffb547; }
+.pd-page .tr-head h1 em { color: var(--pd-hot); font-style: normal; }
+.pd-page .tr-frame { background: #050505; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255, 255, 255, .1), 0 0 100px -40px var(--pd-hot); }
+.pd-page .tr-chapters .bar i { background: linear-gradient(90deg, var(--pd-amber), var(--pd-hot)); }
+.pd-page .tr-toggle, .pd-page .tr-big-play svg { background: var(--pd-hot); color: #1a0309; fill: #1a0309; box-shadow: none; }
+.pd-page .tr-big-play svg { box-shadow: 0 0 40px rgba(255, 61, 110, .6); }
+.pd-page :focus-visible { outline-color: var(--pd-hot); }
+
+.mg.pd-film { background: #050505; }
+.mg.pd-film canvas { position: absolute; inset: 0; width: 1280px; height: 720px; }
+
+/* 聲音按鈕：靜音、開聲音兩種狀態 */
+.pd-sound { display: grid; flex-shrink: 0; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line-2); border-radius: 50%; color: var(--text); transition: border-color .25s, color .25s; }
+.pd-sound svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pd-sound .spk { fill: currentColor; stroke: none; }
+.pd-sound .on { display: none; }
+.pd-sound[aria-pressed="true"] { border-color: var(--pd-hot); color: var(--pd-hot); }
+.pd-sound[aria-pressed="true"] .on { display: block; }
+.pd-sound[aria-pressed="true"] .off { display: none; }
+
+/* 畫面左下的「開聲音」提示（像社群平台的自動播放影片） */
+.pd-unmute {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, .78);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.pd-unmute svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pd-unmute svg path:first-child { fill: currentColor; stroke: none; }
+.pd-unmute[hidden] { display: none; }
+
+/* 段落標題 */
+.pd-sec-head { max-width: 760px; margin-bottom: 20px; }
+.pd-sec-head h2 { margin: 6px 0 8px; font-size: clamp(24px, 3vw, 34px); font-weight: 900; line-height: 1.25; }
+.pd-sec-head > p:last-child { color: var(--muted); }
+
+/* 兩種畫面：各四張劇照 */
+.pd-sets { padding-block: clamp(40px, 6vw, 72px) 0; }
+.pd-looks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; max-width: 1180px; }
+.pd-look { display: grid; gap: 10px; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.pd-look figcaption { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.pd-look figcaption b { font-size: 16px; }
+.pd-look figcaption span { color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+.pd-look ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; list-style: none; }
+.pd-look img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; }
+
+/* 製作說明 */
+.pd-brief { padding-block: clamp(40px, 6vw, 72px) clamp(56px, 8vw, 96px); }
+.pd-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; max-width: 1180px; }
+.pd-map > div { display: grid; gap: 6px; align-content: start; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.pd-map dt { font-size: 17px; font-weight: 900; }
+.pd-map dt::before { content: "▲ "; color: var(--pd-hot); font-size: 12px; vertical-align: 2px; }
+.pd-map dd { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+@media (max-width: 640px) {
+  .pd-unmute { left: 8px; bottom: 8px; padding: 6px 12px 6px 8px; font-size: 12px; }
+  .tr-controls .pd-sound { grid-column: 3; grid-row: 1; width: 44px; height: 44px; }
+  .pd-page .tr-controls { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
+  .pd-page .tr-fs { grid-column: 4; }
+}
