@@ -1,24 +1,25 @@
 # 圖片與字型的集中載入（第一次用到才載，之後從快取拿）與共用色票
 extends RefCounted
 
-const GOLD := Color("ffd25a")
-const GOLD_DEEP := Color("e8a020")
-const GOLD_INK := Color("3a1d00")
-const CREAM := Color("fff4dc")
-const MUTED := Color("c9b28a")
-const PANEL := Color(0.07, 0.043, 0.027, 0.8)
-const WOOD := Color("6b4120")
-const WOOD_LIGHT := Color("9a6834")
-const WOOD_DARK := Color("3b220f")
-const RED := Color("e2301e")
-const GREEN := Color("3fae2f")
-const INK := Color("140d09")
+# 暗黑哥德版色票：古金、骨白、深紅、夜黑
+const GOLD := Color("f2c96b")
+const GOLD_LIGHT := Color("ffe9a8")
+const GOLD_DEEP := Color("a8761f")
+const GOLD_INK := Color("2a1806")
+const CREAM := Color("f1e4c6")
+const MUTED := Color("a8967a")
+const PANEL := Color(0.055, 0.045, 0.05, 0.9)
+const PANEL_EDGE := Color("6e5428")
+const RED := Color("c4161c")
+const BLOOD := Color("6e0c10")
+const GREEN := Color("3f9a2f")
+const INK := Color("0b0809")
 
-# 碎紙片的顏色：跟著符號
+# 連鎖爆開的碎片顏色：跟著符號
 const SYMBOL_COLORS := {
-	"ten": Color("3d7bff"), "jack": Color("3fbf4a"), "queen": Color("a24cff"), "king": Color("ff3b3b"), "ace": Color("ffc83d"),
-	"rabbit": Color("f3efe8"), "pie": Color("ff6a3d"), "basket": Color("d29a52"), "wolf": Color("8a8f9a"), "hood": Color("e8364f"),
-	"cottage": Color("ff9a5a"), "crown": Color("ffd25a"),
+	"ten": Color("3d7bff"), "jack": Color("3fbf4a"), "queen": Color("a24cff"), "king": Color("e0a650"), "ace": Color("ff3b3b"),
+	"potion": Color("ff2050"), "basket": Color("c8323a"), "lantern": Color("ffb040"), "raven": Color("7fa0d8"), "wolf": Color("ff3030"),
+	"key": Color("ffd25a"), "hood": Color("e8364f"),
 }
 
 static var _cache := {}
@@ -30,18 +31,35 @@ static func tex(path: String) -> Texture2D:
 	return _cache[path]
 
 
+# 轉輪上的符號磚（滿版方形圖）
 static func symbol(id: String) -> Texture2D:
-	return tex("res://art/symbols/%s.webp" % id)
+	return tex("res://art/tiles/%s.webp" % id)
 
 
-# 遊戲裡的字都是英文：標題、數字、按鈕用 Lilita One，說明文字用 Godot 內建字型
+# 介面零件：spin-ring、ring、crest、coin、plate、frame、floor
+static func ui(name: String) -> Texture2D:
+	return tex("res://art/ui/%s.webp" % name)
+
+
+# 零件的尺寸與量測值（轉輪外框的開口、轉動鍵的圓心）
+static func ui_meta() -> Dictionary:
+	if not _cache.has("ui.json"):
+		_cache["ui.json"] = JSON.parse_string(FileAccess.get_file_as_string("res://art/ui/ui.json"))
+	return _cache["ui.json"]
+
+
+# 遊戲裡的字都是英文：標題、數字、按鈕用 Cinzel（古典羅馬碑文字體，粗細可調），說明文字用 Godot 內建字型
 static func font(kind := "num") -> Font:
 	if kind == "body":
 		return ThemeDB.fallback_font
-	var path := "res://fonts/lilita_one.ttf"
-	if not _cache.has(path):
-		_cache[path] = load(path)
-	return _cache[path]
+	var key := "font:" + kind
+	if not _cache.has(key):
+		var fv := FontVariation.new()
+		fv.base_font = load("res://fonts/cinzel.ttf")
+		var wght := TextServerManager.get_primary_interface().name_to_tag("wght")
+		fv.variation_opentype = {wght: 600 if kind == "light" else 900}
+		_cache[key] = fv
+	return _cache[key]
 
 
 static func box(bg: Color, radius := 12, border := 0, border_color := Color.TRANSPARENT) -> StyleBoxFlat:

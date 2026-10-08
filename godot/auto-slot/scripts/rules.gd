@@ -2,47 +2,54 @@
 # - 盤面 5 軸 × 4 列，1024 路：同一個符號從最左邊一軸起連續出現 3 軸以上就中獎，每一軸出現幾格就乘幾路
 # - 連鎖消除（參考 Pinata Wins）：中獎的格子消掉、上面的往下掉、空位補新符號，一直連到沒有中獎；
 #   第 1、2、3、4 段以後分別乘 MULTIPLIERS 的倍率，整串連鎖結束才一次結算
-# - 中間三軸的一般符號可能帶金框：金框符號中獎時不消失，而是變成皇冠 WILD 留在原位
-# - 皇冠是 WILD（只在中間三軸）；外婆家是 BONUS，每軸最多一個，連鎖完的盤面上 3 個以上觸發小遊戲。
-#   小遊戲還沒做，先依 3／4／5 個直接給總押注的 BONUS_PRIZE 倍
-# - 總押注 = BET × 20；賠率表的單位是 BET（每一路）
+# - 中間三軸的一般符號可能帶金框：金框符號中獎時不消失，而是變成小紅帽 WILD 留在原位
+# - 小紅帽是 WILD（只在第 2～4 軸，代替 BONUS 以外的符號）；金鑰匙是 BONUS（scatter 型：出現在哪都算），
+#   每軸最多一個，連鎖完的盤面上 3／4／5 個依 SCATTER_PAYS 給總押注的倍數，並觸發 8／10／12 次 Free Spins
+# - Free Spins 不扣押注，連鎖倍率換成 FS_MULTIPLIERS（加倍）；免費轉中再出 3 個以上 BONUS 會加次數
+# - 總押注 = BET × 20；賠率表 pays 是每一路在 BET 20 時贏的金幣（跟美術給的 paytable 同一組數字），
+#   實際 = pays × 路數 × BET ÷ 20。BET 都是 4 的倍數、pays 都是 5 的倍數，所以一定整除。
+#   符號組照介面設計稿（狼、烏鴉、提燈、籃子、藥水、金鑰匙、小紅帽）；藥水用 paytable 上魔法書那一級
 # - 自走打怪：每一轉贏的金幣就是傷害，再加一次基本攻擊；敵人血量與賞金是出現當下總押注的倍數
-# - 盤面每一格是 { id, gold }；照現在的權重模擬：連線回收約 72%、BONUS 約 12%、打怪賞金約 8%
+# - 盤面每一格是 { id, gold }；照現在的權重模擬：主遊戲約 69%、Free Spins 約 11%、打怪賞金約 9%
 extends RefCounted
 
 const COLS := 5
 const ROWS := 4
 const CELLS := COLS * ROWS
 const BASE_BET := 20
-const BET_LEVELS := [1, 2, 5, 10, 20, 50]
-const START_COINS := 10000
-const REFILL := 5000
+const PAY_DIV := 20
+const BET_LEVELS := [4, 8, 20, 40, 100, 200]
+const START_COINS := 50000
+const REFILL := 25000
 const MULTIPLIERS := [1, 2, 3, 5]
-const GOLD_CHANCE := 0.1
+const FS_MULTIPLIERS := [2, 4, 6, 10]
+const FS_AWARD := {3: 8, 4: 10, 5: 12}
+# BONUS 的獎金：總押注 × 這個數 ÷ 20（3 個 = 0.25 倍、4 個 = 1 倍、5 個 = 5 倍）
+const SCATTER_PAYS := {3: 5, 4: 20, 5: 100}
+const GOLD_CHANCE := 0.115
 const MAX_STEPS := 40
 
-# pays：3 連／4 連／5 連，每一路的分數（單位 BET）
+# pays：3 連／4 連／5 連
 const SYMBOLS := {
-	"ten": {"name": "10", "pays": [1, 2, 5]},
-	"jack": {"name": "J", "pays": [1, 2, 5]},
-	"queen": {"name": "Q", "pays": [1, 3, 6]},
-	"king": {"name": "K", "pays": [1, 3, 6]},
-	"ace": {"name": "A", "pays": [2, 4, 7]},
-	"rabbit": {"name": "Bunny", "pays": [2, 6, 12]},
-	"pie": {"name": "Cherry Pie", "pays": [3, 7, 15]},
-	"basket": {"name": "Picnic Basket", "pays": [4, 9, 18]},
-	"wolf": {"name": "Big Bad Wolf", "pays": [7, 18, 45]},
-	"hood": {"name": "Red Hood", "pays": [12, 30, 75]},
-	"cottage": {"name": "Grandma's House", "bonus": true},
-	"crown": {"name": "Crown", "wild": true},
+	"ten": {"name": "10", "pays": [20, 40, 100]},
+	"jack": {"name": "J", "pays": [20, 40, 100]},
+	"queen": {"name": "Q", "pays": [20, 40, 100]},
+	"king": {"name": "K", "pays": [25, 60, 150]},
+	"ace": {"name": "A", "pays": [25, 60, 150]},
+	"potion": {"name": "Heart Potion", "pays": [30, 80, 200]},
+	"basket": {"name": "Basket", "pays": [40, 100, 250]},
+	"lantern": {"name": "Lantern", "pays": [50, 120, 300]},
+	"raven": {"name": "Raven", "pays": [55, 140, 350]},
+	"wolf": {"name": "Big Bad Wolf", "pays": [60, 160, 400]},
+	"key": {"name": "Golden Key", "scatter": true},
+	"hood": {"name": "Red Hood", "wild": true},
 }
-const SYMBOL_IDS := ["ten", "jack", "queen", "king", "ace", "rabbit", "pie", "basket", "wolf", "hood", "cottage", "crown"]
+const SYMBOL_IDS := ["ten", "jack", "queen", "king", "ace", "potion", "basket", "lantern", "raven", "wolf", "key", "hood"]
 const ROYALS := ["ten", "jack", "queen", "king", "ace"]
-const BONUS_PRIZE := {3: 12, 4: 30, 5: 100}
 
 # 每一軸各符號的權重；百搭只在第 2～4 軸
-const EDGE := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "rabbit": 9.0, "pie": 8.0, "basket": 8.0, "wolf": 6.0, "hood": 5.0, "cottage": 2.2, "crown": 0.0}
-const MID := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "rabbit": 9.0, "pie": 8.0, "basket": 8.0, "wolf": 6.0, "hood": 5.0, "cottage": 2.2, "crown": 2.0}
+const EDGE := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 0.0}
+const MID := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 3.0}
 
 const ENEMIES := {
 	"wolf": {"name": "Big Bad Wolf", "hp": 3.0, "reward": 0.4, "xp": 1},
@@ -64,8 +71,8 @@ static func is_wild(id: String) -> bool:
 	return SYMBOLS[id].get("wild", false)
 
 
-static func is_bonus(id: String) -> bool:
-	return SYMBOLS[id].get("bonus", false)
+static func is_scatter(id: String) -> bool:
+	return SYMBOLS[id].get("scatter", false)
 
 
 static func draw_symbol(reel: int, rng: RandomNumberGenerator) -> String:
@@ -81,12 +88,12 @@ static func draw_symbol(reel: int, rng: RandomNumberGenerator) -> String:
 	return SYMBOL_IDS[0]
 
 
-# 抽一格；no_bonus 時 BONUS 重抽（每一軸最多一個），金框只出現在中間三軸的一般符號
-static func draw_cell(reel: int, rng: RandomNumberGenerator, no_bonus := false) -> Dictionary:
+# 抽一格；no_scatter 時 SCATTER 重抽（每一軸最多一個），金框只出現在中間三軸的一般符號
+static func draw_cell(reel: int, rng: RandomNumberGenerator, no_scatter := false) -> Dictionary:
 	var id := draw_symbol(reel, rng)
-	while no_bonus and is_bonus(id):
+	while no_scatter and is_scatter(id):
 		id = draw_symbol(reel, rng)
-	var plain := not is_wild(id) and not is_bonus(id)
+	var plain := not is_wild(id) and not is_scatter(id)
 	return {"id": id, "gold": plain and reel >= 1 and reel <= 3 and rng.randf() < GOLD_CHANCE}
 
 
@@ -95,21 +102,21 @@ static func spin_board(rng: RandomNumberGenerator) -> Array:
 	var board := []
 	board.resize(CELLS)
 	for c in COLS:
-		var has_bonus := false
+		var has_scatter := false
 		for r in ROWS:
-			var cell := draw_cell(c, rng, has_bonus)
-			has_bonus = has_bonus or is_bonus(cell.id)
+			var cell := draw_cell(c, rng, has_scatter)
+			has_scatter = has_scatter or is_scatter(cell.id)
 			board[r * COLS + c] = cell
 	return board
 
 
-# 算 1024 路：wins 是每個中獎符號的 { symbol, reels, ways, amount, cells }（amount 已乘 BET），
-# 另外回傳盤面上的 BONUS 格子，3 個以上 triggered 為 true
+# 算 1024 路：wins 是每個中獎符號的 { symbol, reels, ways, amount, cells }（amount 是實際金幣），
+# 另外回傳盤面上的 SCATTER 格子，3 個以上 triggered 為 true
 static func evaluate(board: Array, bet: int) -> Dictionary:
 	var wins := []
 	var total := 0
 	for id in SYMBOL_IDS:
-		if is_wild(id) or is_bonus(id):
+		if is_wild(id) or is_scatter(id):
 			continue
 		var cells := []
 		var ways := 1
@@ -127,27 +134,38 @@ static func evaluate(board: Array, bet: int) -> Dictionary:
 			cells.append_array(hit)
 		# 第一軸沒有百搭，所以第一軸一定是這個符號本身
 		if reels >= 3:
-			var amount: int = SYMBOLS[id].pays[reels - 3] * ways * bet
+			var amount: int = pay(id, reels, bet) * ways
 			wins.append({"symbol": id, "reels": reels, "ways": ways, "amount": amount, "cells": cells})
 			total += amount
 	wins.sort_custom(func(a, b): return a.amount > b.amount)
-	var bonus := []
+	var scatter := scatters(board)
+	return {"wins": wins, "total": total, "scatter": scatter, "triggered": scatter.size() >= 3}
+
+
+# 一路 n 連在這個 BET 贏多少（賠率表上顯示的也是這個數）
+static func pay(id: String, reels: int, bet: int) -> int:
+	return SYMBOLS[id].pays[reels - 3] * bet / PAY_DIV
+
+
+static func scatters(board: Array) -> Array:
+	var out := []
 	for i in CELLS:
-		if is_bonus(board[i].id):
-			bonus.append(i)
-	return {"wins": wins, "total": total, "bonus": bonus, "triggered": bonus.size() >= 3}
+		if is_scatter(board[i].id):
+			out.append(i)
+	return out
 
 
 # 轉一次，連鎖到沒有中獎為止。每一段 step：
 #   board 這段開始的盤面、wins／base 這段的中獎（未乘倍率）、mult 倍率、win = base × mult、
 #   cells 中獎格子、removed 消掉的格子、to_wild 金框變百搭的格子、
 #   moves 往下掉的 { col, from, to }（列）、added 補進來的 { col, row, cell }、next 掉完的盤面
-static func play(rng: RandomNumberGenerator, bet: int) -> Dictionary:
-	return resolve(spin_board(rng), rng, bet)
+# free = true 是 Free Spins：倍率用 FS_MULTIPLIERS
+static func play(rng: RandomNumberGenerator, bet: int, free := false) -> Dictionary:
+	return resolve(spin_board(rng), rng, bet, FS_MULTIPLIERS if free else MULTIPLIERS)
 
 
 # 從指定盤面開始連鎖（測試用固定盤面）
-static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dictionary:
+static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: Array = MULTIPLIERS) -> Dictionary:
 	var steps := []
 	var board := start
 	var total := 0
@@ -155,7 +173,7 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dicti
 		var ev := evaluate(board, bet)
 		if ev.wins.is_empty():
 			break
-		var mult: int = MULTIPLIERS[mini(k, MULTIPLIERS.size() - 1)]
+		var mult: int = mults[mini(k, mults.size() - 1)]
 		var marked := {}
 		for w in ev.wins:
 			for i in w.cells:
@@ -169,7 +187,7 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dicti
 		var added := []
 		for i in cells:
 			if board[i].gold:
-				next[i] = {"id": "crown", "gold": false}
+				next[i] = {"id": "hood", "gold": false}
 				to_wild.append(i)
 			else:
 				next[i] = null
@@ -179,9 +197,9 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dicti
 			for r in range(ROWS - 1, -1, -1):
 				if next[r * COLS + c] != null:
 					keep.append({"cell": next[r * COLS + c], "from": r})
-			var has_bonus := false
+			var has_scatter := false
 			for kept in keep:
-				has_bonus = has_bonus or is_bonus(kept.cell.id)
+				has_scatter = has_scatter or is_scatter(kept.cell.id)
 			var n := 0
 			for r in range(ROWS - 1, -1, -1):
 				var i := r * COLS + c
@@ -190,8 +208,8 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dicti
 					if keep[n].from != r:
 						moves.append({"col": c, "from": keep[n].from, "to": r})
 				else:
-					var cell := draw_cell(c, rng, has_bonus)
-					has_bonus = has_bonus or is_bonus(cell.id)
+					var cell := draw_cell(c, rng, has_scatter)
+					has_scatter = has_scatter or is_scatter(cell.id)
 					next[i] = cell
 					added.append({"col": c, "row": r, "cell": cell})
 				n += 1
@@ -200,15 +218,16 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int) -> Dicti
 			"cells": cells, "removed": removed, "to_wild": to_wild, "moves": moves, "added": added, "next": next})
 		total += win
 		board = next
-	var bonus := []
-	for i in CELLS:
-		if is_bonus(board[i].id):
-			bonus.append(i)
-	return {"start": start, "steps": steps, "total": total, "final": board, "bonus": bonus, "triggered": bonus.size() >= 3}
+	var scatter := scatters(board)
+	return {"start": start, "steps": steps, "total": total, "final": board, "scatter": scatter, "triggered": scatter.size() >= 3}
 
 
-static func bonus_prize(count: int, bet: int) -> int:
-	return BONUS_PRIZE.get(count, 0) * total_bet(bet)
+static func scatter_pay(count: int, bet: int) -> int:
+	return SCATTER_PAYS.get(mini(count, 5), 0) * total_bet(bet) / 20
+
+
+static func free_spins(count: int) -> int:
+	return FS_AWARD.get(mini(count, 5), 0)
 
 
 static func spawn_enemy(count: int, bet: int) -> Dictionary:

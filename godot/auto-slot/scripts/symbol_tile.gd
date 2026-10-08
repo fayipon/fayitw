@@ -1,4 +1,5 @@
-# 盤面上的一格：深色底板、符號圖、金框、WILD／BONUS 大字標籤；中獎時外框發光
+# 盤面上的一格：滿版的符號磚圖；金框符號加一圈古金框與四角紅寶石；
+# WILD／BONUS 底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
 extends Control
 
 const Rules := preload("res://scripts/rules.gd")
@@ -13,9 +14,9 @@ var glow := 0.0:
 var dim := false:
 	set(v):
 		dim = v
-		modulate = Color(0.4, 0.4, 0.42) if v else Color.WHITE
+		modulate = Color(0.38, 0.36, 0.4) if v else Color.WHITE
 
-static var _styles := {}
+static var _glow_box: StyleBoxFlat
 
 
 func setup(cell: Dictionary) -> void:
@@ -29,72 +30,52 @@ func _ready() -> void:
 	resized.connect(func(): pivot_offset = size / 2.0)
 
 
-static func _style(kind: String) -> StyleBoxFlat:
-	if not _styles.has(kind):
-		var sb: StyleBoxFlat
-		match kind:
-			"plain":
-				sb = Art.box(Color("252a2f"), 9, 1, Color(1, 1, 1, 0.08))
-			"wild":
-				sb = Art.box(Color("5c3c12"), 9, 2, Art.GOLD)
-			"bonus":
-				sb = Art.box(Color("5c1a10"), 9, 2, Color("ff6a50"))
-			"gold":
-				sb = Art.box(Color("3a2c18"), 9, 3, Color("f5c13a"))
-			"glow":
-				sb = Art.box(Color.TRANSPARENT, 10, 3, Art.GOLD)
-				sb.draw_center = false
-				sb.shadow_color = Color(1, 0.82, 0.3, 0.75)
-				sb.shadow_size = 12
-		_styles[kind] = sb
-	return _styles[kind]
-
-
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
-	var wild := Rules.is_wild(id)
-	var bonus := Rules.is_bonus(id)
-	var kind := "wild" if wild else "bonus" if bonus else "gold" if gold else "plain"
-	draw_style_box(_style(kind), r)
-	# 上緣一道亮邊，底板看起來有厚度
-	draw_rect(Rect2(6, 2, size.x - 12, 2), Color(1, 1, 1, 0.06))
+	draw_texture_rect(Art.symbol(id), r, false)
 	if gold:
-		# 金框符號：內圈再描一道淺金，四角加小寶石
-		var inner := r.grow(-5)
-		draw_rect(inner, Color("fff0a0", 0.55), false, 1.5)
-		for p in [inner.position, Vector2(inner.end.x, inner.position.y), Vector2(inner.position.x, inner.end.y), inner.end]:
-			draw_circle(p, 3.2, Color("ffe27a"))
-			draw_circle(p, 1.6, Color("e8364f"))
-	var tex := Art.symbol(id)
-	var pad := 0.15 if Rules.ROYALS.has(id) else 0.07
-	var icon := r.grow(-size.x * pad)
-	if wild or bonus:
-		icon = Rect2(size.x * 0.12, size.y * 0.04, size.x * 0.76, size.y * 0.66)
-	draw_texture_rect(tex, _fit(tex, icon), false)
-	if wild or bonus:
-		_draw_tag("WILD" if wild else "BONUS", Art.GOLD if wild else Color("ff4a32"), Color("6a3200") if wild else Color("4e0600"))
+		_gold_frame(r)
+	if Rules.is_wild(id) or Rules.is_scatter(id):
+		# 特殊符號：一圈橘金邊（設計稿的 WILD／BONUS 磚）
+		var w := maxf(1.5, size.x * 0.03)
+		draw_rect(r.grow(-w * 0.5), Color("d9902a"), false, w)
+		draw_rect(r.grow(-w * 1.4), Color(Art.GOLD_LIGHT, 0.6), false, 1.0)
+		_tag("WILD" if Rules.is_wild(id) else "BONUS")
 	if glow > 0.01:
-		var sb := _style("glow")
-		sb.border_color = Color(Art.GOLD, glow)
-		sb.shadow_color = Color(1, 0.82, 0.3, 0.75 * glow)
-		draw_style_box(sb, r.grow(1))
+		if not _glow_box:
+			_glow_box = Art.box(Color.TRANSPARENT, 6, 3, Art.GOLD)
+			_glow_box.draw_center = false
+			_glow_box.shadow_size = 12
+		_glow_box.border_color = Color(Art.GOLD_LIGHT, glow)
+		_glow_box.shadow_color = Color(1, 0.75, 0.3, 0.7 * glow)
+		draw_style_box(_glow_box, r.grow(1))
 
 
-# 底部一條大字標籤：WILD 金色、BONUS 紅色
-func _draw_tag(text: String, color: Color, ink: Color) -> void:
-	var h := size.y * 0.27
-	var rect := Rect2(size.x * 0.03, size.y - h - size.y * 0.05, size.x * 0.94, h)
-	var sb := Art.box(color, 6, 2, color.lightened(0.45))
-	draw_style_box(sb, rect)
-	draw_rect(Rect2(rect.position + Vector2(4, 2), Vector2(rect.size.x - 8, rect.size.y * 0.35)), Color(1, 1, 1, 0.25))
+# 金框：外深金、內亮金兩道線，四角菱形紅寶石
+func _gold_frame(r: Rect2) -> void:
+	var w := maxf(2.0, size.x * 0.045)
+	draw_rect(r.grow(-w * 0.5), Art.GOLD_DEEP, false, w)
+	draw_rect(r.grow(-w * 1.3), Color(Art.GOLD_LIGHT, 0.85), false, maxf(1.0, w * 0.4))
+	var g := size.x * 0.07
+	for p in [r.position, Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), r.end]:
+		var c: Vector2 = p + (r.get_center() - p).sign() * w * 1.1
+		var dia := PackedVector2Array([c + Vector2(0, -g), c + Vector2(g, 0), c + Vector2(0, g), c + Vector2(-g, 0)])
+		draw_colored_polygon(dia, Art.GOLD)
+		var inner := PackedVector2Array([c + Vector2(0, -g * 0.55), c + Vector2(g * 0.55, 0), c + Vector2(0, g * 0.55), c + Vector2(-g * 0.55, 0)])
+		draw_colored_polygon(inner, Art.RED)
+
+
+# 底部壓暗再寫金字（字寬超過格子時自動縮小）
+func _tag(text: String) -> void:
+	var h := size.y * 0.34
+	var top := size.y - h
+	draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(size.x, top), size, Vector2(0, size.y)]),
+		PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.85), Color(0, 0, 0, 0.85)]))
 	var font := Art.font()
-	var fs := int(h * (0.78 if text == "WILD" else 0.68))
-	var base := Vector2(rect.position.x, rect.position.y + rect.size.y * 0.5 + fs * 0.36)
-	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, fs, 5, ink)
-	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, fs, Color.WHITE)
-
-
-func _fit(tex: Texture2D, box: Rect2) -> Rect2:
-	var s := minf(box.size.x / tex.get_width(), box.size.y / tex.get_height())
-	var sz := Vector2(tex.get_width(), tex.get_height()) * s
-	return Rect2(box.position + (box.size - sz) / 2.0, sz)
+	var fs := int(size.y * 0.24)
+	while fs > 8 and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > size.x * 0.9:
+		fs -= 1
+	var base := Vector2(0, size.y - size.y * 0.09)
+	draw_string_outline(font, base + Vector2(0, 2), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, 5, Color(0, 0, 0, 0.7))
+	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, 4, Art.GOLD_INK)
+	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, Art.GOLD)

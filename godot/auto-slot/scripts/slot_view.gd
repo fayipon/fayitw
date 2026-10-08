@@ -1,5 +1,6 @@
-# 中間的 SLOT：5 軸 × 4 列。轉輪往下捲、逐軸停輪回彈；中獎格子發光，其餘變暗；
-# 連鎖時中獎格子爆成碎紙、金框翻成 WILD、上面的往下掉、空位從上方補新符號
+# 中間的 SLOT：5 軸 × 4 列，外面套一圈荊棘木框（art/ui/frame.webp，開口位置記在 ui.json）。
+# 轉輪往下捲、逐軸停輪回彈；中獎格子發光，其餘變暗；
+# 連鎖時中獎格子爆開、金框翻成 WILD、上面的往下掉、空位從上方補新符號
 extends Control
 
 signal reel_stopped(index: int)
@@ -8,8 +9,8 @@ const Rules := preload("res://scripts/rules.gd")
 const Art := preload("res://scripts/art.gd")
 const Tile := preload("res://scripts/symbol_tile.gd")
 
-const GAP := 5.0
-const PAD := 10.0
+const GAP := 4.0
+const PAD := 6.0
 
 var cell := Vector2(70, 73)
 var turbo := false
@@ -21,6 +22,14 @@ var _strips: Array[Control] = []
 var _spinning: Array[Tween] = []
 var _fx: Node2D
 var _rng := RandomNumberGenerator.new()
+# 外框畫在哪裡（本地座標，會超出 size）：top／bottom 兩段照比例，中段直向拉長補足 4 列的高度
+var frame_rect := Rect2()
+# 木框外緣（不含伸出去的藤蔓）與頂端紅寶石的位置
+var wood_rect := Rect2()
+var gem_point := Vector2.ZERO
+var _frame_scale := 1.0
+# 中獎格子的閃光補間：下一段連鎖開始或清除標記時要停掉，不然新的 WILD 會一直亮著
+var _mark_tweens: Array[Tween] = []
 
 
 func _ready() -> void:
@@ -28,7 +37,7 @@ func _ready() -> void:
 	tiles.resize(Rules.CELLS)
 	for c in Rules.COLS:
 		var reel := Control.new()
-		reel.clip_contents = true
+		reel.clip_contents = false
 		reel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(reel)
 		_reels.append(reel)
@@ -41,18 +50,28 @@ func _ready() -> void:
 	add_child(_fx)
 
 
-# 依寬度排版，回傳高度
+# 依寬度排版（轉輪區、不含外框），回傳高度；外框的位置在 frame_rect
 func layout(width: float) -> float:
 	cell.x = floorf((width - PAD * 2.0 - GAP * (Rules.COLS - 1)) / Rules.COLS)
 	cell.y = roundf(cell.x * 1.04)
 	var reel_h := Rules.ROWS * cell.y + (Rules.ROWS - 1) * GAP
+	# 格子寬度取整數後多出來的幾個像素平均分到左右，轉輪才會在框裡置中
+	var slack := (width - PAD * 2.0 - Rules.COLS * cell.x - GAP * (Rules.COLS - 1)) / 2.0
 	for c in Rules.COLS:
-		_reels[c].position = Vector2(PAD + c * (cell.x + GAP), PAD)
+		_reels[c].position = Vector2(PAD + slack + c * (cell.x + GAP), PAD)
 		_reels[c].size = Vector2(cell.x, reel_h)
 	for i in Rules.CELLS:
 		if tiles[i]:
 			_place(tiles[i], i / Rules.COLS)
 	size = Vector2(width, reel_h + PAD * 2.0)
+	var meta: Dictionary = Art.ui_meta().frame
+	var inner := Rect2(meta.inner[0], meta.inner[1], meta.inner[2] - meta.inner[0], meta.inner[3] - meta.inner[1])
+	_frame_scale = size.x / inner.size.x
+	var s := _frame_scale
+	frame_rect = Rect2(-inner.position.x * s, -inner.position.y * s, meta.size[0] * s,
+		size.y + (inner.position.y + meta.size[1] - inner.end.y) * s)
+	wood_rect = Rect2(Vector2.ZERO, size).grow(meta.wood * s)
+	gem_point = frame_rect.position + Vector2(meta.gem[0], meta.gem[1]) * s
 	queue_redraw()
 	return size.y
 
@@ -91,17 +110,25 @@ func tile_center(i: int) -> Vector2:
 	return _reels[c].position + Vector2(cell.x / 2.0, r * _step_y() + cell.y / 2.0)
 
 
-# ---------- 木框 ----------
+# ---------- 外框 ----------
 
+# 外框分三段畫：上段（含頂端花飾）與下段照比例縮放，中段直向拉長，花紋只在側邊的直藤上變長一點
 func _draw() -> void:
-	var r := Rect2(Vector2.ZERO, size)
-	draw_style_box(Art.box(Art.WOOD_DARK, 16, 3, Art.WOOD_LIGHT), r)
-	# 木紋
-	for k in range(6, int(size.y), 9):
-		draw_line(Vector2(8, k), Vector2(size.x - 8, k + 3), Color(0, 0, 0, 0.08), 2.0)
-	draw_style_box(Art.box(Color("0d0a08"), 10), r.grow(-PAD + 4))
-	# 上方橫木
-	draw_style_box(Art.box(Art.WOOD_LIGHT, 6, 2, Color("5a3416")), Rect2(10, -7, size.x - 20, 13))
+	var tex := Art.ui("frame")
+	var meta: Dictionary = Art.ui_meta().frame
+	var w: float = meta.size[0]
+	var h: float = meta.size[1]
+	var band := 110.0
+	var top_src := Rect2(0, 0, w, meta.inner[1] + band)
+	var bot_src := Rect2(0, meta.inner[3] - band, w, h - meta.inner[3] + band)
+	var mid_src := Rect2(0, top_src.end.y, w, bot_src.position.y - top_src.end.y)
+	var s := _frame_scale
+	var top := Rect2(frame_rect.position, top_src.size * s)
+	var bot := Rect2(Vector2(frame_rect.position.x, frame_rect.end.y - bot_src.size.y * s), bot_src.size * s)
+	var mid := Rect2(Vector2(frame_rect.position.x, top.end.y), Vector2(frame_rect.size.x, bot.position.y - top.end.y))
+	draw_texture_rect_region(tex, top, top_src)
+	draw_texture_rect_region(tex, mid, mid_src)
+	draw_texture_rect_region(tex, bot, bot_src)
 	for c in Rules.COLS:
 		if tease[c]:
 			var rr := Rect2(_reels[c].position, _reels[c].size).grow(3)
@@ -117,7 +144,9 @@ func _draw() -> void:
 # 轉到指定盤面；前面已經停了兩個 BONUS 時後面的軸轉久一點、亮框
 func spin(board: Array) -> void:
 	_spinning.clear()
-	var bonus_so_far := 0
+	_stop_marks()
+	_set_clip(true)
+	var scatter_so_far := 0
 	var extra := 0.0
 	var pending := Rules.COLS
 	var done := [pending]
@@ -125,16 +154,17 @@ func spin(board: Array) -> void:
 		var col := []
 		for r in Rules.ROWS:
 			col.append(board[r * Rules.COLS + c])
-		var teasing := bonus_so_far >= 2
+		var teasing := scatter_so_far >= 2
 		if teasing:
 			extra += 0.55 if turbo else 1.0
 		for d in col:
-			if Rules.is_bonus(d.id):
-				bonus_so_far += 1
+			if Rules.is_scatter(d.id):
+				scatter_so_far += 1
 		var dur := (0.34 if turbo else 0.62) + c * (0.08 if turbo else 0.15) + extra
 		_spin_reel(c, col, dur, teasing, done)
 	while done[0] > 0:
 		await get_tree().process_frame
+	_set_clip(false)
 
 
 func _spin_reel(c: int, col: Array, dur: float, teasing: bool, done: Array) -> void:
@@ -194,7 +224,24 @@ func quick_stop() -> void:
 
 # ---------- 中獎與連鎖 ----------
 
+# 轉輪只有在捲動、掉落時才裁切；平常不裁，中獎的光暈與放大才不會被切掉
+func _set_clip(on: bool) -> void:
+	for reel in _reels:
+		reel.clip_contents = on
+
+
+func _stop_marks() -> void:
+	for tw in _mark_tweens:
+		if tw.is_valid():
+			tw.kill()
+	_mark_tweens.clear()
+	for t in tiles:
+		if t and is_instance_valid(t):
+			t.scale = Vector2.ONE
+
+
 func clear_marks() -> void:
+	_stop_marks()
 	for t in tiles:
 		if t:
 			t.glow = 0.0
@@ -210,6 +257,7 @@ func mark(cells: Array) -> void:
 		t.dim = not on.has(i)
 		if on.has(i):
 			var tw := create_tween().set_loops(2)
+			_mark_tweens.append(tw)
 			tw.tween_property(t, "glow", 1.0, 0.16)
 			tw.parallel().tween_property(t, "scale", Vector2(1.1, 1.1), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			tw.tween_property(t, "scale", Vector2.ONE, 0.16)
@@ -219,6 +267,8 @@ func mark(cells: Array) -> void:
 # 一段連鎖的消除與補位；k 是第幾段（音高跟著升）
 func cascade(step: Dictionary, k: int) -> void:
 	var speed := 0.6 if turbo else 1.0
+	_stop_marks()
+	_set_clip(true)
 	# 1. 爆開
 	for i in step.removed:
 		var t: Control = tiles[i]
@@ -235,7 +285,7 @@ func cascade(step: Dictionary, k: int) -> void:
 		var tw := create_tween()
 		tw.tween_property(t, "scale:x", 0.0, 0.12 * speed).set_ease(Tween.EASE_IN)
 		tw.tween_callback(func():
-			t.setup({"id": "crown", "gold": false})
+			t.setup({"id": "hood", "gold": false})
 			t.dim = false
 			_sparkle(tile_center(i)))
 		tw.tween_property(t, "scale:x", 1.0, 0.18 * speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -285,9 +335,15 @@ func cascade(step: Dictionary, k: int) -> void:
 	if fall > 0.0:
 		get_tree().create_timer(fall * 0.55).timeout.connect(func(): Sfx.play("drop"))
 	await get_tree().create_timer(fall + 0.05).timeout
+	# 掉落途中畫面縮放過的話，補間會把格子帶回舊的位置；結束時全部對齊一次
+	for i in Rules.CELLS:
+		if tiles[i]:
+			tiles[i].glow = 0.0
+			_place(tiles[i], i / Rules.COLS)
+	_set_clip(false)
 
 
-# 碎紙片：符號的顏色加白、金色
+# 碎片：符號的顏色加白、金色
 func _burst(at: Vector2, color: Color) -> void:
 	var p := CPUParticles2D.new()
 	p.position = at
@@ -337,11 +393,12 @@ func _sparkle(at: Vector2) -> void:
 	p.finished.connect(p.queue_free)
 
 
-func bonus_glow(cells: Array) -> void:
+func scatter_glow(cells: Array) -> void:
 	for i in cells:
 		var t: Control = tiles[i]
 		t.dim = false
 		var tw := create_tween().set_loops(3)
+		_mark_tweens.append(tw)
 		tw.tween_property(t, "glow", 1.0, 0.18)
 		tw.parallel().tween_property(t, "scale", Vector2(1.15, 1.15), 0.18)
 		tw.tween_property(t, "scale", Vector2.ONE, 0.18)

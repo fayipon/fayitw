@@ -11,10 +11,10 @@ config_version=5
 [application]
 
 config/name="自走SLOT"
-config/description="小紅帽主題的手機老虎機：上方紙板人偶自走打怪、中間連鎖消除 SLOT、下方投注區。"
+config/description="暗黑童話風的小紅帽手機老虎機：上方月夜森林裡小紅帽自走斬狼人、中間 1024 路連鎖消除 SLOT（金鑰匙 BONUS 進 Free Spins）、下方投注區。"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-boot_splash/bg_color=Color(0.078, 0.051, 0.035, 1)
+boot_splash/bg_color=Color(0.043, 0.031, 0.035, 1)
 boot_splash/show_image=false
 config/icon="res://icon.svg"
 
@@ -47,4 +47,4 @@ pointing/emulate_mouse_from_touch=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=3
-environment/defaults/default_clear_color=Color(0.078, 0.051, 0.035, 1)
+environment/defaults/default_clear_color=Color(0.043, 0.031, 0.035, 1)
