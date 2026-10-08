@@ -1,6 +1,6 @@
-# 上方自走區（照設計稿的月夜森林）：遠景（月亮、外婆家、霧中小路）固定、霧氣慢慢飄、
-# 近景（大樹、吊燈、前景樹根）一直往左捲；紅葉從上面飄下來。
-# 小紅帽自己往前跑，遇到狼人就停下來擺架式；每一段連鎖的中獎變成一次衝上去的揮砍，狼人倒下時從邊緣燒成灰
+# 上方自走區（照設計稿的月夜森林）：遠景（月亮、亮著燈的村莊、林間小路）固定、霧氣慢慢飄、
+# 近景（左右的大樹、前景地面）一直往左捲；紅葉從上面飄下來。
+# 小紅帽自己往前跑，遇到大野狼就停下來擺架式；每一段連鎖的中獎變成一次衝上去的揮砍，狼倒下時從邊緣燒成灰
 extends Control
 
 const Art := preload("res://scripts/art.gd")
@@ -10,10 +10,16 @@ const Fighter := preload("res://scripts/fighter.gd")
 const TINTS := [Color.WHITE, Color(0.92, 0.84, 1.0), Color(1.0, 0.78, 0.76)]
 # 近景每秒捲動幾倍的區域高度
 const NEAR_SPEED := 0.3
-# 角色身高、腳踩的位置（都以區域高度為準）
-const HERO_H := 0.62
-const WOLF_H := 0.68
+# 角色身高上限、腳踩的位置（都以區域高度為準）
+const HERO_H := 0.6
+const WOLF_H := 0.6
 const GROUND := 0.93
+# 站位與立繪寬度上限（以區域寬度為準）。小紅帽的披風往後飄、大野狼伏低，立繪都比身高寬，
+# 所以身高再用寬度封頂：兩人中間留一段空隙對峙，不會貼在一起，披風和狼尾也不會被左右切掉太多
+const HERO_X := 0.22
+const WOLF_X := 0.78
+const HERO_MAX_W := 0.46
+const WOLF_MAX_W := 0.42
 
 var scroll := 0.0
 var walking := true
@@ -22,6 +28,8 @@ var hero: Node2D
 var enemy: Node2D = null
 var fx: Node2D
 var ground := 0.0
+# 疊在自走區上的標題字（區域座標）：頭上的牌子碰到它就往右讓開
+var avoid := Rect2()
 
 var _far: Texture2D
 var _near: Texture2D
@@ -29,6 +37,10 @@ var _fog: Texture2D
 var _actors: Node2D
 var _leaves: CPUParticles2D
 var _texts: Control
+# 存起來的傷害：小紅帽頭上的「STORED 1,240」小牌子
+var _tag: PanelContainer
+var _tag_num: Label
+var _tag_tw: Tween
 var _rng := RandomNumberGenerator.new()
 var _enemy_k := 1.0
 var _t := 0.0
@@ -74,6 +86,10 @@ func _ready() -> void:
 	_texts.z_index = 12
 	_texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_texts)
+	_tag = _make_tag()
+	_tag.z_index = 12
+	add_child(_tag)
+	hero.aura_color = Color(1.0, 0.72, 0.25)
 	resized.connect(layout)
 
 
@@ -81,12 +97,12 @@ func layout() -> void:
 	if not hero.is_node_ready():
 		await hero.ready
 	ground = size.y * GROUND
-	hero.set_height(size.y * HERO_H)
+	hero.set_height(minf(size.y * HERO_H, size.x * HERO_MAX_W / hero.widest()))
 	if _lunge:
 		_lunge.kill()
 		if hero.pose == "slash":
 			hero.set_pose("run" if walking else "stance")
-	hero.position = Vector2(size.x * 0.22, ground)
+	hero.position = Vector2(size.x * HERO_X, ground)
 	if _enter and _enter.is_running():
 		_enter.custom_step(10.0)
 	if enemy:
@@ -113,6 +129,11 @@ func _process(delta: float) -> void:
 			hero.set_pose("run")
 	elif hero.pose == "run":
 		hero.set_pose("stance")
+	if _tag.visible:
+		_tag.pivot_offset = _tag.size / 2.0
+		_tag.position = Vector2(maxf(6.0, hero.position.x - _tag.size.x / 2.0), hero.position.y - hero.height - _tag.size.y - 6.0)
+		if avoid.intersects(Rect2(_tag.position, _tag.size)):
+			_tag.position.x = avoid.end.x + 6.0
 	queue_redraw()
 
 
@@ -171,12 +192,69 @@ func _make_leaves() -> CPUParticles2D:
 	return p
 
 
+# ---------- 存起來的傷害 ----------
+
+func _make_tag() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := Art.box(Art.PANEL, 10, 2, Art.GOLD_DEEP)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	p.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 6)
+	row.add_child(Art.label("STORED", Art.label_settings(11, Art.GOLD, "light")))
+	_tag_num = Art.label("0", Art.label_settings(17, Art.GOLD_LIGHT, "num", 4, Art.GOLD_INK))
+	row.add_child(_tag_num)
+	p.add_child(row)
+	p.visible = false
+	return p
+
+
+# 沒有狼可以打時傷害先存起來：頭上的牌子更新數字、跳出「+120」、身上的金光跟著變亮（power 0～1）
+func set_charge(amount: int, gained: int, power: float) -> void:
+	# 剛打出去的牌子還在淡掉的話直接停掉
+	if _tag_tw:
+		_tag_tw.kill()
+	_tag.visible = amount > 0
+	_tag.modulate.a = 1.0
+	_tag.scale = Vector2.ONE
+	_tag_num.text = Art.money(amount)
+	create_tween().tween_property(hero, "aura", power if amount > 0 else 0.0, 0.3)
+	if gained <= 0 or amount <= 0:
+		return
+	_tag_tw = create_tween()
+	_tag_tw.tween_property(_tag, "scale", Vector2(1.2, 1.2), 0.08)
+	_tag_tw.tween_property(_tag, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var top := hero.position + Vector2(0, -hero.height - 44.0)
+	float_text("+%s" % Art.money(gained), top, Art.GOLD_LIGHT, 20, Art.GOLD_INK)
+
+
+# 狼站定了：牌子放大淡掉、金光收回，接著小紅帽把存的傷害一刀打出去
+func release_charge() -> void:
+	create_tween().tween_property(hero, "aura", 0.0, 0.4)
+	if not _tag.visible:
+		return
+	if _tag_tw:
+		_tag_tw.kill()
+	_tag_tw = create_tween()
+	_tag_tw.tween_property(_tag, "scale", Vector2(1.35, 1.35), 0.2).set_ease(Tween.EASE_OUT)
+	_tag_tw.parallel().tween_property(_tag, "modulate:a", 0.0, 0.2)
+	_tag_tw.tween_callback(func():
+		_tag.visible = false
+		_tag.scale = Vector2.ONE
+		_tag.modulate.a = 1.0)
+
+
 # ---------- 敵人 ----------
 
-# 狼人從右邊的陰影裡走出來
+# 大野狼從右邊的陰影裡走出來
 func spawn_enemy(kind: String) -> void:
 	enemy = Fighter.new({"idle": Art.tex("res://art/field/wolf.webp")}, "idle")
-	# 狼人的圖本來就面向左
+	# 大野狼的圖本來就面向左
 	enemy.facing = -1.0
 	enemy.flip_source = true
 	_actors.add_child(enemy)
@@ -203,21 +281,21 @@ func spawn_enemy(kind: String) -> void:
 
 
 func _place_enemy() -> void:
-	enemy.set_height(size.y * WOLF_H * _enemy_k)
-	enemy.position = Vector2(size.x * 0.78, ground)
+	enemy.set_height(minf(size.y * WOLF_H, size.x * WOLF_MAX_W / enemy.widest()) * _enemy_k)
+	enemy.position = Vector2(size.x * WOLF_X, ground)
 
 
 func enemy_center() -> Vector2:
 	if not enemy:
-		return Vector2(size.x * 0.78, ground - size.y * 0.35)
-	return enemy.position + Vector2(0, -enemy.height * 0.55)
+		return Vector2(size.x * WOLF_X, ground - size.y * 0.35)
+	return enemy.position + Vector2(0, -enemy.height * 0.5)
 
 
 # 小紅帽衝上去揮砍：中獎越多砍越多刀
 func strike(count: int) -> void:
 	if not enemy:
 		return
-	var home := size.x * 0.22
+	var home := size.x * HERO_X
 	var reach := lerpf(home, enemy.position.x - enemy.height * 0.3, 0.62)
 	# 上一刀還在退回來的話直接接著衝
 	if _lunge:

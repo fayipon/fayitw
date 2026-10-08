@@ -1,66 +1,105 @@
 {
-  "g-symbols": {
-    "imageId": "e4120e07-d232-42a2-8773-6f01c218d840",
-    "file": "g-symbols.jpg",
-    "generationId": "1f1c3106-41e5-6ac0-a54a-d6c7de098f08"
+  "r-ref": {
+    "imageId": "5843d095-6088-4743-9521-43cbf94fddc5",
+    "type": "UPLOADED",
+    "file": "r-ref.jpg"
   },
-  "g-ui": {
-    "imageId": "2dc7e37f-91ad-42f1-a595-e6a40d6664ce",
-    "file": "g-ui.jpg",
-    "generationId": "1f1c3107-f562-60c0-ac89-1d8e34b96f6a"
+  "r-ui": {
+    "imageId": "57ce80da-81e1-4d04-a57e-58cfcbcec0bc",
+    "file": "r-ui.jpg",
+    "generationId": "1f1c36a9-9ea6-60e0-9e7c-b0ac291283ee"
   },
-  "g-royals": {
-    "imageId": "e500d146-0ba6-4a08-997a-d6a25e3a2f48",
-    "file": "g-royals.jpg",
-    "generationId": "1f1c3107-f5be-6d20-a926-7dbe738512fd"
+  "r-scene": {
+    "imageId": "e96b4f5c-9880-47c9-a393-388253f8e63c",
+    "file": "r-scene.jpg",
+    "generationId": "1f1c36a9-9d30-6850-bbcd-b6302132ba3d"
   },
-  "g-floor": {
-    "imageId": "d2083be7-d3ed-4fb1-aa81-4a379443ef10",
-    "file": "g-floor.jpg",
-    "generationId": "1f1c3107-f54c-6130-a6d6-7c9ae166681c"
+  "r-wolf": {
+    "imageId": "0fd4f229-2e6c-4362-a430-defc1edbd741",
+    "file": "r-wolf.jpg",
+    "generationId": "1f1c36a9-a167-69f0-b4e8-ab63730a4ae0",
+    "cut": "r-wolf-cut.png"
   },
-  "g-frame2": {
-    "imageId": "435c51ba-f0dd-427a-b9d7-777ff8c3ebe4",
-    "file": "g-frame2.jpg",
-    "generationId": "1f1c313b-66f7-69f0-be6d-d690071960ff"
+  "r-far": {
+    "imageId": "17f8d032-c0d4-420d-ba5d-52b187eb8385",
+    "file": "r-far.jpg",
+    "generationId": "1f1c36bc-725d-6b60-a4ce-b5c70aec6e00"
   },
-  "n-wolf": {
-    "imageId": "d5de70f1-949d-482b-960e-d72d8ef439a9",
-    "file": "n-wolf.jpg",
-    "generationId": "1f1c3165-912b-60d0-9fa7-23dca6968c87",
-    "cut": "n-wolf-cut.png"
+  "r-frame": {
+    "imageId": "c0d24eea-f5a2-4af9-907d-5aa941228900",
+    "file": "r-frame.jpg",
+    "generationId": "1f1c36bd-55d8-6930-b61f-09259095d2ed"
   },
-  "n-hero-run": {
-    "imageId": "caa9942a-0fd7-4c04-aacb-3364427e5ba4",
-    "file": "n-hero-run.jpg",
-    "generationId": "1f1c3165-8e73-6400-a1ab-7cb18f5af8ac",
-    "cut": "n-hero-run-cut.png"
+  "r-logo": {
+    "imageId": "64207b88-4af4-434d-ad9d-01563dc1e621",
+    "file": "r-logo.jpg",
+    "generationId": "1f1c36bd-7281-6000-a423-97cdfb0246fb",
+    "cut": "r-logo-cut.png"
   },
-  "n-scene": {
-    "imageId": "cb018e66-b2f7-49f2-8896-395860f4d8c1",
-    "file": "n-scene.jpg",
-    "generationId": "1f1c3165-8cea-62f0-b41a-893302a0c1af"
+  "r-icons": {
+    "imageId": "c9c1e363-51c3-4b34-8693-3458fd350075",
+    "file": "r-icons.jpg",
+    "generationId": "1f1c36bd-6bbe-60b0-892e-1d34d7dc3a46"
   },
-  "n-near": {
-    "imageId": "978aec45-365c-4a57-aa92-20af36bd53eb",
-    "file": "n-near.jpg",
-    "generationId": "1f1c3166-7758-6d50-a054-64329b8389cd"
+  "r-ref-hero": {
+    "imageId": "d287c5cc-15bb-4350-8482-a50bad3bc2d4",
+    "type": "UPLOADED",
+    "file": "r-ref-hero.jpg"
   },
-  "n-far": {
-    "imageId": "96eeaba0-8ab7-4534-b185-131578ecdb57",
-    "file": "n-far.jpg",
-    "generationId": "1f1c3166-789d-68a0-b2f6-a50132affa4b"
+  "r-hero-stance": {
+    "imageId": "5d505299-4e8c-4f61-aa0d-4810a2b1c9ba",
+    "file": "r-hero-stance.jpg",
+    "generationId": "1f1c36c0-e615-64a0-ac63-859cedf2c418",
+    "cut": "r-hero-stance-cut.png"
   },
-  "n-hero-stance": {
-    "imageId": "8380472c-85ed-4dff-98d0-9c45ca599024",
-    "file": "n-hero-stance.jpg",
-    "generationId": "1f1c3166-942f-6a50-88f5-a2b976110dce",
-    "cut": "n-hero-stance-cut.png"
+  "r-hero-slash": {
+    "imageId": "d05d0c80-5a2b-4016-8df8-1f261d61f661",
+    "file": "r-hero-slash.jpg",
+    "generationId": "1f1c36c5-6dff-6c40-b5a9-c39e275da3f0",
+    "cut": "r-hero-slash-cut.png"
   },
-  "n-hero-slash": {
-    "imageId": "099e82ee-6cd6-4563-9316-2a3003492388",
-    "file": "n-hero-slash.jpg",
-    "generationId": "1f1c3166-9f7f-6270-bd14-370d2a8f94f2",
-    "cut": "n-hero-slash-cut.png"
+  "r-symbols": {
+    "imageId": "91405afb-6265-4135-89d0-b56f8e4d9d13",
+    "file": "r-symbols.jpg",
+    "generationId": "1f1c36c5-6ead-61b0-a135-5398630e4b51"
+  },
+  "r-royals": {
+    "imageId": "3421a26c-1948-47a8-b552-f9f2bd3eef8b",
+    "file": "r-royals.jpg",
+    "generationId": "1f1c36c6-4ecf-6090-9529-a8f886184f51"
+  },
+  "r-near": {
+    "imageId": "60d1af1a-3d59-4b77-a0ec-f561467e9236",
+    "file": "r-near.jpg",
+    "generationId": "1f1c36cb-079e-69a0-870b-1a79ed02e0e2"
+  },
+  "r-hero-run": {
+    "imageId": "67a8f08c-556f-477e-8603-e3cc46331095",
+    "file": "r-hero-run.jpg",
+    "generationId": "1f1c36cb-076d-6c60-8964-2cd0af32ccd2",
+    "cut": "r-hero-run-cut.png"
+  },
+  "r-floor": {
+    "imageId": "a7389498-1486-4128-a974-1940c4a806bd",
+    "file": "r-floor.jpg",
+    "generationId": "1f1c36cb-07d9-6320-97a0-a576446b82b8"
+  },
+  "r-title-big": {
+    "imageId": "cb3e9d0f-66c0-485c-a380-784603753baa",
+    "file": "r-title-big.jpg",
+    "generationId": "1f1c371e-3c05-66f0-a5dd-448e663897b2",
+    "cut": "r-title-big-cut.png"
+  },
+  "r-title-mega": {
+    "imageId": "3be6afc7-b72c-40c0-8f4b-06713f20849e",
+    "file": "r-title-mega.jpg",
+    "generationId": "1f1c371f-1054-6050-9028-16f390ea4559",
+    "cut": "r-title-mega-cut.png"
+  },
+  "r-title-super": {
+    "imageId": "c33c14f8-3f7f-44fd-b77c-ddf52ece7e0f",
+    "file": "r-title-super.jpg",
+    "generationId": "1f1c371f-de5e-69a0-8788-99f7640c8893",
+    "cut": "r-title-super-cut.png"
   }
 }

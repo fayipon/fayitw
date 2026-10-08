@@ -7,7 +7,7 @@
 .as-page { --gold: #ffd25a; }
 
 .as-main { display: grid; }
-.as-game { height: calc(100vh - 64px); height: calc(100dvh - 64px); min-height: 520px; background: #140d09; }
+.as-game { height: calc(100vh - 64px); height: calc(100dvh - 64px); min-height: 520px; background: #070a12; }
 .as-game iframe { display: block; width: 100%; height: 100%; border: 0; }
 
 .as-about { padding: 36px var(--pad) 56px; }
@@ -35,6 +35,6 @@
     overflow: hidden;
     border: 1px solid rgba(255, 210, 90, .22);
     border-radius: 30px;
-    box-shadow: 0 40px 90px -40px #000, 0 0 0 8px #0b0705, 0 0 0 9px rgba(255, 255, 255, .06);
+    box-shadow: 0 40px 90px -40px #000, 0 0 0 8px #070a12, 0 0 0 9px rgba(255, 255, 255, .06);
   }
 }

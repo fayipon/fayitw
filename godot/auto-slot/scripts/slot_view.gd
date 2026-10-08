@@ -1,4 +1,4 @@
-# 中間的 SLOT：5 軸 × 4 列，外面套一圈荊棘木框（art/ui/frame.webp，開口位置記在 ui.json）。
+# 中間的 SLOT：5 軸 × 4 列，外面套一圈細木框（art/ui/frame.webp，開口位置與木框厚度記在 ui.json）。
 # 轉輪往下捲、逐軸停輪回彈；中獎格子發光，其餘變暗；
 # 連鎖時中獎格子爆開、金框翻成 WILD、上面的往下掉、空位從上方補新符號
 extends Control
@@ -11,6 +11,8 @@ const Tile := preload("res://scripts/symbol_tile.gd")
 
 const GAP := 4.0
 const PAD := 6.0
+# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的金飾才不會被拉長
+const CORNER := 70.0
 
 var cell := Vector2(70, 73)
 var turbo := false
@@ -22,11 +24,10 @@ var _strips: Array[Control] = []
 var _spinning: Array[Tween] = []
 var _fx: Node2D
 var _rng := RandomNumberGenerator.new()
-# 外框畫在哪裡（本地座標，會超出 size）：top／bottom 兩段照比例，中段直向拉長補足 4 列的高度
+# 外框畫在哪裡（本地座標，會超出 size）與木框外緣
 var frame_rect := Rect2()
-# 木框外緣（不含伸出去的藤蔓）與頂端紅寶石的位置
 var wood_rect := Rect2()
-var gem_point := Vector2.ZERO
+# 外框原圖縮放到畫面上的比例（木框厚度 = 原圖厚度 × 這個比例）
 var _frame_scale := 1.0
 # 中獎格子的閃光補間：下一段連鎖開始或清除標記時要停掉，不然新的 WILD 會一直亮著
 var _mark_tweens: Array[Tween] = []
@@ -50,8 +51,8 @@ func _ready() -> void:
 	add_child(_fx)
 
 
-# 依寬度排版（轉輪區、不含外框），回傳高度；外框的位置在 frame_rect
-func layout(width: float) -> float:
+# 依寬度排版（轉輪區、不含外框），回傳高度；border 是畫面上木框的厚度，外框的位置在 frame_rect
+func layout(width: float, border: float) -> float:
 	cell.x = floorf((width - PAD * 2.0 - GAP * (Rules.COLS - 1)) / Rules.COLS)
 	cell.y = roundf(cell.x * 1.04)
 	var reel_h := Rules.ROWS * cell.y + (Rules.ROWS - 1) * GAP
@@ -65,13 +66,12 @@ func layout(width: float) -> float:
 			_place(tiles[i], i / Rules.COLS)
 	size = Vector2(width, reel_h + PAD * 2.0)
 	var meta: Dictionary = Art.ui_meta().frame
-	var inner := Rect2(meta.inner[0], meta.inner[1], meta.inner[2] - meta.inner[0], meta.inner[3] - meta.inner[1])
-	_frame_scale = size.x / inner.size.x
+	_frame_scale = border / float(meta.wood)
 	var s := _frame_scale
-	frame_rect = Rect2(-inner.position.x * s, -inner.position.y * s, meta.size[0] * s,
-		size.y + (inner.position.y + meta.size[1] - inner.end.y) * s)
-	wood_rect = Rect2(Vector2.ZERO, size).grow(meta.wood * s)
-	gem_point = frame_rect.position + Vector2(meta.gem[0], meta.gem[1]) * s
+	frame_rect = Rect2(-meta.inner[0] * s, -meta.inner[1] * s,
+		size.x + (meta.inner[0] + meta.size[0] - meta.inner[2]) * s,
+		size.y + (meta.inner[1] + meta.size[1] - meta.inner[3]) * s)
+	wood_rect = Rect2(Vector2.ZERO, size).grow(border)
 	queue_redraw()
 	return size.y
 
@@ -112,23 +112,25 @@ func tile_center(i: int) -> Vector2:
 
 # ---------- 外框 ----------
 
-# 外框分三段畫：上段（含頂端花飾）與下段照比例縮放，中段直向拉長，花紋只在側邊的直藤上變長一點
+# 外框用九宮格畫：四角（含金飾）照 _frame_scale 等比縮放，四邊的木頭拉長；中間開口畫深色底
 func _draw() -> void:
 	var tex := Art.ui("frame")
 	var meta: Dictionary = Art.ui_meta().frame
 	var w: float = meta.size[0]
 	var h: float = meta.size[1]
-	var band := 110.0
-	var top_src := Rect2(0, 0, w, meta.inner[1] + band)
-	var bot_src := Rect2(0, meta.inner[3] - band, w, h - meta.inner[3] + band)
-	var mid_src := Rect2(0, top_src.end.y, w, bot_src.position.y - top_src.end.y)
+	var us := [0.0, meta.inner[0] + CORNER, meta.inner[2] - CORNER, w]
+	var vs := [0.0, meta.inner[1] + CORNER, meta.inner[3] - CORNER, h]
 	var s := _frame_scale
-	var top := Rect2(frame_rect.position, top_src.size * s)
-	var bot := Rect2(Vector2(frame_rect.position.x, frame_rect.end.y - bot_src.size.y * s), bot_src.size * s)
-	var mid := Rect2(Vector2(frame_rect.position.x, top.end.y), Vector2(frame_rect.size.x, bot.position.y - top.end.y))
-	draw_texture_rect_region(tex, top, top_src)
-	draw_texture_rect_region(tex, mid, mid_src)
-	draw_texture_rect_region(tex, bot, bot_src)
+	var o := frame_rect
+	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
+	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
+	draw_rect(Rect2(Vector2.ZERO, size), Color("05070c"))
+	for i in 3:
+		for j in 3:
+			if i == 1 and j == 1:
+				continue
+			draw_texture_rect_region(tex, Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j]),
+				Rect2(us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j]))
 	for c in Rules.COLS:
 		if tease[c]:
 			var rr := Rect2(_reels[c].position, _reels[c].size).grow(3)
@@ -141,7 +143,7 @@ func _draw() -> void:
 
 # ---------- 轉輪 ----------
 
-# 轉到指定盤面；前面已經停了兩個 BONUS 時後面的軸轉久一點、亮框
+# 轉到指定盤面；前面已經停了兩個 SCATTER 時後面的軸轉久一點、亮框
 func spin(board: Array) -> void:
 	_spinning.clear()
 	_stop_marks()

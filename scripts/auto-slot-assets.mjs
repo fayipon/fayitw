@@ -1,10 +1,10 @@
 // 自走SLOT：把 assets-src/auto-slot/ 的 Leonardo 原檔轉成 Godot 專案與網頁用的圖
 // node scripts/auto-slot-assets.mjs（需要先 npm install，用到 sharp；轉輪符號與介面零件由 python scripts/auto-slot-gothic.py 產生）
 // - 自走區（照設計稿的月夜森林）：
-//   遠景 n-far（月亮、松林、外婆家、霧中小路）不捲動 → godot/auto-slot/art/field/far.webp
-//   近景 n-near（左右的大樹、吊燈、前景地面）：洋紅底挖空，沿著頭尾最像的路線接成可以無限往左捲的長條 → art/field/near.webp
-// - 角色（已去背）：小紅帽跑步、架式、揮砍，狼人 → art/field/<名稱>.webp
-// - 網頁 loading 畫面的背景與兩個角色 → assets/auto-slot/loading-*.webp
+//   遠景 r-far（月亮、松林、亮著燈的村莊、林間小路）不捲動 → godot/auto-slot/art/field/far.webp
+//   近景 r-near（左右的大樹、前景地面）：洋紅底挖空，沿著頭尾最像的路線接成可以無限往左捲的長條 → art/field/near.webp
+// - 角色（已去背）：小紅帽跑步、架式、揮砍，大野狼 → art/field/<名稱>.webp
+// - 網頁 loading 畫面的背景、標題字與兩個角色 → assets/auto-slot/loading-*.webp
 // - 首頁卡片封面 → assets/posters/auto-slot.webp
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
@@ -53,12 +53,12 @@ function seamLoop(px, W, H, OV, F = 10) {
 }
 
 /* ---------- 自走區：遠景與近景 ---------- */
-await sharp(`${src}/n-far.jpg`).webp({ quality: 80 }).toFile(`${art}/field/far.webp`);
+await sharp(`${src}/r-far.jpg`).webp({ quality: 80 }).toFile(`${art}/field/far.webp`);
 
-// 近景：洋紅程度 m = min(R, B) - G。生成時遠方的松林與小屋也被染成半透明的洋紅，
-// 所以門檻壓得比較低：一沾到洋紅就整個挖掉，只留沒被染色的大樹、吊燈與前景地面；邊緣再扣掉混進來的洋紅
+// 近景：洋紅程度 m = min(R, B) - G。門檻壓得比較低：一沾到洋紅就整個挖掉，
+// 只留沒被染色的大樹與前景地面；邊緣再扣掉混進來的洋紅
 {
-  const raw = await sharp(`${src}/n-near.jpg`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const raw = await sharp(`${src}/r-near.jpg`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const px = raw.data, LO = 14, HI = 56;
   for (let i = 0; i < px.length; i += 4) {
     const m = Math.min(px[i], px[i + 2]) - px[i + 1];
@@ -76,37 +76,34 @@ await sharp(`${src}/n-far.jpg`).webp({ quality: 80 }).toFile(`${art}/field/far.w
 
 /* ---------- 角色：切掉透明邊、統一高度 ---------- */
 const trimmed = async (name, height) => sharp(await sharp(`${src}/${name}-cut.png`).trim({ threshold: 1 }).png().toBuffer()).resize({ height });
-for (const [name, out] of [['n-hero-run', 'hero-run'], ['n-hero-stance', 'hero-stance'], ['n-hero-slash', 'hero-slash'], ['n-wolf', 'wolf']]) {
+for (const [name, out] of [['r-hero-run', 'hero-run'], ['r-hero-stance', 'hero-stance'], ['r-hero-slash', 'hero-slash'], ['r-wolf', 'wolf']]) {
   await (await trimmed(name, 720)).webp({ quality: 86, alphaQuality: 92 }).toFile(`${art}/field/${out}.webp`);
 }
 
 /* ---------- 網頁 loading 畫面 ---------- */
-await sharp(`${src}/n-scene.jpg`).resize({ height: 640 }).webp({ quality: 76 }).toFile(`${web}/loading-bg.webp`);
-await (await trimmed('n-hero-stance', 520)).webp({ quality: 82 }).toFile(`${web}/loading-hero.webp`);
-await (await trimmed('n-wolf', 540)).webp({ quality: 82 }).toFile(`${web}/loading-wolf.webp`);
+await sharp(`${src}/r-scene.jpg`).resize({ height: 640 }).webp({ quality: 76 }).toFile(`${web}/loading-bg.webp`);
+await (await trimmed('r-hero-stance', 520)).webp({ quality: 82 }).toFile(`${web}/loading-hero.webp`);
+await (await trimmed('r-wolf', 440)).webp({ quality: 82 }).toFile(`${web}/loading-wolf.webp`);
+await (await trimmed('r-logo', 420)).webp({ quality: 86, alphaQuality: 92 }).toFile(`${web}/loading-logo.webp`);
 
-/* ---------- 首頁卡片封面（assets/posters/auto-slot.webp）：月夜森林、小紅帽與狼人對峙、標題 ---------- */
+/* ---------- 首頁卡片封面（assets/posters/auto-slot.webp）：月夜森林、小紅帽與大野狼對峙、標題字 ---------- */
 {
   const W = 1280, H = 720;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-    <defs>
-      <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset=".5" stop-color="#0b0809" stop-opacity="0"/><stop offset="1" stop-color="#0b0809" stop-opacity=".9"/></linearGradient>
-      <linearGradient id="title" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".55" stop-color="#f2c96b"/><stop offset="1" stop-color="#a8761f"/></linearGradient>
-    </defs>
+    <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#070a12" stop-opacity="0"/><stop offset="1" stop-color="#070a12" stop-opacity=".85"/></linearGradient></defs>
     <rect width="${W}" height="${H}" fill="url(#fade)"/>
-    <text x="${W / 2}" y="640" text-anchor="middle" font-family="Cinzel, Trajan Pro, Times New Roman, serif" font-weight="900" font-size="96" letter-spacing="6" fill="url(#title)" stroke="#2a1806" stroke-width="6" paint-order="stroke">AUTO-RUN SLOT</text>
-    <text x="${W / 2}" y="690" text-anchor="middle" font-family="Cinzel, Times New Roman, serif" font-weight="700" font-size="26" letter-spacing="8" fill="#f1e4c6">LITTLE RED RIDING HOOD</text>
   </svg>`;
-  const hero = await (await trimmed('n-hero-stance', 470)).png().toBuffer();
-  const wolf = await (await trimmed('n-wolf', 500)).png().toBuffer();
-  const heroMeta = await sharp(hero).metadata();
-  const wolfMeta = await sharp(wolf).metadata();
+  const hero = await (await trimmed('r-hero-stance', 440)).png().toBuffer();
+  const wolf = await (await trimmed('r-wolf', 400)).png().toBuffer();
+  const logo = await (await trimmed('r-logo', 300)).png().toBuffer();
+  const [heroMeta, wolfMeta, logoMeta] = await Promise.all([hero, wolf, logo].map(b => sharp(b).metadata()));
   // sharp 在同一條管線裡會先縮放再疊圖，所以分兩步
-  const bg = await sharp(`${src}/n-scene.jpg`).resize(W, H, { fit: 'cover' }).modulate({ brightness: 0.8 }).toBuffer();
+  const bg = await sharp(`${src}/r-scene.jpg`).resize(W, H, { fit: 'cover' }).modulate({ brightness: 0.85 }).toBuffer();
   const poster = await sharp(bg).composite([
-    { input: hero, left: 150, top: 560 - heroMeta.height },
-    { input: wolf, left: W - 150 - wolfMeta.width, top: 560 - wolfMeta.height },
     { input: Buffer.from(svg), left: 0, top: 0 },
+    { input: hero, left: 110, top: 680 - heroMeta.height },
+    { input: wolf, left: W - 90 - wolfMeta.width, top: 680 - wolfMeta.height },
+    { input: logo, left: Math.round((W - logoMeta.width) / 2), top: 40 },
   ]).png().toBuffer();
   await sharp(poster).resize(640, 360).webp({ quality: 84 }).toFile('assets/posters/auto-slot.webp');
 }

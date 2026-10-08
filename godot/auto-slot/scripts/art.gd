@@ -1,19 +1,19 @@
 # 圖片與字型的集中載入（第一次用到才載，之後從快取拿）與共用色票
 extends RefCounted
 
-# 暗黑哥德版色票：古金、骨白、深紅、夜黑
+# 色票（照設計稿）：古金、骨白、深紅、深夜藍
 const GOLD := Color("f2c96b")
 const GOLD_LIGHT := Color("ffe9a8")
 const GOLD_DEEP := Color("a8761f")
 const GOLD_INK := Color("2a1806")
 const CREAM := Color("f1e4c6")
-const MUTED := Color("a8967a")
-const PANEL := Color(0.055, 0.045, 0.05, 0.9)
-const PANEL_EDGE := Color("6e5428")
+const MUTED := Color("9aa3b5")
+const PANEL := Color(0.05, 0.07, 0.11, 0.92)
+const PANEL_EDGE := Color("8a6a2e")
 const RED := Color("c4161c")
 const BLOOD := Color("6e0c10")
 const GREEN := Color("3f9a2f")
-const INK := Color("0b0809")
+const INK := Color("070a12")
 
 # 連鎖爆開的碎片顏色：跟著符號
 const SYMBOL_COLORS := {
@@ -36,12 +36,12 @@ static func symbol(id: String) -> Texture2D:
 	return tex("res://art/tiles/%s.webp" % id)
 
 
-# 介面零件：spin-ring、ring、crest、coin、plate、frame、floor
+# 介面零件：spin、ring、buy、panel、wallet、coins、win、coin、logo、frame、floor
 static func ui(name: String) -> Texture2D:
 	return tex("res://art/ui/%s.webp" % name)
 
 
-# 零件的尺寸與量測值（轉輪外框的開口、轉動鍵的圓心）
+# 零件的尺寸與量測值（轉輪外框的開口與木框厚度）
 static func ui_meta() -> Dictionary:
 	if not _cache.has("ui.json"):
 		_cache["ui.json"] = JSON.parse_string(FileAccess.get_file_as_string("res://art/ui/ui.json"))
@@ -94,6 +94,20 @@ static func label(text: String, settings: LabelSettings, align := HORIZONTAL_ALI
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
+
+
+# 金額（分）→「1,234.56」；小數點後多餘的 0 不寫（0.2、1、1.5）
+static func money(cents: float) -> String:
+	var c := roundi(cents)
+	var sign := "-" if c < 0 else ""
+	c = absi(c)
+	var out := sign + fmt(c / 100)
+	var frac := c % 100
+	if frac == 0:
+		return out
+	if frac % 10 == 0:
+		return out + ".%d" % (frac / 10)
+	return out + ".%02d" % frac
 
 
 static func fmt(n: float) -> String:

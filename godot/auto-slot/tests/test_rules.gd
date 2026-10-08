@@ -3,6 +3,7 @@
 extends SceneTree
 
 const Rules := preload("res://scripts/rules.gd")
+const Art := preload("res://scripts/art.gd")
 
 var failures := 0
 var checks := 0
@@ -19,6 +20,7 @@ func _init() -> void:
 	test_rtp_and_multipliers()
 	test_enemies()
 	test_xp()
+	test_money()
 	print("%d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
@@ -56,10 +58,13 @@ func test_symbol_set() -> void:
 		else:
 			var p: Array = Rules.SYMBOLS[id].pays
 			check(p[0] > 0 and p[1] > p[0] and p[2] > p[1], "%s pays grow with length" % id)
-			for bet in Rules.BET_LEVELS:
-				for v in p:
-					check(v * bet % Rules.PAY_DIV == 0, "%s pays whole coins at bet %d" % [id, bet])
 	check(wild == 1 and scatter == 1, "one wild and one bonus")
+	var levels: Array = Rules.BET_LEVELS
+	var sorted := levels.duplicate()
+	sorted.sort()
+	check(levels == sorted and levels[0] == 5, "bet per line goes up from 0.05")
+	check(Rules.total_bet(levels[0]) == 100, "lowest total bet is 1.00 (0.05 × 20 lines)")
+	check(Rules.DEFAULT_BET >= 0 and Rules.DEFAULT_BET < levels.size(), "default bet is a valid level")
 
 
 func test_ways() -> void:
@@ -70,6 +75,9 @@ func test_ways() -> void:
 	check(top.ways == 2 * 1 * 3, "ways multiply cells per reel")
 	check(top.amount == Rules.SYMBOLS.wolf.pays[0] * 6, "at bet 20 a way pays the paytable number")
 	check(Rules.pay("wolf", 5, 4) == 80, "pay scales with the bet")
+	check(is_equal_approx(Rules.pay("king", 3, 1), 1.25), "a way can pay a fraction of a cent at low bets")
+	var low := Rules.evaluate(board, 1)
+	check(low.raw == Rules.SYMBOLS.wolf.pays[0] * 6 and low.total == roundi(low.raw / 20.0), "the board total is rounded to the cent once")
 
 
 func test_wild_needs_first_reel() -> void:
@@ -113,7 +121,7 @@ func test_cascade_gold_turns_wild_and_drops() -> void:
 	for k in res.steps.size():
 		check(res.steps[k].mult == Rules.MULTIPLIERS[mini(k, Rules.MULTIPLIERS.size() - 1)], "multiplier ladder")
 	var free := Rules.resolve(start, rng, 4, Rules.FS_MULTIPLIERS)
-	check(free.steps[0].mult == Rules.FS_MULTIPLIERS[0] and free.steps[0].win == free.steps[0].base * Rules.FS_MULTIPLIERS[0], "free spins use the doubled ladder")
+	check(free.steps[0].mult == Rules.FS_MULTIPLIERS[0] and free.steps[0].win == roundi(free.steps[0].raw * Rules.FS_MULTIPLIERS[0] / 20.0), "free spins use the doubled ladder")
 
 
 # 每一張盤面（開轉時與每段連鎖補完之後）都要守規矩：每軸最多一把金鑰匙、外側兩軸沒有 WILD 與金框、金框只在一般符號
@@ -169,18 +177,16 @@ func test_long_cascade_ladder() -> void:
 			var st: Dictionary = found.steps[k]
 			if k < 5:
 				got.append(st.mult)
-			check(st.win == st.base * st.mult, "step win = base × multiplier")
+			check(st.win == roundi(st.raw * st.mult / 20.0), "step win = base × multiplier, rounded to the cent")
 			sum += st.win
 		check(got == want, "multiplier ladder %s (free=%s), got %s" % [want, free, got])
 		check(sum == found.total, "total equals the sum of the steps")
 
 
-func test_rtp_and_multipliers() -> void:
+# 回傳 [主遊戲贏分, Free Spins 贏分（含 SCATTER 獎金）, 觸發次數, 免費轉次數]；盤面只跟亂數有關、跟押注無關
+func simulate(bet: int, n: int, seed: int) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 2024
-	var n := 30000
-	var bet := 20
-	var tb := Rules.total_bet(bet)
+	rng.seed = seed
 	var base := 0
 	var free := 0
 	var triggers := 0
@@ -201,12 +207,29 @@ func test_rtp_and_multipliers() -> void:
 			if fs.triggered:
 				free += Rules.scatter_pay(fs.scatter.size(), bet)
 				left += Rules.free_spins(fs.scatter.size())
-	var base_rtp := float(base) / (n * tb)
-	var free_rtp := float(free) / (n * tb)
-	print("base RTP %.3f, free spins RTP %.3f, free spins every %.0f spins (%.1f spins each)" % [base_rtp, free_rtp, float(n) / maxi(triggers, 1), float(spins) / maxi(triggers, 1)])
+	return [base, free, triggers, spins]
+
+
+func test_rtp_and_multipliers() -> void:
+	var n := 30000
+	var bet := 20
+	var tb := Rules.total_bet(bet)
+	var r := simulate(bet, n, 2024)
+	var base_rtp := float(r[0]) / (n * tb)
+	var free_rtp := float(r[1]) / (n * tb)
+	var triggers: int = r[2]
+	print("base RTP %.3f, free spins RTP %.3f, free spins every %.0f spins (%.1f spins each)" % [base_rtp, free_rtp, float(n) / maxi(triggers, 1), float(r[3]) / maxi(triggers, 1)])
 	check(base_rtp > 0.64 and base_rtp < 0.8, "base game return %.3f" % base_rtp)
 	check(free_rtp > 0.06 and free_rtp < 0.18, "free spins return %.3f" % free_rtp)
 	check(triggers > 0 and float(n) / triggers > 70 and float(n) / triggers < 180, "free spins frequency")
+	# 最低押注（每線 0.05）有不到 1 分的零頭要四捨五入：同樣的盤面，回收率要跟上面差不到 1%
+	var m := 10000
+	var hi := simulate(bet, m, 7)
+	var lo := simulate(Rules.BET_LEVELS[0], m, 7)
+	var hi_rtp := float(hi[0] + hi[1]) / (m * tb)
+	var lo_rtp := float(lo[0] + lo[1]) / (m * Rules.total_bet(Rules.BET_LEVELS[0]))
+	print("same boards: RTP %.4f at 0.20 per line, %.4f at 0.05 per line" % [hi_rtp, lo_rtp])
+	check(absf(hi_rtp - lo_rtp) < 0.01, "the lowest bet returns the same as higher bets (%.4f vs %.4f)" % [lo_rtp, hi_rtp])
 
 
 func test_enemies() -> void:
@@ -225,3 +248,9 @@ func test_xp() -> void:
 	var hero := {"level": 1, "xp": 0}
 	check(Rules.gain_xp(hero, Rules.xp_to_next(1) + 1) == 1, "one level up")
 	check(hero.level == 2 and hero.xp == 1, "experience carries over")
+
+
+func test_money() -> void:
+	var cases := {20: "0.2", 40: "0.4", 100: "1", 150: "1.5", 125: "1.25", 5: "0.05", 200000: "2,000", 123456: "1,234.56", 0: "0"}
+	for cents in cases:
+		check(Art.money(cents) == cases[cents], "money %d shows %s (got %s)" % [cents, cases[cents], Art.money(cents)])

@@ -1,6 +1,7 @@
-// 自走SLOT：用 Leonardo 生成暗黑童話風的小紅帽美術（Nano Banana Pro），需要去背的再走 remove-bg
+// 自走SLOT：用 Leonardo 生成小紅帽美術（Nano Banana Pro），需要去背的再走 remove-bg
 // node scripts/auto-slot-leonardo.mjs [只跑這些名稱...]（原檔存到 assets-src/auto-slot/）
 // 已經生成過的（index.json 裡有）會跳過；key 從環境變數 LEONARDO_API_KEY 讀，不會印出來
+// 風格照設計稿 r-ref.jpg（PG Soft 風的動漫小紅帽）：先上傳成參考圖，其他圖都帶它當風格參考
 // 生成完再跑 python scripts/auto-slot-gothic.py 與 node scripts/auto-slot-assets.mjs 轉成遊戲與網頁用的檔案
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
@@ -22,65 +23,93 @@ const api = async (method, path, body) => {
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const GOTHIC = 'Dark gothic fairy-tale mobile slot game art, Little Red Riding Hood theme, moonlit night forest mood, highly detailed semi-realistic digital painting, dramatic rim lighting, deep shadows, rich crimson red, antique gold and cold moonlight blue accents, premium AAA slot game quality, no letters or words unless asked, no watermark.';
+const STYLE = 'Premium mobile slot game art matching the art style of the reference image (PG Soft quality): polished anime-inspired 2.5D digital painting, Little Red Riding Hood fairy tale, moonlit deep-blue night forest, warm amber lantern glow, rich crimson red and antique gold accents, crisp clean shapes, soft glossy highlights, high detail, no watermark, no letters or words unless asked.';
+const ISOLATED = 'Isolated on a plain flat light-grey background, the entire figure visible with empty space around it, no ground, no cast shadow, no scenery, no other objects.';
+const HERO = 'Little Red Riding Hood with a short brown bob, a large flowing crimson hooded cape, white blouse, brown leather bracers and gloves, leather belts and pouches, white skirt with a crimson underskirt, brown laced leather boots, holding a long silver sword, painterly anime rendering with dramatic warm and cold rim lighting';
 
-// refs = [名稱, 強度]；cut = 生成後去背
+// upload = 上傳本機的設計稿當參考圖；refs = [名稱, 強度]；cut = 生成後去背
 const JOBS = [
-  // 暗黑哥德風介面（2026-10 換版）：方形滿版符號磚、刻字牌面、按鈕與裝飾零件、轉輪外框、森林地面背景
+  // 設計稿（2026-10 第三版，PG Soft 風）
+  { name: 'r-ref', upload: 'r-ref.jpg' },
+  // 設計稿裡的小紅帽（裁出來當長相參考）
+  { name: 'r-ref-hero', upload: 'r-ref-hero.jpg' },
+  // 自走區：月夜森林（遠景固定、近景捲動）、拿劍的小紅帽（架式、跑、揮砍）、伏低的大野狼
+  // 小紅帽試畫過三個方向（照設計稿／成熟寫實／精緻 Q 版），選了照設計稿：架式先畫，跑步與揮砍都照架式這張
   {
-    name: 'g-symbols', w: 1376, h: 768, refs: [],
-    prompt: `${GOTHIC} A sprite sheet of eight separate square slot-game symbol tiles arranged in a neat grid of exactly 4 columns and 2 rows on a plain flat solid white background, with wide white gaps between the tiles. Every tile is a perfect square with sharp straight edges, completely filled edge to edge with its own painted dark background and a thin dark iron border; tiles never touch or overlap. Row 1, left to right: 1) the head of a huge black wolf with glowing red eyes and bared fangs facing the viewer, dark misty blue forest background; 2) a black raven with a red eye perched on a thorny branch, cold blue moonlit background; 3) an old black iron lantern with a warm glowing candle flame, dark background lit by its warm glow; 4) a heart-shaped glass potion bottle filled with glowing crimson liquid and a cork stopper, dark background. Row 2: 5) a wicker basket covered with a red cloth, dark background; 6) an ornate antique golden key with a filigree bow, lying diagonally on a deep crimson background with scattered rose petals, the key in the upper three quarters of the tile; 7) a portrait of a beautiful young girl wearing a crimson red hood, wavy brown hair, determined amber eyes, anime-inspired semi-realistic style, deep red background, her face in the upper three quarters of the tile; 8) an empty dark cracked black stone tile with a subtle carved border and nothing on it.`,
+    name: 'r-hero-stance', w: 1024, h: 1024, refs: [['r-ref-hero', 'HIGH'], ['r-ref', 'LOW']], cut: true,
+    prompt: `${STYLE} Full-body character art of exactly the same girl as in the first reference image, same face, same hairstyle, same outfit, same painterly anime rendering: ${HERO}. The same low lunge stance facing right as in the reference, front knee bent, the sword thrust forward and down toward the right, the cape sweeping behind her. ${ISOLATED}`,
   },
   {
-    name: 'g-royals', w: 1376, h: 768, refs: [['g-symbols', 'MID']],
-    prompt: `${GOTHIC} Match the tile style of the reference image. Five separate square slot-game symbol tiles in a single evenly spaced horizontal row on a plain flat solid white background, with wide white gaps; tiles never touch. Each tile is a perfect square filled edge to edge with dark cracked black stone and a thin dark iron border. On each tile one big engraved metallic serif character in a classic Roman inscription typeface with sharp bevels, fine scratches and a subtle inner glow, filling most of the tile, left to right: "10" in polished sapphire-blue metal, "J" in emerald-green metal, "Q" in amethyst-purple metal, "K" in antique gold-bronze metal, "A" in crimson-red metal. No other text.`,
+    name: 'r-hero-run', w: 1024, h: 1024, refs: [['r-hero-stance', 'MID'], ['r-ref-hero', 'LOW']], cut: true,
+    prompt: `${STYLE} The same girl as in the first reference image, same face, same hairstyle, same outfit, same sword, same painterly anime rendering: ${HERO}. Full body sprinting to the right at full speed in side view: upper body leaning forward, front leg reaching forward, back leg kicked up behind her off the ground, her free arm swinging forward, the sword held low and pointing backward in her trailing hand, the cape and hood streaming behind her in the wind. A clear running stride, not a fighting stance. ${ISOLATED}`,
   },
   {
-    name: 'g-ui', w: 1024, h: 1024, refs: [['g-symbols', 'LOW']],
-    prompt: `${GOTHIC} A game UI asset sheet on a plain flat solid light-grey background; every element is isolated with wide empty grey space around it, nothing touches or overlaps, front view, no text. Exactly five elements: 1) top left, large: a circular spin-button frame, an ornate antique gold ring with engraved filigree, a few thin thorny black vines with tiny crimson leaves wrapped around the ring, the center is a flat empty very dark disc with nothing inside; 2) top right, small: a round button frame, a dark bronze ring with a thin gold edge and a flat empty dark center; 3) middle, wide: a symmetric horizontal antique gold filigree crest ornament with scrolls and a small red gem in the middle, like the decoration on top of a frame; 4) bottom left, small: a shiny gold coin with an embossed dollar sign; 5) bottom right, wide: a horizontal name-plate frame, a dark charcoal panel with ornate antique gold corners and a thin gold border, empty inside.`,
-  },
-  // 照設計稿：細框、符號磚幾乎填滿；藤蔓只在四個角
-  {
-    name: 'g-frame2', w: 1152, h: 928, refs: [['g-symbols', 'LOW']],
-    prompt: `${GOTHIC} A front-facing elegant rectangular slot machine reel frame on a plain flat solid white background, filling almost the whole image. The border is very thin, only about one fortieth of the image width: dark carved wood with a fine antique gold inner trim line and a thin dark outer edge. A small pointed antique gold filigree crest with a red gem sits at the top center, rising slightly above the border, and a much smaller matching gold ornament at the bottom center. Thin thorny black vines with small crimson leaves creep only around the four corners, curling just outside the border. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
-  },
-  // 自走區照設計稿：月夜森林（遠景固定、近景捲動）、拿劍的小紅帽（跑、架式、揮砍）、狼人
-  {
-    name: 'n-scene', w: 1376, h: 768, refs: [['g-floor', 'LOW']],
-    prompt: `${GOTHIC} Wide background plate for the top area of a vertical mobile slot game: a dark enchanted forest at night. A large glowing full moon in a deep blue night sky between tall dark pine trees; far away at the center a small cottage with warm glowing windows at the end of a misty winding forest path that recedes into the distance; drifting blue mist; huge gnarled dark tree trunks frame the left and right sides, an old black iron lantern with a warm candle flame hangs from a branch of the left tree; the foreground is a dark mossy forest floor with roots, ferns, small red-capped mushrooms and scattered crimson leaves. Cold blue moonlight with warm lantern accents. No characters, no animals, no people.`,
+    name: 'r-hero-slash', w: 1024, h: 1024, refs: [['r-hero-stance', 'HIGH'], ['r-ref-hero', 'MID']], cut: true,
+    prompt: `${STYLE} The same girl as in the first reference image, same face, same hairstyle, same outfit, same sword, same painterly anime rendering: ${HERO}. Full body lunging forward to the right in the middle of a powerful horizontal sword slash, the sword arm fully extended to the right, front knee bent, the cape whipping behind her. ${ISOLATED} No motion blur.`,
   },
   {
-    name: 'n-far', w: 1376, h: 768, refs: [['n-scene', 'HIGH']],
-    prompt: `${GOTHIC} The far background layer of the reference scene only, for a parallax game: the same night sky, the same full moon, the same distant dark pine forest, the same small cottage with warm glowing windows and the same misty path receding toward it, the same blue mist. Remove the big tree trunks on the left and right, the hanging lantern and all foreground roots, ferns, mushrooms and leaves; the misty forest floor and path continue down to the bottom edge. Same lighting and colors. No characters.`,
+    name: 'r-wolf', w: 1024, h: 1024, refs: [['r-ref', 'MID']], cut: true,
+    prompt: `${STYLE} Full-body art of the giant Big Bad Wolf from the reference image: a huge menacing black wolf with thick shaggy dark fur, glowing amber-yellow eyes, snarling open jaws with sharp white fangs, a torn leather strap and a ragged cloth over one shoulder, big clawed paws. He crouches low on all four legs in side view facing left, head lowered and pushed forward, ready to pounce. ${ISOLATED}`,
   },
   {
-    name: 'n-near', w: 1376, h: 768, refs: [['n-scene', 'HIGH']],
-    prompt: `Exactly the same image as the reference, same composition, same painterly dark gothic style and lighting. Keep the big gnarled tree trunks on the left and right with their branches, the hanging iron lantern, and the whole dark foreground forest floor with roots, moss, ferns, red mushrooms and crimson leaves exactly as they are. Replace everything that is far away with a flat solid pure magenta color (#FF00FF): the sky, the moon, the distant pine forest, the cottage, the misty path in the distance and the mist all become flat uniform magenta. No gradients or glow on the magenta. No text.`,
+    name: 'r-scene', w: 1376, h: 768, refs: [['r-ref', 'MID']],
+    prompt: `${STYLE} Wide background plate for the top area of a vertical mobile slot game, matching the scenery of the reference image: a dark enchanted forest clearing at night, a glowing full moon in a deep-blue sky between tall dark pine trees, on the left a cozy village of old wooden cottages with warm glowing windows and hanging lanterns, a winding dirt path, drifting blue mist and tiny floating embers. Big dark tree trunks frame the far left and far right edges; the foreground is a dark earthy forest floor with rocks, roots and fallen leaves. No characters, no animals, no people, no text, no UI.`,
   },
   {
-    name: 'n-hero-run', w: 1024, h: 1024, refs: [], cut: true,
-    prompt: `${GOTHIC} Full-body character art of a beautiful young woman as Little Red Riding Hood, anime-inspired semi-realistic dark fantasy style: a long crimson red hooded cape, wavy brown hair, amber eyes, white frilled blouse, black leather corset, dark red tattered skirt over a white petticoat, black knee-high laced leather boots, a small leather belt pouch, holding a slender silver sword with a gold hilt. She is running to the right in side view, dynamic stride, sword held low behind her, the cape flying behind her. Isolated on a plain flat light-grey background, the entire figure visible with empty space around it, no ground, no cast shadow, no other objects.`,
+    name: 'r-far', w: 1376, h: 768, refs: [['r-scene', 'HIGH']],
+    prompt: `${STYLE} The far background layer of the reference scene only, for a parallax game: the same night sky, the same full moon, the same distant pine forest, the same village with warm glowing windows and lanterns, the same mist. Remove the big tree trunks on the far left and far right and all foreground rocks, roots and leaves; the clearing and the dirt path continue down to the bottom edge. Same lighting and colors. No characters.`,
   },
   {
-    name: 'n-hero-stance', w: 1024, h: 1024, refs: [['n-hero-run', 'HIGH']], cut: true,
-    prompt: `${GOTHIC} The same young woman from the reference image, same face, same red hooded cape, same outfit, same silver sword, same art style. Full body in a low combat stance facing right, legs wide apart, knees bent, the sword held low and angled back, her free hand forward, the cape sweeping behind her, fierce focused expression. Isolated on a plain flat light-grey background, the entire figure visible with empty space around it, no ground, no cast shadow, no other objects.`,
+    name: 'r-near', w: 1376, h: 768, refs: [['r-scene', 'MID']],
+    prompt: `Foreground layer for a side-scrolling parallax game, in the same painterly style, colors and lighting as the reference image. Only three things are painted: one huge dark gnarled tree trunk with a few branches at the far left edge, one huge dark gnarled tree trunk at the far right edge, and a strip of dark forest floor along the bottom fifth of the image with rocks, roots, ferns, fallen leaves and a few glowing embers. Everything else, the whole center and upper area, is flat solid pure magenta (#FF00FF). No village, no houses, no lanterns, no distant trees, no moon, no sky, no mist. No gradients or glow on the magenta. No text.`,
+  },
+  // 轉輪：方形符號磚（深色石板底、四角小綠葉，特殊符號帶框）、刻字牌面、細木框
+  {
+    name: 'r-symbols', w: 1376, h: 768, refs: [['r-ref', 'MID'], ['r-hero-stance', 'MID']],
+    prompt: `${STYLE} A sprite sheet of eight separate square slot-game symbol tiles in the tile style of the first reference image, arranged in a neat grid of exactly 4 columns and 2 rows on a plain flat solid white background, with wide white gaps between the tiles. Every tile is a perfect square with sharp straight edges, completely filled edge to edge; plain tiles are dark charcoal slate stone with a thin dark border and tiny green leaves at the corners; tiles never touch or overlap. Row 1, left to right: 1) the head of a huge black wolf with glowing amber eyes and bared fangs in three-quarter view facing left, deep-blue misty background, framed by an ornate deep-blue and silver border; 2) a black raven with a glowing red eye perched on a thorny branch under the moon, slate tile; 3) an old black iron lantern with a warm glowing candle flame, slate tile; 4) a heart-shaped glass potion bottle filled with glowing crimson liquid and a cork stopper, slate tile. Row 2: 5) a wicker basket full of shiny red apples, slate tile; 6) an ornate antique golden key lying diagonally on a deep crimson background, framed by a thin gold border; 7) a portrait of the girl from the second reference image (same face, crimson hood, short brown bob, painterly anime rendering) on a deep red background, framed by an ornate glowing gold border, her face in the upper three quarters of the tile, the bottom quarter plain dark red; 8) an empty dark slate tile with nothing on it.`,
   },
   {
-    name: 'n-hero-slash', w: 1024, h: 1024, refs: [['n-hero-run', 'HIGH']], cut: true,
-    prompt: `${GOTHIC} The same young woman from the reference image, same face, same red hooded cape, same outfit, same silver sword, same art style. Full body lunging forward to the right in the middle of a powerful horizontal sword slash, the sword arm fully extended to the right, front knee bent, the cape whipping behind her. Isolated on a plain flat light-grey background, the entire figure visible with empty space around it, no ground, no cast shadow, no motion blur, no other objects.`,
+    name: 'r-royals', w: 1376, h: 768, refs: [['r-ref', 'MID'], ['r-symbols', 'LOW']],
+    prompt: `${STYLE} Five separate square slot-game symbol tiles exactly in the style of the letter tiles in the first reference image, in a single evenly spaced horizontal row on a plain flat solid white background, with wide white gaps; tiles never touch. Each tile is a perfect square filled edge to edge with dark charcoal slate stone, a thin dark border and tiny green leaves at the corners. On each tile one big bold glossy 3D serif character with beveled edges and soft highlights, filling most of the tile, left to right: "10" in sapphire blue, "J" in emerald green, "Q" in amethyst purple, "K" in golden orange, "A" in ruby red. No other text.`,
   },
   {
-    name: 'n-wolf', w: 1024, h: 1024, refs: [], cut: true,
-    prompt: `${GOTHIC} Full-body art of the Big Bad Wolf as a huge menacing werewolf, dark fantasy semi-realistic style: shaggy black and dark grey fur, glowing red eyes, snarling mouth with sharp fangs, long black claws, broken iron chains and a gold ring hanging from his neck and arms, a torn dark cloth around the waist. He stands hunched forward on his hind legs in side view facing left, clawed hands raised and ready to strike. Isolated on a plain flat light-grey background, the entire figure visible with empty space around it, no ground, no cast shadow, no other objects.`,
+    name: 'r-frame', w: 1152, h: 928, refs: [['r-ref', 'LOW']],
+    prompt: `${STYLE} A front-facing rectangular slot machine reel frame matching the reel frame in the reference image, on a plain flat solid white background, filling almost the whole image. The border is thin, about one thirtieth of the image width: dark polished wood with a fine antique gold inner trim line, with ornate antique gold filigree ornaments only at the four corners. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
+  },
+  // 介面零件與圖示（灰底，程式挖空）、標題字、底部背景
+  {
+    name: 'r-ui', w: 1024, h: 1024, refs: [['r-ref', 'MID']],
+    prompt: `${STYLE} A game UI asset sheet matching the buttons and panels of the reference image, on a plain flat solid light-grey background; every element is isolated with wide empty grey space around it, nothing touches or overlaps, front view, no text. Exactly four elements: 1) top left, large: a round spin button like the reference, a glossy deep crimson-red disc inside a thick ornate antique gold ring, the red center is completely empty with no arrows and no symbol; 2) top right, small: a round button frame, a thin polished antique gold ring around a flat empty dark navy center; 3) middle, wide: a horizontal button plaque like the Feature Buy button in the reference, a glossy crimson-red rounded plaque with an ornate antique gold border and gold scroll flourishes on both ends, empty inside; 4) bottom, wide: an info panel frame like the balance panel in the reference, a wide dark navy-charcoal rectangle with a thin gold border and small ornate gold filigree corners, empty inside.`,
   },
   {
-    name: 'g-floor', w: 768, h: 1376, refs: [['g-symbols', 'LOW']],
-    prompt: `${GOTHIC} A dark moonlit forest floor background for the lower part of a vertical mobile slot game screen: gnarled black tree roots, moss, ferns, small red-capped mushrooms, scattered crimson autumn leaves and damp dark soil, faint cold blue moonlight, deep vignette, dark and low-contrast overall so game panels can sit on top. Nothing in the center that draws attention. No characters, no text.`,
+    name: 'r-icons', w: 1024, h: 1024, refs: [['r-ref', 'MID']],
+    prompt: `${STYLE} Four separate game icons in the style of the icons in the reference image, arranged in a 2 by 2 grid on a plain flat solid light-grey background with wide empty grey space between them, nothing touches, front view, no shadows on the background: top left, a brown leather wallet with a gold clasp; top right, a neat stack of shiny gold coins; bottom left, a golden "WIN" badge with ornate gold edges and the word WIN in bold red letters; bottom right, a single shiny gold coin with an embossed star.`,
+  },
+  {
+    name: 'r-logo', w: 1376, h: 768, refs: [['r-ref', 'HIGH']], cut: true,
+    prompt: `${STYLE} The "Red Riding Hood" game title logo from the top left of the reference image, isolated and centered, large: the words "Red", "Riding" and "Hood" stacked on three lines in an elegant silver-white decorative serif with crimson red accents and a thin red ribbon swirl, exactly like the reference. On a plain flat solid light-grey background, nothing else.`,
+  },
+  // BIG WIN 演出的三級標題字（跟 r-logo 同一種字風，去背）
+  {
+    name: 'r-title-big', w: 1376, h: 768, refs: [['r-logo', 'MID'], ['r-ref', 'LOW']], cut: true,
+    prompt: `${STYLE} Slot game win title artwork: the words "BIG WIN" on one line in huge bold 3D letters of polished antique gold with beveled edges and bright highlights, a thick dark crimson outline, a crimson ribbon swirling behind the letters and a few tiny sparkles, in the lettering style of the "Red Riding Hood" logo in the first reference image. Centered, filling most of the width, on a plain flat solid light-grey background, nothing else, exactly the words BIG WIN and no other text.`,
+  },
+  {
+    name: 'r-title-mega', w: 1376, h: 768, refs: [['r-title-big', 'HIGH']], cut: true,
+    prompt: `${STYLE} The same win title style as the reference image, same gold 3D lettering, same crimson outline and ribbon, but the words "MEGA WIN" on one line, richer: glowing ruby gems set into the gold letters and a small ornate golden crown above the middle of the word. Centered, on a plain flat solid light-grey background, nothing else, exactly the words MEGA WIN and no other text.`,
+  },
+  {
+    name: 'r-title-super', w: 1376, h: 768, refs: [['r-title-mega', 'HIGH']], cut: true,
+    prompt: `${STYLE} The same win title style as the reference image, same gold 3D lettering with ruby gems, crimson outline, ribbon and golden crown, but two lines: the word "SUPER" smaller on top and "MEGA WIN" large below, the most luxurious version with golden laurel wings spreading from both sides and extra sparkles. Centered, on a plain flat solid light-grey background, nothing else, exactly the words SUPER MEGA WIN and no other text.`,
+  },
+  {
+    name: 'r-floor', w: 768, h: 1376, refs: [['r-scene', 'LOW']],
+    prompt: `${STYLE} A vertical background texture for the bottom half of a mobile slot game screen: a dark forest floor seen from the front, old dark weathered wooden boards across the middle, mossy dark ground, ferns, roots and fallen crimson leaves along the bottom edge, faint cold blue moonlight from above, deep vignette, dark and low-contrast overall. Absolutely no frames, no panels, no boxes, no rectangles, no borders, no UI, no text, no characters.`,
   },
 ];
 
 const byName = Object.fromEntries(JOBS.map(j => [j.name, j]));
-const todo = JOBS.filter(j => !index[j.name] && (!only.length || only.includes(j.name)));
+const todo = JOBS.filter(j => (!index[j.name] || (j.cut && !index[j.name].cut)) && (!only.length || only.includes(j.name)));
 console.log('to generate:', todo.map(j => j.name).join(', ') || '(nothing)');
 
 const balance = async () => (await api('GET', '/v1/me')).j?.user_details?.[0]?.apiPaidTokens;
@@ -102,8 +131,28 @@ async function cut(name) {
   console.log('cut', name, buf.length, 'bytes');
 }
 
+// 本機圖片上傳成參考圖（init image）：先拿預先簽好的網址，再把檔案用表單送上去
+async function upload(job) {
+  const file = `${outDir}/${job.upload}`;
+  const ext = job.upload.split('.').pop();
+  const r = await api('POST', '/v1/init-image', { extension: ext });
+  const u = r.j?.uploadInitImage;
+  if (!u) { console.log(job.name, 'upload init failed', r.status, r.t.slice(0, 300)); return false; }
+  const form = new FormData();
+  for (const [k, v] of Object.entries(JSON.parse(u.fields))) form.append(k, v);
+  form.append('file', new Blob([readFileSync(file)]), job.upload);
+  const put = await fetch(u.url, { method: 'POST', body: form });
+  if (!put.ok) { console.log(job.name, 'upload failed', put.status); return false; }
+  index[job.name] = { imageId: u.id, type: 'UPLOADED', file: job.upload };
+  save();
+  console.log('uploaded', job.name);
+  return true;
+}
+
 const run = async job => {
-  const refs = job.refs.map(([n, s]) => ({ image: { id: index[n].imageId, type: 'GENERATED' }, strength: s }));
+  if (job.upload) return upload(job);
+  if (index[job.name]) { await cut(job.name); return !!index[job.name].cut; }
+  const refs = job.refs.map(([n, s]) => ({ image: { id: index[n].imageId, type: index[n].type || 'GENERATED' }, strength: s }));
   const body = {
     model: 'gemini-image-2',
     public: false,
@@ -144,7 +193,7 @@ await new Promise(resolve => {
     for (const name of [...pending]) {
       if (running.size >= 4) break;
       const job = byName[name];
-      const deps = job.refs.map(r => r[0]);
+      const deps = (job.refs || []).map(r => r[0]);
       if (deps.some(d => failed.has(d))) { pending.delete(name); failed.add(name); console.log('skip', name, '(dependency failed)'); continue; }
       if (deps.every(d => index[d])) {
         pending.delete(name);

@@ -1,6 +1,7 @@
-# 自走SLOT 主畫面（暗黑哥德版介面）：上方自走區（紙板人偶，之後再換）、中間荊棘木框 SLOT、
-# 下方投注列（選單、BET、轉動、TOTAL BET、TURBO、AUTO）與 WIN 名牌；
-# 賠率表與設定、BIG WIN、BONUS（金鑰匙）→ Free Spins
+# 自走SLOT 主畫面（照設計稿，投注區照 PG Soft）：上方自走區（標題字、大野狼血條）、中間細木框 SLOT
+# （頂端是連鎖倍率條）、Feature Buy、Total Win（這一轉的總和）、餘額／押注／贏分（單次）三格、
+# 控制列（TURBO、減、轉動、加、AUTO、選單）；押注選項、自動旋轉次數、賠率表與設定都是從下面滑上來的面板；
+# BIG WIN 演出在 big_win.gd；SCATTER（金鑰匙）→ Free Spins
 extends Control
 
 const Rules := preload("res://scripts/rules.gd")
@@ -8,17 +9,29 @@ const Art := preload("res://scripts/art.gd")
 const Field := preload("res://scripts/field.gd")
 const SlotView := preload("res://scripts/slot_view.gd")
 const IconButton := preload("res://scripts/icon_button.gd")
+const BigWin := preload("res://scripts/big_win.gd")
 const SAVE_PATH := "user://save.cfg"
-const SAVE_VERSION := 2
-const TIERS := [[50, "SUPER WIN"], [25, "MEGA WIN"], [10, "BIG WIN"]]
+# 3：金額改成以「分」記、押注改成每線押注（0.01 起）
+const SAVE_VERSION := 3
 # 介面以 430 寬設計，畫面窄或寬時整組等比縮放
 const DESIGN_W := 430.0
+# 自動旋轉的次數選項（跟 PG Soft 一樣）
+const AUTO_COUNTS := [10, 30, 50, 80, 1000]
+# 沒派獎時 Total Win 那一條輪播的提示：[符號磚（沒有就空字串）, 文字]
+const TIPS := [
+	["key", "3 or more SCATTER trigger 8, 10 or 12 free spins"],
+	["hood", "Gold-framed symbols turn into WILD when they win"],
+	["", "Every cascade raises the multiplier ×1 ×2 ×3 ×5, doubled in free spins"],
+	["wolf", "Every coin you win strikes the wolf · every 5th is the Wolf King"],
+]
 
-var state := {"coins": Rules.START_COINS, "bet": 2, "level": 1, "xp": 0, "kills": 0, "turbo": false, "sound": true}
+# charge：還沒打出去的傷害（沒有狼可以打時存起來，下一隻站定就打出去）
+var state := {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "turbo": false, "sound": true}
 var rng := RandomNumberGenerator.new()
 var started := false
 var busy := false
 var auto := false
+var auto_left := 0
 var enemy := {}
 var enemy_ready := false
 var walk_left := 2.5
@@ -32,31 +45,29 @@ var field: Control
 var slot: Control
 var hud: Control
 var betbar: Control
-var winplate: Control
 var overlay: Control
 
 var _floor: TextureRect
 var _ui := 1.0
-var _coins_label: Label
-var _level_label: Label
-var _xp_bar: Control
-var _xp := 0.0
-var _stage_label: Label
+var _logo: TextureRect
 var _enemy_box: Control
-var _hp_name: Label
 var _hp_num: Label
 var _hp_bar: Control
 var _hp := 1.0
+var _ladder: Control
+var _ladder_k := 0
+var _buy: Button
+var _info: Control
+var _coins_label: Label
+var _refill: BaseButton
 var _bet_label: Label
-var _total_label: Label
-var _win_cap: Label
 var _win_label: Label
-var _deco: Control
-var _band := Rect2()
-var _spikes: Array = []
-var _badge: Control
-var _badge_label: Label
-var _mult := 1
+var _total: Control
+var _total_label: Label
+var _ticker: Control
+var _tip_row: Control
+var _tip_tween: Tween
+var _tip_k := 0
 var _spin_btn: BaseButton
 var _auto_btn: BaseButton
 var _turbo_btn: BaseButton
@@ -66,12 +77,13 @@ var _callout: Label
 var _callout_sub: Label
 var _toast: Label
 var _bigwin: Control
-var _big_title: Label
-var _big_amount: Label
-var _big_skip := false
 var _menu: Control
 var _menu_body: VBoxContainer
+var _bet_sheet: Control
+var _auto_sheet: Control
 var _shown_coins := 0.0
+var _shown_win := 0.0
+var _shown_total := 0.0
 var _queue: Array = []
 var _working := false
 var _toast_tween: Tween
@@ -93,7 +105,7 @@ func _ready() -> void:
 	_floor.texture = Art.ui("floor")
 	_floor.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_floor.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_floor.modulate = Color(0.62, 0.6, 0.66)
+	_floor.modulate = Color(0.85, 0.85, 0.9)
 	_floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_floor)
 	var fade := _painter(func(c: Control):
@@ -104,22 +116,26 @@ func _ready() -> void:
 	field = Field.new()
 	add_child(field)
 	field.tint = Field.TINTS[(_stage() - 1) % Field.TINTS.size()]
+	field.set_charge(state.charge, 0, _charge_power())
 	slot = SlotView.new()
 	slot.z_index = 20
 	add_child(slot)
 	slot.turbo = state.turbo
-	_deco = _painter(_draw_deco)
-	_deco.z_index = 19
-	add_child(_deco)
-	_badge = _build_badge()
-	_badge.z_index = 22
-	add_child(_badge)
+	_ladder = _build_ladder()
+	_ladder.z_index = 22
+	add_child(_ladder)
+	_buy = _build_buy()
+	_buy.z_index = 21
+	add_child(_buy)
+	_total = _build_total()
+	_total.z_index = 20
+	add_child(_total)
+	_info = _build_info()
+	_info.z_index = 20
+	add_child(_info)
 	betbar = _build_betbar()
 	betbar.z_index = 20
 	add_child(betbar)
-	winplate = _build_winplate()
-	winplate.z_index = 20
-	add_child(winplate)
 	hud = _build_hud()
 	hud.z_index = 30
 	add_child(hud)
@@ -134,14 +150,17 @@ func _ready() -> void:
 	_layout()
 	_shown_coins = state.coins
 	_refresh_all()
+	_set_win(0, false)
+	_set_total(0, false)
 	_set_ladder(0)
 	_boot()
 
 
 # ---------- 排版 ----------
 
-# 照設計稿（430 寬）由下往上排：底部留森林地面 → WIN 名牌 → 投注底帶（轉動鍵往上突出）→
-# 森林地面 → SLOT 木框 → 剩下的高度給自走區（紅寶石花飾壓在自走區下緣）
+# 照設計稿（430 寬）由下往上排：底部留一點地面 → 控制列（轉動鍵最大，選單在最右邊）→ 餘額／押注／贏分 →
+# Total Win → Feature Buy（壓在木框下緣）→ SLOT 細木框（頂端壓著連鎖倍率條）→
+# 剩下的高度給自走區（標題字、大野狼血條疊在上面）
 func _layout() -> void:
 	var vp := get_viewport_rect().size
 	var w := minf(vp.x, 480.0)
@@ -149,43 +168,43 @@ func _layout() -> void:
 	_ui = clampf(w / DESIGN_W, 0.8, 1.1)
 	var u := _ui
 	var dw := w / u
-	# 木框外緣離畫面左右各 6，藤蔓可以伸出畫面
-	var meta: Dictionary = Art.ui_meta().frame
-	var inner_w: float = meta.inner[2] - meta.inner[0]
-	var wood: float = meta.wood
-	var reel_w := (w - 12.0) / (1.0 + 2.0 * wood / inner_w)
-	var slot_h: float = slot.layout(reel_w)
-	var win_y := vp.y - (31.0 + 41.0) * u
-	winplate.scale = Vector2(u, u)
-	winplate.size = Vector2(178, 41)
-	winplate.position = Vector2((vp.x - 178.0 * u) / 2.0, win_y)
-	var band_y := win_y - (11.0 + 66.0) * u
-	_band = Rect2(0, band_y, vp.x, 66.0 * u)
+	var bar_y := vp.y - (96.0 + 14.0) * u
 	betbar.scale = Vector2(u, u)
-	betbar.size = Vector2(dw, 66)
-	betbar.position = Vector2(x0, band_y)
+	betbar.size = Vector2(dw, 96)
+	betbar.position = Vector2(x0, bar_y)
 	_layout_betbar(dw)
-	var wood_bottom := band_y - 38.0 * u
-	slot.position = Vector2((vp.x - reel_w) / 2.0, wood_bottom - (slot.wood_rect.end.y - slot_h) - slot_h)
-	var field_h := maxf(slot.position.y + slot.wood_rect.position.y + 24.0 * u, 150.0)
+	var info_y := bar_y - (46.0 + 4.0) * u
+	_info.scale = Vector2(u, u)
+	_info.size = Vector2(dw, 46)
+	_info.position = Vector2(x0, info_y)
+	_layout_info(dw)
+	var total_y := info_y - (46.0 + 5.0) * u
+	_total.scale = Vector2(u, u)
+	_total.size = Vector2(dw - 12.0, 46)
+	_total.position = Vector2(x0 + 6.0 * u, total_y)
+	_layout_total()
+	var buy_y := total_y - (40.0 + 1.0) * u
+	_buy.scale = Vector2(u, u)
+	_buy.size = Vector2(196, 40)
+	_buy.position = Vector2((vp.x - 196.0 * u) / 2.0, buy_y)
+	# 木框外緣離畫面左右各 6；Feature Buy 壓在木框下緣上
+	var border := 13.0 * u
+	var reel_w := w - 12.0 - border * 2.0
+	var slot_h: float = slot.layout(reel_w, border)
+	var wood_bottom := buy_y + 17.0 * u
+	slot.position = Vector2((vp.x - reel_w) / 2.0, wood_bottom - border - slot_h)
+	var field_h := maxf(slot.position.y - border + 10.0 * u, 150.0)
 	field.position = Vector2.ZERO
 	field.size = Vector2(vp.x, field_h)
 	_floor.position = Vector2(0, field_h - 40.0)
 	_floor.size = Vector2(vp.x, vp.y - _floor.position.y)
 	_floor.get_node("FloorFade").size = Vector2(vp.x, 80)
-	# 金色尖飾：木框下緣 → 轉動鍵上緣、轉動鍵下緣 → WIN 名牌
-	var cx := vp.x / 2.0
-	var spin_top := band_y + (23.0 - 48.0) * u
-	var spin_bottom := band_y + (23.0 + 48.0) * u
-	_spikes = [[Vector2(cx, wood_bottom - 4.0 * u), Vector2(cx, spin_top + 6.0 * u)], [Vector2(cx, spin_bottom - 4.0 * u), Vector2(cx, win_y + 4.0 * u)]]
-	_deco.size = vp
-	_deco.queue_redraw()
-	_badge.scale = Vector2(u, u)
-	_badge.position = slot.position + slot.gem_point - _badge.size / 2.0
+	_ladder.scale = Vector2(u, u)
+	_ladder.position = Vector2((vp.x - _ladder.size.x * u) / 2.0, slot.position.y - border - _ladder.size.y * u * 0.5)
 	hud.scale = Vector2(u, u)
 	hud.position = Vector2(x0, 0)
-	hud.size = Vector2(dw, 64)
-	_layout_hud(dw)
+	hud.size = Vector2(dw, field_h / u)
+	_layout_hud(dw, field_h / u)
 	overlay.size = vp
 	_layout_overlay()
 
@@ -197,28 +216,8 @@ func _painter(fn: Callable) -> Control:
 	return c
 
 
-# 投注底帶（橫跨整個畫面的深色帶，上下金線）與金色尖飾
-func _draw_deco(c: Control) -> void:
-	var r := _band
-	c.draw_rect(r, Color(0.02, 0.015, 0.02, 0.88))
-	c.draw_rect(Rect2(r.position.x, r.position.y, r.size.x, 6.0 * _ui), Color(0, 0, 0, 0.5))
-	c.draw_line(r.position, Vector2(r.end.x, r.position.y), Color(Art.GOLD_DEEP, 0.7), 1.0)
-	c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(Art.GOLD_DEEP, 0.5), 1.0)
-	for sp in _spikes:
-		var a: Vector2 = sp[0]
-		var b: Vector2 = sp[1]
-		var m := (a + b) / 2.0
-		var k := 4.0 * _ui
-		c.draw_line(a, b, Art.GOLD_DEEP, 2.0 * _ui)
-		c.draw_line(a, b, Art.GOLD, 0.8 * _ui)
-		c.draw_colored_polygon(PackedVector2Array([m + Vector2(0, -k * 1.8), m + Vector2(k, 0), m + Vector2(0, k * 1.8), m + Vector2(-k, 0)]), Art.GOLD)
-		c.draw_colored_polygon(PackedVector2Array([m + Vector2(0, -k * 0.9), m + Vector2(k * 0.5, 0), m + Vector2(0, k * 0.9), m + Vector2(-k * 0.5, 0)]), Art.RED)
-		for e in [a, b]:
-			c.draw_circle(e, 2.2 * _ui, Art.GOLD)
-
-
-# 深色底、古金細邊的面板
-func _plate_box(radius := 8, alpha := 0.88) -> StyleBoxFlat:
+# 深藍底、古金細邊的面板（選單裡的按鈕、提示）
+func _plate_box(radius := 8, alpha := 0.92) -> StyleBoxFlat:
 	var sb := Art.box(Color(Art.PANEL, alpha), radius, 1, Art.PANEL_EDGE)
 	sb.shadow_color = Color(0, 0, 0, 0.5)
 	sb.shadow_size = 4
@@ -226,206 +225,352 @@ func _plate_box(radius := 8, alpha := 0.88) -> StyleBoxFlat:
 	return sb
 
 
-func _plate(radius := 8) -> Panel:
-	var p := Panel.new()
-	p.add_theme_stylebox_override("panel", _plate_box(radius))
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return p
+# 橫向三段的底圖（資訊面板、Feature Buy）：整張依高度等比縮，左右兩端（金花角）不變形、中段橫向拉長
+func _three_slice(c: CanvasItem, tex: Texture2D, r: Rect2, cap: float) -> void:
+	var k := r.size.y / tex.get_height()
+	var w := minf(cap * k, r.size.x / 2.0)
+	var tw := float(tex.get_width())
+	var src_cap := w / k
+	c.draw_texture_rect_region(tex, Rect2(r.position, Vector2(w, r.size.y)), Rect2(0, 0, src_cap, tex.get_height()))
+	c.draw_texture_rect_region(tex, Rect2(r.position.x + w, r.position.y, r.size.x - w * 2.0, r.size.y), Rect2(src_cap, 0, tw - src_cap * 2.0, tex.get_height()))
+	c.draw_texture_rect_region(tex, Rect2(r.end.x - w, r.position.y, w, r.size.y), Rect2(tw - src_cap, 0, src_cap, tex.get_height()))
 
 
-# 名牌底圖（art/ui/plate.webp）：整張依高度等比縮，左右兩端（四角金花）不變形、中段橫向拉長
-func _nameplate() -> Control:
-	var tex := Art.ui("plate")
-	return _painter(func(c: Control):
-		var k := c.size.y / tex.get_height()
-		var cap := 80.0
-		var w := cap * k
-		var tw := float(tex.get_width())
-		c.draw_texture_rect_region(tex, Rect2(0, 0, w, c.size.y), Rect2(0, 0, cap, tex.get_height()))
-		c.draw_texture_rect_region(tex, Rect2(w, 0, c.size.x - w * 2.0, c.size.y), Rect2(cap, 0, tw - cap * 2.0, tex.get_height()))
-		c.draw_texture_rect_region(tex, Rect2(c.size.x - w, 0, w, c.size.y), Rect2(tw - cap, 0, cap, tex.get_height())))
-
-
-# 圓形頭像：符號磚的臉部裁成圓形，外圈深紅＋古金線
-func _portrait(tile: String, center_uv: Vector2, radius_uv: float) -> Control:
+# 菱形頭像（血條右邊的大野狼）：符號磚的臉部裁成菱形，外圈古金框
+func _diamond(tile: String, center_uv: Vector2, radius_uv: float) -> Control:
 	var tex := Art.symbol(tile)
 	return _painter(func(c: Control):
 		var r := c.size.x / 2.0
 		var o := Vector2(r, r)
-		c.draw_circle(o + Vector2(0, 2), r, Color(0, 0, 0, 0.55))
-		c.draw_circle(o, r, Art.GOLD_DEEP)
-		c.draw_circle(o, r - 1.2, Color("2a0a0c"))
-		c.draw_circle(o, r * 0.86, Art.BLOOD)
+		var corners := [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]
+		var outer := PackedVector2Array()
+		var mid := PackedVector2Array()
 		var pts := PackedVector2Array()
 		var uvs := PackedVector2Array()
-		for k in 40:
-			var d := Vector2.RIGHT.rotated(k * TAU / 40.0)
-			pts.append(o + d * r * 0.8)
+		for d in corners:
+			outer.append(o + d * r)
+			mid.append(o + d * r * 0.86)
+			pts.append(o + d * r * 0.76)
 			uvs.append(center_uv + d * radius_uv)
+		var shadow := PackedVector2Array()
+		for p in outer:
+			shadow.append(p + Vector2(0, 2))
+		c.draw_colored_polygon(shadow, Color(0, 0, 0, 0.55))
+		c.draw_colored_polygon(outer, Art.GOLD_DEEP)
+		c.draw_colored_polygon(mid, Color("1a0f08"))
 		c.draw_colored_polygon(pts, Color.WHITE, uvs, tex)
-		c.draw_arc(o, r * 0.8, 0, TAU, 48, Art.GOLD, 1.2, true)
-		c.draw_arc(o, r - 0.6, 0, TAU, 48, Color(Art.GOLD, 0.8), 1.0, true))
+		outer.append(outer[0])
+		pts.append(pts[0])
+		c.draw_polyline(outer, Art.GOLD, 1.4, true)
+		c.draw_polyline(pts, Color(Art.GOLD_LIGHT, 0.9), 1.0, true))
 
 
-# ---------- 上方資訊列：頭像＋等級、金幣、關卡、敵人（尺寸照設計稿） ----------
+# ---------- 上方：標題字（左上）、大野狼血條與菱形頭像（右上，有敵人時才出現） ----------
 
 func _build_hud() -> Control:
 	var h := Control.new()
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var level := _plate(5)
-	level.name = "Level"
-	h.add_child(level)
-	_level_label = Art.label("Lv. 1", Art.label_settings(12, Art.CREAM, "num", 3, Art.INK), HORIZONTAL_ALIGNMENT_LEFT)
-	level.add_child(_level_label)
-	_xp_bar = _painter(func(c: Control):
-		var r := Rect2(Vector2.ZERO, c.size)
-		c.draw_style_box(Art.box(Color(0, 0, 0, 0.75), 3, 1, Color(Art.GOLD_DEEP, 0.6)), r)
-		if _xp > 0.0:
-			var fill := Rect2(Vector2(1, 1), Vector2((c.size.x - 2) * _xp, c.size.y - 2))
-			c.draw_style_box(Art.box(Art.GOLD_DEEP, 2), fill)
-			c.draw_style_box(Art.box(Art.GOLD, 2), Rect2(fill.position, Vector2(fill.size.x, fill.size.y * 0.55))))
-	level.add_child(_xp_bar)
-	var avatar := _portrait("hood", Vector2(0.5, 0.4), 0.3)
-	avatar.name = "Avatar"
-	h.add_child(avatar)
-	var wallet := _plate(13)
-	wallet.name = "Wallet"
-	h.add_child(wallet)
-	var coin := TextureRect.new()
-	coin.name = "Coin"
-	coin.texture = Art.ui("coin")
-	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wallet.add_child(coin)
-	_coins_label = Art.label("50,000", Art.label_settings(14, Art.CREAM, "num", 3, Art.INK))
-	wallet.add_child(_coins_label)
-	var refill := IconButton.new("refill")
-	refill.name = "Refill"
-	refill.pressed.connect(_on_refill)
-	wallet.add_child(refill)
-	# 關卡小旗：兩端尖角＋金色菱形
-	var stage := _painter(func(c: Control):
-		var s := c.size
-		var m := s.y / 2.0
-		var pts := PackedVector2Array([Vector2(7, 0), Vector2(s.x - 7, 0), Vector2(s.x, m), Vector2(s.x - 7, s.y), Vector2(7, s.y), Vector2(0, m)])
-		c.draw_colored_polygon(pts, Color(Art.PANEL, 0.92))
-		pts.append(pts[0])
-		c.draw_polyline(pts, Art.PANEL_EDGE, 1.0, true)
-		for side in [-1.0, 1.0]:
-			var tip := Vector2(s.x / 2.0 + side * (s.x / 2.0 + 6.0), m)
-			c.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -2.5), tip + Vector2(2.5, 0), tip + Vector2(0, 2.5), tip + Vector2(-2.5, 0)]), Art.GOLD)
-			c.draw_line(tip - Vector2(side * 2.5, 0), tip - Vector2(side * 7.0, 0), Art.GOLD_DEEP, 1.0))
-	stage.name = "Stage"
-	h.add_child(stage)
-	_stage_label = Art.label("Stage 1-1", Art.label_settings(9, Art.CREAM, "light"))
-	stage.add_child(_stage_label)
-	# 敵人：名字、血條、狼頭像（有敵人時才出現）
+	_logo = TextureRect.new()
+	_logo.texture = Art.ui("logo")
+	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(_logo)
 	_enemy_box = Control.new()
 	_enemy_box.name = "Enemy"
 	_enemy_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_enemy_box.modulate.a = 0.0
 	h.add_child(_enemy_box)
-	var eplate := _plate(5)
-	eplate.name = "Plate"
-	_enemy_box.add_child(eplate)
-	_hp_name = Art.label("Big Bad Wolf", Art.label_settings(10, Art.CREAM, "num", 3, Art.INK), HORIZONTAL_ALIGNMENT_RIGHT)
-	eplate.add_child(_hp_name)
 	_hp_bar = _painter(func(c: Control):
 		var r := Rect2(Vector2.ZERO, c.size)
-		c.draw_style_box(Art.box(Color("1a0506"), 3, 1, Color(Art.GOLD_DEEP, 0.8)), r)
+		c.draw_style_box(Art.box(Color(0, 0, 0, 0.6), 4), r.grow(2))
+		c.draw_style_box(Art.box(Color("1a0506"), 3, 1, Color(Art.GOLD_DEEP, 0.9)), r)
 		if _hp > 0.0:
-			var fill := Rect2(Vector2(1, 1), Vector2((c.size.x - 2) * _hp, c.size.y - 2))
-			c.draw_style_box(Art.box(Art.BLOOD, 2), fill)
-			c.draw_style_box(Art.box(Art.RED, 2), Rect2(fill.position, Vector2(fill.size.x, fill.size.y * 0.55))))
-	eplate.add_child(_hp_bar)
-	_hp_num = Art.label("", Art.label_settings(7, Color.WHITE, "num", 2, Art.INK), HORIZONTAL_ALIGNMENT_RIGHT)
+			var fill := Rect2(Vector2(1.5, 1.5), Vector2((c.size.x - 3) * _hp, c.size.y - 3))
+			c.draw_style_box(Art.box(Color("8e0d14"), 2), fill)
+			c.draw_style_box(Art.box(Color("e0262c"), 2), Rect2(fill.position, Vector2(fill.size.x, fill.size.y * 0.5))))
+	_enemy_box.add_child(_hp_bar)
+	_hp_num = Art.label("", Art.label_settings(10, Color.WHITE, "num", 3, Art.INK))
 	_hp_bar.add_child(_hp_num)
-	var wolf := _portrait("wolf", Vector2(0.42, 0.45), 0.3)
+	var wolf := _diamond("wolf", Vector2(0.42, 0.45), 0.34)
 	wolf.name = "Portrait"
 	_enemy_box.add_child(wolf)
 	return h
 
 
-func _layout_hud(dw: float) -> void:
-	var avatar: Control = hud.get_node("Avatar")
-	avatar.position = Vector2(10, 10)
-	avatar.size = Vector2(38, 38)
-	var level: Control = hud.get_node("Level")
-	level.position = Vector2(40, 15)
-	level.size = Vector2(97, 26)
-	_level_label.position = Vector2(14, 0)
-	_level_label.size = Vector2(level.size.x - 18, 15)
-	_xp_bar.position = Vector2(14, 16)
-	_xp_bar.size = Vector2(level.size.x - 22, 6)
-	var wallet: Control = hud.get_node("Wallet")
-	wallet.size = Vector2(129, 26)
-	wallet.position = Vector2((dw - wallet.size.x) / 2.0, 15)
-	hud.get_node("Wallet/Coin").position = Vector2(3, 3)
-	hud.get_node("Wallet/Coin").size = Vector2(20, 20)
-	_coins_label.position = Vector2(24, 0)
-	_coins_label.size = Vector2(wallet.size.x - 48, 26)
-	var refill: Control = hud.get_node("Wallet/Refill")
-	refill.size = Vector2(20, 20)
-	refill.position = Vector2(wallet.size.x - 23, 3)
-	var stage: Control = hud.get_node("Stage")
-	stage.size = Vector2(80, 14)
-	stage.position = Vector2((dw - stage.size.x) / 2.0, 46)
-	_stage_label.size = stage.size
-	_enemy_box.position = Vector2(dw - 138, 10)
-	_enemy_box.size = Vector2(128, 38)
+func _layout_hud(dw: float, fh: float) -> void:
+	# 標題字照設計稿約 84 高；自走區太矮時跟著縮，免得壓到小紅帽
+	var lh := clampf(fh * 0.3, 52.0, 84.0)
+	var meta: Array = Art.ui_meta().logo
+	_logo.size = Vector2(lh * meta[0] / meta[1], lh)
+	_logo.position = Vector2(10, 8)
+	field.avoid = Rect2(hud.position + _logo.position * _ui, _logo.size * _ui)
+	_enemy_box.position = Vector2(dw - 196, 30)
+	_enemy_box.size = Vector2(186, 52)
 	var portrait: Control = _enemy_box.get_node("Portrait")
-	portrait.size = Vector2(38, 38)
-	portrait.position = Vector2(_enemy_box.size.x - 38, 0)
-	var eplate: Control = _enemy_box.get_node("Plate")
-	eplate.position = Vector2(0, 5)
-	eplate.size = Vector2(_enemy_box.size.x - 30, 26)
-	_hp_name.position = Vector2(4, 0)
-	_hp_name.size = Vector2(eplate.size.x - 12, 14)
-	_hp_bar.position = Vector2(4, 15)
-	_hp_bar.size = Vector2(eplate.size.x - 12, 8)
-	_hp_num.position = Vector2(0, -1)
-	_hp_num.size = _hp_bar.size - Vector2(3, 0)
+	portrait.size = Vector2(48, 48)
+	portrait.position = Vector2(_enemy_box.size.x - 48, 0)
+	_hp_bar.position = Vector2(0, 18)
+	_hp_bar.size = Vector2(_enemy_box.size.x - 40, 14)
+	_hp_num.position = Vector2.ZERO
+	_hp_num.size = _hp_bar.size
 
 
-# ---------- 倍率：頂端紅寶石上的徽章（連鎖到 ×2 以上才出現） ----------
+# ---------- 連鎖倍率條：外框頂端，×1 ×2 ×3 ×5（Free Spins 時 ×2 ×4 ×6 ×10），現在這一段亮起來 ----------
 
-func _build_badge() -> Control:
-	var b := _painter(func(c: Control):
-		var o := c.size / 2.0
-		var r := c.size.x / 2.0
-		for k in 4:
-			c.draw_circle(o, r * (1.25 - k * 0.07), Color(1, 0.3, 0.1, 0.07))
-		c.draw_circle(o, r, Art.GOLD_DEEP)
-		c.draw_circle(o, r - 1.5, Art.GOLD)
-		c.draw_circle(o, r - 3.0, Color("3a0608"))
-		c.draw_circle(o, r - 4.5, Art.BLOOD))
-	b.size = Vector2(34, 34)
-	b.pivot_offset = b.size / 2.0
-	b.modulate.a = 0.0
-	_badge_label = Art.label("×2", Art.label_settings(13, Art.GOLD_LIGHT, "num", 3, Art.GOLD_INK))
-	_badge_label.size = b.size
-	b.add_child(_badge_label)
-	return b
+func _build_ladder() -> Control:
+	var l := _painter(func(c: Control):
+		var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
+		var r := Rect2(Vector2.ZERO, c.size)
+		var sb := Art.box(Color(0.03, 0.04, 0.08, 0.94), int(c.size.y / 2.0), 1, Art.GOLD_DEEP)
+		sb.shadow_color = Color(0, 0, 0, 0.6)
+		sb.shadow_size = 5
+		c.draw_style_box(sb, r)
+		var cw := (c.size.x - 8.0) / mults.size()
+		var f := Art.font()
+		for i in mults.size():
+			var cell := Rect2(4.0 + i * cw, 3.0, cw, c.size.y - 6.0)
+			var on := i == _ladder_k
+			if on:
+				var hi := Art.box(Color("8e0d14"), int(cell.size.y / 2.0), 1, Art.GOLD)
+				hi.shadow_color = Color(1, 0.55, 0.2, 0.6)
+				hi.shadow_size = 6
+				c.draw_style_box(hi, cell.grow_individual(-2, 0, -2, 0))
+			var text := "×%d" % mults[i]
+			var fs := 15 if on else 13
+			var base := Vector2(cell.position.x, cell.position.y + cell.size.y * 0.5 + fs * 0.36)
+			c.draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, cell.size.x, fs, 4, Art.GOLD_INK)
+			c.draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, cell.size.x, fs, Art.GOLD_LIGHT if on else Color(Art.CREAM, 0.55)))
+	l.size = Vector2(184, 28)
+	l.pivot_offset = l.size / 2.0
+	return l
 
 
 func _set_ladder(k: int) -> void:
-	var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
-	var m: int = mults[mini(k, mults.size() - 1)]
-	var show := m > 1
-	_badge_label.text = "×%d" % m
-	if show and m != _mult:
-		_badge.scale = Vector2(1.8, 1.8) * _ui
-		create_tween().tween_property(_badge, "scale", Vector2(_ui, _ui), 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	create_tween().tween_property(_badge, "modulate:a", 1.0 if show else 0.0, 0.15)
-	_mult = m
+	var to := mini(k, Rules.MULTIPLIERS.size() - 1)
+	if to != _ladder_k and to > 0:
+		var tw := create_tween()
+		tw.tween_property(_ladder, "scale", Vector2(1.12, 1.12) * _ui, 0.08)
+		tw.tween_property(_ladder, "scale", Vector2(_ui, _ui), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_ladder_k = to
+	_ladder.queue_redraw()
 
 
 func _refresh_fs() -> void:
-	_win_cap.text = "FREE SPINS  %d / %d" % [fs_done, fs_done + fs_left] if free else "WIN"
+	_buy.queue_redraw()
+	_ladder.queue_redraw()
 
 
-# ---------- 投注列：選單、BET、轉動、TOTAL BET、TURBO、AUTO（尺寸照設計稿，底帶高 66） ----------
+# ---------- Feature Buy：紅色古金框底板；目前只放按鈕，Free Spins 時改寫剩幾轉 ----------
+
+func _build_buy() -> Button:
+	var b := Button.new()
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var tex := Art.ui("buy")
+	b.draw.connect(func():
+		var press := 0.95 if b.is_pressed() else 1.0
+		var r := Rect2(Vector2.ZERO, b.size)
+		var k := minf(r.size.x / tex.get_width(), r.size.y / tex.get_height()) * press
+		var sz := Vector2(tex.get_width(), tex.get_height()) * k
+		var at := r.get_center() - sz / 2.0
+		b.draw_texture_rect(tex, Rect2(at, sz), false, Color(0.75, 0.75, 0.75) if free else Color.WHITE)
+		var text := "FREE SPINS  %d / %d" % [fs_done, fs_done + fs_left] if free else "Feature Buy"
+		var f := Art.font()
+		var fs := int(14 if free else 18)
+		var base := Vector2(0, r.size.y * 0.5 + fs * 0.36)
+		b.draw_string_outline(f, base + Vector2(0, 1.5), text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 5, Color(0, 0, 0, 0.6))
+		b.draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 4, Color("3a0608"))
+		b.draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, Art.GOLD_LIGHT))
+	b.button_down.connect(b.queue_redraw)
+	b.button_up.connect(b.queue_redraw)
+	b.pressed.connect(func():
+		if free:
+			return
+		Sfx.play("click")
+		toast("Feature Buy — coming soon"))
+	return b
+
+
+# ---------- Total Win（照 PG Piñata Wins）：這一轉所有連鎖的總和；Free Spins 時是整輪累計。框跟下面三格一樣；
+# 沒派獎（還沒中、這轉沒中）時改成跑馬燈，輪播 TIPS 的提示 ----------
+
+func _build_total() -> Control:
+	var tex := Art.ui("panel")
+	var bar := _painter(func(c: Control): _three_slice(c, tex, Rect2(Vector2.ZERO, c.size), 60.0))
+	var cap := Art.label("TOTAL
+WIN", Art.label_settings(11, Art.GOLD, "num", 3, Art.GOLD_INK))
+	cap.name = "Cap"
+	bar.add_child(cap)
+	_total_label = Art.label("0", Art.label_settings(24, Art.GOLD_LIGHT, "num", 6, Art.GOLD_INK, 3), HORIZONTAL_ALIGNMENT_LEFT)
+	_total_label.clip_text = true
+	bar.add_child(_total_label)
+	_ticker = Control.new()
+	_ticker.clip_contents = true
+	_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(_ticker)
+	return bar
+
+
+# 「TOTAL WIN」與金額擺在正中間一組
+func _layout_total() -> void:
+	var w := _total.size.x
+	var cap: Label = _total.get_node("Cap")
+	cap.position = Vector2(w * 0.5 - 100, 0)
+	cap.size = Vector2(52, _total.size.y)
+	_total_label.position = Vector2(w * 0.5 - 40, 0)
+	_total_label.size = Vector2(w * 0.5 + 40 - 18, _total.size.y)
+	_total_label.pivot_offset = Vector2(0, _total.size.y / 2.0)
+	_ticker.position = Vector2(16, 5)
+	_ticker.size = Vector2(w - 32, _total.size.y - 10)
+
+
+func _set_total(value: int, animate: bool) -> void:
+	var has_win := value > 0
+	_total.get_node("Cap").visible = has_win
+	_total_label.visible = has_win
+	_ticker.visible = not has_win
+	if not has_win:
+		_shown_total = 0
+		if not (_tip_tween and _tip_tween.is_valid()):
+			_next_tip()
+		return
+	if _tip_tween:
+		_tip_tween.kill()
+		_tip_tween = null
+	if not animate:
+		_shown_total = value
+		_fit(_total_label, Art.money(value), 24)
+		return
+	var tw := create_tween()
+	tw.tween_method(func(v: float):
+		_shown_total = v
+		_fit(_total_label, Art.money(v), 24), _shown_total, float(value), 0.45)
+	_total_label.scale = Vector2(1.18, 1.18)
+	tw.parallel().tween_property(_total_label, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# 跑馬燈：一則提示（符號小圖＋文字）從右邊跑到左邊，跑完換下一則
+func _next_tip() -> void:
+	if _tip_row:
+		_tip_row.queue_free()
+	var tip: Array = TIPS[_tip_k % TIPS.size()]
+	_tip_k += 1
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 8)
+	if tip[0] != "":
+		var icon := TextureRect.new()
+		icon.texture = Art.symbol(tip[0])
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(28, 29)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+	row.add_child(Art.label(tip[1], Art.label_settings(14, Art.CREAM, "light", 3, Art.INK)))
+	_ticker.add_child(row)
+	_tip_row = row
+	row.size = row.get_combined_minimum_size()
+	row.position = Vector2(_ticker.size.x, (_ticker.size.y - row.size.y) / 2.0)
+	_tip_tween = create_tween()
+	_tip_tween.tween_property(row, "position:x", -row.size.x, (_ticker.size.x + row.size.x) / 70.0)
+	_tip_tween.tween_callback(_next_tip)
+
+
+# ---------- 餘額／押注／贏分三格（照 PG Soft：圖示＋小標＋數字；贏分是單次（這一段連鎖），
+# 點押注開押注選項，餘額低時可以補幣） ----------
+
+func _build_info() -> Control:
+	var row := Control.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var specs := [["Balance", "wallet", "BALANCE"], ["Bet", "coins", "BET"], ["Win", "win", "WIN"]]
+	for spec in specs:
+		var p := _info_panel(spec[1], spec[2])
+		p.name = spec[0]
+		row.add_child(p)
+	_coins_label = row.get_node("Balance/Value")
+	_bet_label = row.get_node("Bet/Value")
+	_win_label = row.get_node("Win/Value")
+	_win_label.label_settings = Art.label_settings(16, Art.GOLD_LIGHT, "num", 4, Art.GOLD_INK)
+	var bet: Control = row.get_node("Bet")
+	bet.mouse_filter = Control.MOUSE_FILTER_STOP
+	bet.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	bet.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			_open_bet())
+	_refill = IconButton.new("refill")
+	_refill.pressed.connect(_on_refill)
+	row.get_node("Balance").add_child(_refill)
+	return row
+
+
+func _info_panel(icon_name: String, caption: String) -> Control:
+	var tex := Art.ui("panel")
+	var p := _painter(func(c: Control): _three_slice(c, tex, Rect2(Vector2.ZERO, c.size), 60.0))
+	var icon := TextureRect.new()
+	icon.name = "Icon"
+	icon.texture = Art.ui(icon_name)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(icon)
+	var cap := Art.label(caption, Art.label_settings(9, Art.CREAM, "light", 2, Art.INK))
+	cap.name = "Cap"
+	p.add_child(cap)
+	var value := Art.label("0", Art.label_settings(15, Color.WHITE, "num", 3, Art.INK))
+	value.name = "Value"
+	value.clip_text = true
+	p.add_child(value)
+	return p
+
+
+func _layout_info(dw: float) -> void:
+	var gap := 5.0
+	var pw := (dw - 16.0 - gap * 2.0) / 3.0
+	for i in 3:
+		var p: Control = _info.get_child(i)
+		p.position = Vector2(8.0 + i * (pw + gap), 0)
+		p.size = Vector2(pw, 46)
+		var icon: Control = p.get_node("Icon")
+		icon.position = Vector2(7, 8)
+		icon.size = Vector2(32, 30)
+		var cap: Label = p.get_node("Cap")
+		cap.position = Vector2(38, 6)
+		cap.size = Vector2(pw - 44, 12)
+		var value: Label = p.get_node("Value")
+		value.position = Vector2(38, 17)
+		value.size = Vector2(pw - 44, 22)
+	_refill.size = Vector2(16, 16)
+	_refill.position = Vector2(pw - 15, -5)
+
+
+# 三格裡的數字太長（例如 12,345.67）就縮小字，免得被切掉
+func _fit(l: Label, text: String, base := 15) -> void:
+	l.text = text
+	var ls := l.label_settings
+	var fs := base
+	while fs > 10 and ls.font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x - 2.0:
+		fs -= 1
+	if ls.font_size != fs:
+		ls.font_size = fs
+
+
+func _set_win(value: int, animate: bool) -> void:
+	_win_label.pivot_offset = _win_label.size / 2.0
+	if not animate:
+		_shown_win = value
+		_fit(_win_label, Art.money(value), 16)
+		return
+	var tw := create_tween()
+	tw.tween_method(func(v: float):
+		_shown_win = v
+		_fit(_win_label, Art.money(v), 16), _shown_win, float(value), 0.45)
+	_win_label.scale = Vector2(1.25, 1.25)
+	tw.parallel().tween_property(_win_label, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# ---------- 控制列（照 PG Soft）：TURBO、減、轉動、加、AUTO、選單（貼最右邊） ----------
 
 func _build_betbar() -> Control:
 	var bar := Control.new()
@@ -434,111 +579,56 @@ func _build_betbar() -> Control:
 	menu.name = "Menu"
 	menu.pressed.connect(_open_menu)
 	bar.add_child(menu)
-	var bet := _box("BET")
-	bet.name = "Bet"
-	bar.add_child(bet)
-	_bet_label = Art.label("20", Art.label_settings(14, Art.CREAM, "num", 3, Art.INK))
-	bet.add_child(_bet_label)
-	_minus_btn = IconButton.new("minus")
-	_minus_btn.pressed.connect(func(): _change_bet(-1))
-	bet.add_child(_minus_btn)
-	_plus_btn = IconButton.new("plus")
-	_plus_btn.pressed.connect(func(): _change_bet(1))
-	bet.add_child(_plus_btn)
-	var total := _box("TOTAL BET")
-	total.name = "Total"
-	bar.add_child(total)
-	_total_label = Art.label("400", Art.label_settings(14, Art.CREAM, "num", 3, Art.INK))
-	total.add_child(_total_label)
 	_turbo_btn = IconButton.new("turbo", "TURBO")
-	_turbo_btn.name = "Turbo"
 	_turbo_btn.toggle_mode = true
 	_turbo_btn.set_pressed_no_signal(state.turbo)
 	_turbo_btn.toggled.connect(_on_turbo)
 	bar.add_child(_turbo_btn)
+	_minus_btn = IconButton.new("minus")
+	_minus_btn.pressed.connect(func(): _change_bet(-1))
+	bar.add_child(_minus_btn)
+	_plus_btn = IconButton.new("plus")
+	_plus_btn.pressed.connect(func(): _change_bet(1))
+	bar.add_child(_plus_btn)
 	_auto_btn = IconButton.new("auto", "AUTO")
-	_auto_btn.name = "Auto"
-	_auto_btn.toggle_mode = true
-	_auto_btn.toggled.connect(_on_auto)
+	_auto_btn.pressed.connect(_on_auto)
 	bar.add_child(_auto_btn)
 	_spin_btn = IconButton.new("spin")
-	_spin_btn.name = "Spin"
 	_spin_btn.pressed.connect(_on_spin)
 	bar.add_child(_spin_btn)
 	return bar
 
 
-func _box(caption: String) -> Panel:
-	var p := _plate(7)
-	var cap := Art.label(caption, Art.label_settings(8, Art.CREAM, "light"))
-	cap.name = "Cap"
-	p.add_child(cap)
-	return p
-
-
 func _layout_betbar(dw: float) -> void:
 	var cx := dw / 2.0
-	var spin_d := 96.0
+	var cy := 48.0
+	var spin_d := 90.0
 	_spin_btn.size = Vector2(spin_d, spin_d)
-	_spin_btn.position = Vector2(cx - spin_d / 2.0, 23 - spin_d / 2.0)
+	_spin_btn.position = Vector2(cx - spin_d / 2.0, cy - spin_d / 2.0)
+	var pm := 40.0
+	_minus_btn.size = Vector2(pm, pm)
+	_minus_btn.position = Vector2(cx - spin_d / 2.0 - 20 - pm, cy - pm / 2.0)
+	_plus_btn.size = Vector2(pm, pm)
+	_plus_btn.position = Vector2(cx + spin_d / 2.0 + 20, cy - pm / 2.0)
+	var d := 42.0
+	_turbo_btn.size = Vector2(d, d + 15)
+	_turbo_btn.position = Vector2(_minus_btn.position.x - 18 - d, cy - d / 2.0)
+	_auto_btn.size = Vector2(d, d + 15)
+	_auto_btn.position = Vector2(_plus_btn.position.x + pm + 18, cy - d / 2.0)
+	var md := 34.0
 	var menu: Control = betbar.get_node("Menu")
-	menu.size = Vector2(32, 32)
-	menu.position = Vector2(10, 17)
-	_auto_btn.size = Vector2(29, 41)
-	_auto_btn.position = Vector2(dw - 41, 17)
-	_turbo_btn.size = Vector2(29, 41)
-	_turbo_btn.position = Vector2(_auto_btn.position.x - 38, 17)
-	var bet: Control = betbar.get_node("Bet")
-	bet.position = Vector2(48, 15)
-	bet.size = Vector2(_spin_btn.position.x - 6 - bet.position.x, 39)
-	var total: Control = betbar.get_node("Total")
-	total.position = Vector2(_spin_btn.position.x + spin_d + 4, 15)
-	total.size = Vector2(_turbo_btn.position.x - 6 - total.position.x, 39)
-	for b in [bet, total]:
-		var cap: Label = b.get_node("Cap")
-		cap.position = Vector2(0, 4)
-		cap.size = Vector2(b.size.x, 11)
-	_minus_btn.size = Vector2(23, 23)
-	_minus_btn.position = Vector2(5, 8)
-	_plus_btn.size = Vector2(23, 23)
-	_plus_btn.position = Vector2(bet.size.x - 28, 8)
-	_bet_label.position = Vector2(28, 15)
-	_bet_label.size = Vector2(bet.size.x - 56, 20)
-	_total_label.position = Vector2(0, 15)
-	_total_label.size = Vector2(total.size.x, 20)
-
-
-# ---------- WIN 名牌（Free Spins 時改寫剩幾轉、累計贏分） ----------
-
-func _build_winplate() -> Control:
-	var np := _nameplate()
-	_win_cap = Art.label("WIN", Art.label_settings(9, Art.CREAM, "light"))
-	_win_cap.position = Vector2(0, 5)
-	_win_cap.size = Vector2(178, 12)
-	np.add_child(_win_cap)
-	_win_label = Art.label("0", Art.label_settings(17, Art.GOLD_LIGHT, "num", 4, Art.GOLD_INK))
-	_win_label.position = Vector2(0, 15)
-	_win_label.size = Vector2(178, 22)
-	np.add_child(_win_label)
-	return np
-
-
-func _set_win(value: int, animate: bool) -> void:
-	if not animate:
-		_win_label.text = Art.fmt(value)
-		return
-	var from := float(_win_label.text.replace(",", ""))
-	var tw := create_tween()
-	tw.tween_method(func(v: float): _win_label.text = Art.fmt(v), from, float(value), 0.45)
-	_win_label.pivot_offset = _win_label.size / 2.0
-	_win_label.scale = Vector2(1.25, 1.25)
-	tw.parallel().tween_property(_win_label, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	menu.size = Vector2(md, md)
+	menu.position = Vector2(dw - 6 - md, cy - md / 2.0)
 
 
 func _change_bet(d: int) -> void:
 	if busy:
 		return
-	state.bet = clampi(state.bet + d, 0, Rules.BET_LEVELS.size() - 1)
+	_set_bet(clampi(state.bet + d, 0, Rules.BET_LEVELS.size() - 1))
+
+
+func _set_bet(k: int) -> void:
+	state.bet = k
 	Sfx.play("click")
 	_save()
 	_refresh_all()
@@ -548,11 +638,11 @@ func _on_turbo(on: bool) -> void:
 	state.turbo = on
 	slot.turbo = on
 	Sfx.play("click")
-	toast("Turbo on" if on else "Turbo off")
+	toast("Turbo spin on" if on else "Turbo spin off")
 	_save()
 
 
-# ---------- 疊在最上層：大字、提示、BIG WIN、選單 ----------
+# ---------- 疊在最上層：大字、提示、BIG WIN、面板（押注選項、自動旋轉、選單） ----------
 
 func _build_overlay() -> void:
 	_callout = Art.label("", Art.label_settings(36, Art.CREAM, "num", 10, Art.INK, 4))
@@ -564,44 +654,15 @@ func _build_overlay() -> void:
 	_toast = Art.label("", Art.label_settings(13, Art.CREAM, "light", 5, Art.INK))
 	_toast.modulate.a = 0.0
 	overlay.add_child(_toast)
-	_bigwin = _painter(func(c: Control):
-		var r := Rect2(Vector2.ZERO, c.size)
-		c.draw_rect(r, Color(0.02, 0.0, 0.01, 0.84))
-		var center := c.size / 2.0
-		for k in 7:
-			c.draw_circle(center, c.size.x * (0.6 - k * 0.075), Color(0.75, 0.08, 0.05, 0.05))
-		var crest := Art.ui("crest")
-		var cw := minf(c.size.x * 0.7, 300.0)
-		var ch := cw * crest.get_height() / crest.get_width()
-		c.draw_texture_rect(crest, Rect2(center.x - cw / 2.0, center.y - 108 - ch, cw, ch), false))
-	_bigwin.visible = false
-	_bigwin.mouse_filter = Control.MOUSE_FILTER_STOP
-	_bigwin.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and e.pressed:
-			_big_skip = true)
+	_bigwin = BigWin.new()
+	_bigwin.upgraded.connect(func(_level: int): _shake(8.0))
 	overlay.add_child(_bigwin)
-	_big_title = Art.label("BIG WIN", Art.label_settings(46, Art.GOLD, "num", 12, Art.GOLD_INK, 5))
-	_bigwin.add_child(_big_title)
-	_big_amount = Art.label("0", Art.label_settings(36, Art.GOLD_LIGHT, "num", 10, Art.BLOOD, 4))
-	_bigwin.add_child(_big_amount)
-	var rain := CPUParticles2D.new()
-	rain.name = "Rain"
-	rain.texture = Art.ui("coin")
-	rain.amount = 40
-	rain.lifetime = 1.6
-	rain.emitting = false
-	rain.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	rain.direction = Vector2.DOWN
-	rain.spread = 15.0
-	rain.gravity = Vector2(0, 520)
-	rain.initial_velocity_min = 60.0
-	rain.initial_velocity_max = 160.0
-	rain.angular_velocity_min = -200.0
-	rain.angular_velocity_max = 200.0
-	rain.scale_amount_min = 0.16
-	rain.scale_amount_max = 0.26
-	_bigwin.add_child(rain)
-	_menu = _build_menu()
+	_bet_sheet = _make_sheet("BET OPTIONS")
+	overlay.add_child(_bet_sheet)
+	_auto_sheet = _make_sheet("AUTO SPIN")
+	overlay.add_child(_auto_sheet)
+	_menu = _make_sheet("SYMBOLS & PAYTABLE", true)
+	_menu_body = _menu.get_meta("body")
 	overlay.add_child(_menu)
 
 
@@ -614,21 +675,10 @@ func _layout_overlay() -> void:
 	_callout_sub.position = Vector2(0, field.size.y * 0.45 + 24)
 	_toast.size = Vector2(vp.x, 30)
 	_toast.position = Vector2(0, slot.position.y + slot.size.y * 0.45)
-	_bigwin.position = Vector2(0, slot.position.y + slot.frame_rect.position.y)
-	_bigwin.size = Vector2(vp.x, slot.frame_rect.size.y)
-	_big_title.size = Vector2(vp.x, 70)
-	_big_title.position = Vector2(0, _bigwin.size.y * 0.5 - 64)
-	_big_title.pivot_offset = _big_title.size / 2.0
-	_big_amount.size = Vector2(vp.x, 56)
-	_big_amount.position = Vector2(0, _bigwin.size.y * 0.5 + 8)
-	var rain: CPUParticles2D = _bigwin.get_node("Rain")
-	rain.position = Vector2(vp.x / 2.0, -20)
-	rain.emission_rect_extents = Vector2(vp.x / 2.0, 10)
-	_menu.size = vp
-	var panel: Control = _menu.get_node("Panel")
-	var w := minf(vp.x, 480.0)
-	panel.size = Vector2(w, vp.y * 0.88)
-	panel.position = Vector2((vp.x - w) / 2.0, vp.y - panel.size.y)
+	_bigwin.position = Vector2.ZERO
+	_bigwin.size = vp
+	for sheet in [_bet_sheet, _auto_sheet, _menu]:
+		_layout_sheet(sheet)
 
 
 func callout(big: String, small := "", gold := false, hold := 1.2) -> void:
@@ -668,36 +718,60 @@ func _shake(amount: float) -> void:
 func _on_spin() -> void:
 	if not started:
 		return
+	if auto:
+		_stop_auto()
+		return
 	if busy:
 		slot.quick_stop()
-		return
-	if auto:
-		_auto_btn.button_pressed = false
 		return
 	Sfx.play("click")
 	_spin()
 
 
-func _on_auto(on: bool) -> void:
-	auto = on
+# AUTO（照 PG Soft）：沒在自動時打開次數選單；自動中再按一次就停
+func _on_auto() -> void:
 	Sfx.play("click")
-	toast("Auto spin on" if on else "Auto spin off")
-	if auto and not _auto_running:
+	if auto:
+		_stop_auto()
+		return
+	_open_sheet(_auto_sheet)
+
+
+func _start_auto(count: int) -> void:
+	_close_sheet(_auto_sheet)
+	auto = true
+	auto_left = count
+	Sfx.play("click")
+	toast("Auto spin × %s" % Art.fmt(count))
+	_refresh_controls()
+	if not _auto_running:
 		_auto_loop()
 
 
-# 同一時間只有一個自動迴圈；正在轉（或 Free Spins）時先等這一轉結束
+func _stop_auto() -> void:
+	auto = false
+	auto_left = 0
+	toast("Auto spin off")
+	_refresh_controls()
+
+
+# 同一時間只有一個自動迴圈；正在轉（或 Free Spins）時先等這一轉結束；次數用完或餘額不夠就停
 func _auto_loop() -> void:
 	_auto_running = true
-	while auto and started:
+	while auto and started and auto_left > 0:
 		while busy:
 			await get_tree().process_frame
 		if not auto:
 			break
+		auto_left -= 1
+		_refresh_controls()
 		if not await _spin():
 			break
 		await get_tree().create_timer(0.3).timeout
+	auto = false
+	auto_left = 0
 	_auto_running = false
+	_refresh_controls()
 
 
 func _spin() -> bool:
@@ -706,10 +780,10 @@ func _spin() -> bool:
 	var bet: int = Rules.BET_LEVELS[state.bet]
 	var tb := Rules.total_bet(bet)
 	if state.coins < tb:
-		toast("Not enough coins — tap + for a free top-up")
-		_auto_btn.set_pressed_no_signal(false)
+		toast("Not enough coins — tap + on the balance for a free top-up")
 		auto = false
-		_auto_btn.queue_redraw()
+		auto_left = 0
+		_refresh_controls()
 		return false
 	busy = true
 	_refresh_controls()
@@ -719,7 +793,7 @@ func _spin() -> bool:
 	var total: int = res.total
 	if total > 0:
 		state.coins += total
-		if _tier(total, tb) != "":
+		if BigWin.qualifies(total, tb):
 			await _big_win(total, tb)
 		_coins_to(state.coins)
 		Sfx.play("coin")
@@ -736,8 +810,9 @@ func _spin() -> bool:
 # 一輪：轉輪停下 → 一段段連鎖（倍率、標記、跳分、打怪、消除）；回傳 Rules 的結果
 func _round(bet: int) -> Dictionary:
 	slot.clear_marks()
+	_set_win(0, false)
 	if not free:
-		_set_win(0, false)
+		_set_total(0, false)
 	_set_ladder(0)
 	var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
 	var res := Rules.play(rng, bet, free)
@@ -752,7 +827,8 @@ func _round(bet: int) -> Dictionary:
 		slot.mark(st.cells)
 		Sfx.play("win", 1.0 + k * 0.12)
 		won += st.win
-		_set_win(won, true)
+		_set_win(st.win, true)
+		_set_total(won, true)
 		_step_popup(st)
 		_queue_attack(st.win + (base if k == 0 else 0), st.win >= 5 * tb)
 		await get_tree().create_timer(0.36 if state.turbo else 0.62).timeout
@@ -762,14 +838,9 @@ func _round(bet: int) -> Dictionary:
 	return res
 
 
-func _tier(total: int, tb: int) -> String:
-	for t in TIERS:
-		if total >= t[0] * tb:
-			return t[1]
-	return ""
 
 
-# 3 個以上 BONUS（金鑰匙）：先給 BONUS 獎金，再連轉 Free Spins（倍率加倍，可以再觸發）
+# 3 個以上 SCATTER（金鑰匙）：先給 SCATTER 獎金，再連轉 Free Spins（倍率加倍，可以再觸發）
 func _free_spins(cells: Array, bet: int) -> void:
 	var tb := Rules.total_bet(bet)
 	slot.scatter_glow(cells)
@@ -783,7 +854,7 @@ func _free_spins(cells: Array, bet: int) -> void:
 	fs_total = pay
 	state.coins += pay
 	_coins_to(state.coins)
-	_set_win(fs_total, true)
+	_set_total(fs_total, true)
 	_refresh_fs()
 	while fs_left > 0:
 		fs_left -= 1
@@ -802,20 +873,20 @@ func _free_spins(cells: Array, bet: int) -> void:
 			fs_total += extra
 			state.coins += extra
 			_coins_to(state.coins)
-			_set_win(fs_total, true)
+			_set_total(fs_total, true)
 			_refresh_fs()
 			await callout("+%d FREE SPINS" % more, "", true, 1.1)
 		await get_tree().create_timer(0.25 if state.turbo else 0.45).timeout
 	free = false
 	_refresh_fs()
 	_set_ladder(0)
-	if _tier(fs_total, tb) != "":
+	if BigWin.qualifies(fs_total, tb):
 		await _big_win(fs_total, tb)
 	else:
 		Sfx.play("coin")
-		await callout("+%s" % Art.fmt(fs_total), "Free spins total", true, 1.3)
+		await callout("+%s" % Art.money(fs_total), "Free spins total", true, 1.3)
 	_refresh_fs()
-	_set_win(fs_total, false)
+	_set_total(fs_total, false)
 
 
 # 每一段中獎上方跳出「+120 ×2」
@@ -824,7 +895,7 @@ func _step_popup(st: Dictionary) -> void:
 	for i in st.cells:
 		at += slot.tile_center(i)
 	at = slot.position + at / st.cells.size()
-	var text := "+%s" % Art.fmt(st.win) + ("  ×%d" % st.mult if st.mult > 1 else "")
+	var text := "+%s" % Art.money(st.win) + ("  ×%d" % st.mult if st.mult > 1 else "")
 	var l := Art.label(text, Art.label_settings(26 if st.mult > 1 else 22, Art.GOLD_LIGHT, "num", 7, Art.GOLD_INK, 3))
 	l.size = Vector2(260, 44)
 	l.position = at - l.size / 2.0
@@ -840,60 +911,15 @@ func _step_popup(st: Dictionary) -> void:
 
 
 func _coins_to(value: int) -> void:
+	_refill.visible = value < Rules.START_COINS
 	var tw := create_tween()
 	tw.tween_method(func(v: float):
 		_shown_coins = v
-		_coins_label.text = Art.fmt(v), _shown_coins, float(value), 0.5)
+		_fit(_coins_label, Art.money(v)), _shown_coins, float(value), 0.5)
 
 
 func _big_win(total: int, tb: int) -> void:
-	_big_skip = false
-	_bigwin.visible = true
-	_bigwin.modulate.a = 0.0
-	var rain: CPUParticles2D = _bigwin.get_node("Rain")
-	rain.emitting = true
-	Sfx.play("big")
-	create_tween().tween_property(_bigwin, "modulate:a", 1.0, 0.2)
-	var shown := 0
-	var dur := 1.6 if state.turbo else 2.8
-	var t := 0.0
-	var tier := -2
-	var tick := -1
-	var tiers := TIERS.duplicate()
-	tiers.reverse()
-	while t < dur and not _big_skip:
-		await get_tree().process_frame
-		t += get_process_delta_time()
-		var k := 1.0 - pow(1.0 - minf(t / dur, 1.0), 2.0)
-		shown = int(total * k)
-		_big_amount.text = Art.fmt(shown)
-		var level := -1
-		for i in tiers.size():
-			if shown >= tiers[i][0] * tb:
-				level = i
-		if level != tier:
-			tier = level
-			_big_title.text = tiers[maxi(level, 0)][1]
-			_big_title.scale = Vector2(1.6, 1.6)
-			create_tween().tween_property(_big_title, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			_shake(8.0)
-			if level > 0:
-				Sfx.play("mult", 1.0 + level * 0.15)
-		if int(t * 6) != tick:
-			tick = int(t * 6)
-			Sfx.play("coin", 1.0 + k * 0.5, -8.0)
-	_big_amount.text = Art.fmt(total)
-	_big_skip = false
-	var hold := 0.0
-	while hold < 1.2 and not _big_skip:
-		await get_tree().process_frame
-		hold += get_process_delta_time()
-	rain.emitting = false
-	var tw := create_tween()
-	tw.tween_property(_bigwin, "modulate:a", 0.0, 0.25)
-	await tw.finished
-	_bigwin.visible = false
-
+	await _bigwin.play(total, tb, state.turbo)
 
 # ---------- 自走與打怪 ----------
 
@@ -916,20 +942,22 @@ func _meet() -> void:
 	if _hp_tween:
 		_hp_tween.kill()
 	_hp = 1.0
-	_hp_name.text = enemy.name
-	_hp_num.text = "%s / %s" % [Art.fmt(enemy.hp), Art.fmt(enemy.max_hp)]
+	_hp_num.text = "%s / %s" % [Art.money(enemy.hp), Art.money(enemy.max_hp)]
 	create_tween().tween_property(_enemy_box, "modulate:a", 1.0, 0.3)
 	_hp_bar.queue_redraw()
 	_refresh_all()
 	callout("WOLF KING!" if enemy.kind == "boss" else "WOLF AHEAD!", "Every coin you win hits him", false, 1.1)
 	await field.spawn_enemy(enemy.kind)
 	enemy_ready = true
+	# 走路時存起來的傷害：狼一站定就先打出去
+	if state.charge > 0 and not enemy.is_empty():
+		_queue.push_front([0, false, true])
+		if not _working:
+			_work()
 
 
 func _queue_attack(damage: int, crit: bool) -> void:
-	if enemy.is_empty():
-		return
-	_queue.append([damage, crit])
+	_queue.append([damage, crit, false])
 	if not _working:
 		_work()
 
@@ -938,23 +966,31 @@ func _work() -> void:
 	_working = true
 	while not _queue.is_empty():
 		var a: Array = _queue.pop_front()
-		await _attack(a[0], a[1])
+		await _attack(a[0], a[1], a[2])
 	_working = false
 
 
-func _attack(damage: int, crit: bool) -> void:
-	if enemy.is_empty():
-		return
-	while not enemy_ready:
-		await get_tree().process_frame
-		if enemy.is_empty():
-			return
+# 打一下。沒有狼可以打（走路中、狼還在走進場、前一刀剛打倒）時傷害不浪費，先存進 state.charge；
+# release 是狼站定時把存的傷害一刀打出去。打倒時多出來的傷害也存起來，大獎可以一路連殺好幾隻
+func _attack(damage: int, crit: bool, release := false) -> void:
 	var tb := Rules.total_bet(Rules.BET_LEVELS[state.bet])
-	await field.strike(clampi(1 + damage / maxi(tb, 1), 1, 3))
-	if enemy.is_empty():
+	if release:
+		if enemy.is_empty() or not enemy_ready or state.charge <= 0:
+			return
+		damage = state.charge
+		crit = damage >= 5 * tb
+		state.charge = 0
+		field.release_charge()
+	elif enemy.is_empty() or not enemy_ready:
+		_store(damage)
 		return
+	await field.strike(3 if release else clampi(1 + damage / maxi(tb, 1), 1, 3))
+	if enemy.is_empty():
+		_store(damage)
+		return
+	var over := maxi(0, damage - int(enemy.hp))
 	var killed := Rules.hit(enemy, damage)
-	field.impact("-%s" % Art.fmt(damage), crit)
+	field.impact("-%s" % Art.money(damage), crit)
 	_shake(9.0 if crit else 4.0)
 	var to: float = float(enemy.hp) / enemy.max_hp
 	if _hp_tween:
@@ -963,11 +999,26 @@ func _attack(damage: int, crit: bool) -> void:
 	_hp_tween.tween_method(func(v: float):
 		_hp = v
 		_hp_bar.queue_redraw(), _hp, to, 0.35)
-	_hp_num.text = "%s / %s" % [Art.fmt(enemy.hp), Art.fmt(enemy.max_hp)]
+	_hp_num.text = "%s / %s" % [Art.money(enemy.hp), Art.money(enemy.max_hp)]
 	if killed:
+		_store(over)
 		await _defeat()
 	else:
 		await get_tree().create_timer(0.15).timeout
+
+
+func _store(amount: int) -> void:
+	if amount <= 0:
+		return
+	state.charge += amount
+	field.set_charge(state.charge, amount, _charge_power())
+	Sfx.play("coin", 1.5, -12.0)
+
+
+# 存越多小紅帽身上的金光越亮：存到一隻狼的血量就最亮
+func _charge_power() -> float:
+	var hp: float = Rules.ENEMIES.wolf.hp * Rules.total_bet(Rules.BET_LEVELS[state.bet])
+	return clampf(0.35 + 0.65 * state.charge / hp, 0.35, 1.0)
 
 
 func _defeat() -> void:
@@ -983,14 +1034,14 @@ func _defeat() -> void:
 	await get_tree().create_timer(0.45).timeout
 	state.coins += e.reward
 	_coins_to(state.coins)
-	field.float_text("+%s" % Art.fmt(e.reward), at + Vector2(0, -40), Art.GOLD, 30, Art.GOLD_INK)
+	field.float_text("+%s" % Art.money(e.reward), at + Vector2(0, -40), Art.GOLD, 30, Art.GOLD_INK)
 	Sfx.play("coin")
 	var ups := Rules.gain_xp(state, e.xp)
 	_refresh_all()
 	_save()
 	if e.kind == "boss":
 		field.set_stage(_stage())
-		await callout("GRANDMA'S HOUSE!", "Stage %d begins · reward +%s" % [_stage(), Art.fmt(e.reward)], true, 1.5)
+		await callout("GRANDMA'S HOUSE!", "Stage %d begins · reward +%s" % [_stage(), Art.money(e.reward)], true, 1.5)
 	elif ups > 0:
 		Sfx.play("level")
 		field.hero.cheer()
@@ -1006,16 +1057,16 @@ func _stage() -> int:
 
 func _on_refill() -> void:
 	if state.coins >= Rules.START_COINS:
-		toast("Top-ups are for balances under %s" % Art.fmt(Rules.START_COINS))
+		toast("Top-ups are for balances under %s" % Art.money(Rules.START_COINS))
 		return
 	state.coins += Rules.REFILL
 	_coins_to(state.coins)
 	Sfx.play("coin")
-	toast("+%s coins (demo)" % Art.fmt(Rules.REFILL))
+	toast("+%s (demo)" % Art.money(Rules.REFILL))
 	_save()
 
 
-# 舊版存檔（金幣單位不同）只保留等級與關卡，金幣重新發
+# 舊版存檔（金額單位、押注級距不同）只保留等級與關卡，金幣與押注重新發
 func _load() -> void:
 	var cf := ConfigFile.new()
 	if cf.load(SAVE_PATH) != OK:
@@ -1026,7 +1077,8 @@ func _load() -> void:
 			state[k] = v
 	if cf.get_value("game", "version", 1) < SAVE_VERSION:
 		state.coins = Rules.START_COINS
-		state.bet = 2
+		state.bet = Rules.DEFAULT_BET
+		state.charge = 0
 	state.bet = clampi(state.bet, 0, Rules.BET_LEVELS.size() - 1)
 
 
@@ -1042,29 +1094,27 @@ func _save(force := false) -> void:
 
 
 func _refresh_all() -> void:
-	_coins_label.text = Art.fmt(state.coins)
-	_level_label.text = "Lv. %d" % state.level
-	_xp = float(state.xp) / Rules.xp_to_next(state.level)
-	_xp_bar.queue_redraw()
-	var n: int = state.kills % Rules.BOSS_EVERY + 1
-	_stage_label.text = "Stage %d-%d" % [_stage(), n]
+	_fit(_coins_label, Art.money(state.coins))
+	_refill.visible = state.coins < Rules.START_COINS
 	_refresh_controls()
 
 
 func _refresh_controls() -> void:
 	var bet: int = Rules.BET_LEVELS[state.bet]
-	_bet_label.text = Art.fmt(bet)
-	_total_label.text = Art.fmt(Rules.total_bet(bet))
+	_fit(_bet_label, Art.money(Rules.total_bet(bet)))
 	_minus_btn.disabled = busy or state.bet == 0
 	_plus_btn.disabled = busy or state.bet == Rules.BET_LEVELS.size() - 1
 	_minus_btn.modulate.a = 0.35 if _minus_btn.disabled else 1.0
 	_plus_btn.modulate.a = 0.35 if _plus_btn.disabled else 1.0
 	_spin_btn.busy = busy
+	_spin_btn.count = auto_left if auto else 0
+	_auto_btn.lit = auto
 
 
-# ---------- 選單：賠率表（照美術給的 paytable 排）與設定 ----------
+# ---------- 從下面滑上來的面板：押注選項、自動旋轉、選單（賠率表與設定） ----------
 
-func _build_menu() -> Control:
+# 半透明遮罩＋底部面板（標題、關閉鈕、內容）；scroll 的內容可以捲（選單）。點遮罩或 X 關閉
+func _make_sheet(title: String, scroll := false) -> Control:
 	var sheet := Control.new()
 	sheet.visible = false
 	sheet.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1073,25 +1123,27 @@ func _build_menu() -> Control:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and e.pressed:
-			sheet.visible = false)
+			_close_sheet(sheet))
 	sheet.add_child(dim)
 	var panel := PanelContainer.new()
 	panel.name = "Panel"
-	var sb := Art.box(Color("0d0a0b"), 16, 1, Art.PANEL_EDGE)
+	var sb := Art.box(Color("0b1019"), 16, 1, Art.PANEL_EDGE)
 	sb.corner_radius_bottom_left = 0
 	sb.corner_radius_bottom_right = 0
+	sb.border_width_top = 2
+	sb.border_color = Art.GOLD_DEEP
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
 	sb.content_margin_top = 10
-	sb.content_margin_bottom = 16
+	sb.content_margin_bottom = 18
 	panel.add_theme_stylebox_override("panel", sb)
 	sheet.add_child(panel)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
 	var head := HBoxContainer.new()
 	col.add_child(head)
-	var t := Art.label("SYMBOLS & PAYTABLE", Art.label_settings(19, Art.GOLD, "num", 4, Art.GOLD_INK), HORIZONTAL_ALIGNMENT_LEFT)
+	var t := Art.label(title, Art.label_settings(19, Art.GOLD, "num", 4, Art.GOLD_INK), HORIZONTAL_ALIGNMENT_LEFT)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	var close := Button.new()
@@ -1101,29 +1153,132 @@ func _build_menu() -> Control:
 	close.add_theme_font_override("font", Art.font())
 	close.add_theme_font_size_override("font_size", 22)
 	close.add_theme_color_override("font_color", Art.CREAM)
-	close.pressed.connect(func(): sheet.visible = false)
+	close.pressed.connect(func(): _close_sheet(sheet))
 	head.add_child(close)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	col.add_child(scroll)
-	_menu_body = VBoxContainer.new()
-	_menu_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_menu_body.add_theme_constant_override("separation", 10)
-	scroll.add_child(_menu_body)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 10)
+	if scroll:
+		var sc := ScrollContainer.new()
+		sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		col.add_child(sc)
+		sc.add_child(body)
+	else:
+		col.add_child(body)
+	sheet.set_meta("body", body)
+	sheet.set_meta("scroll", scroll)
 	return sheet
+
+
+# 選單佔大半個畫面；押注、自動旋轉的面板只要內容那麼高
+func _layout_sheet(sheet: Control) -> void:
+	var vp := get_viewport_rect().size
+	sheet.size = vp
+	var panel: Control = sheet.get_node("Panel")
+	var w := minf(vp.x, 480.0)
+	var h: float = vp.y * 0.88 if sheet.get_meta("scroll") else panel.get_combined_minimum_size().y
+	panel.size = Vector2(w, h)
+	panel.position = Vector2((vp.x - w) / 2.0, vp.y - h)
+
+
+func _open_sheet(sheet: Control) -> void:
+	if sheet == _bet_sheet:
+		_fill_bet()
+	elif sheet == _auto_sheet:
+		_fill_auto()
+	else:
+		_fill_menu()
+	sheet.visible = true
+	# 內容剛換過，等一格讓容器算出高度再排
+	await get_tree().process_frame
+	_layout_sheet(sheet)
+	var panel: Control = sheet.get_node("Panel")
+	var y := panel.position.y
+	panel.position.y = get_viewport_rect().size.y
+	create_tween().tween_property(panel, "position:y", y, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _close_sheet(sheet: Control) -> void:
+	sheet.visible = false
 
 
 func _open_menu() -> void:
 	Sfx.play("click")
-	_fill_menu()
-	_menu.visible = true
-	_layout_overlay()
-	var panel: Control = _menu.get_node("Panel")
-	var y := panel.position.y
-	panel.position.y = get_viewport_rect().size.y
-	create_tween().tween_property(panel, "position:y", y, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_open_sheet(_menu)
 
+
+func _open_bet() -> void:
+	if busy or auto:
+		toast("Wait for the spin to finish")
+		return
+	Sfx.play("click")
+	_open_sheet(_bet_sheet)
+
+
+func _clear(box: Control) -> void:
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+
+
+# 面板裡的選項按鈕：深藍底古金邊，選中的是紅底亮金邊；第二行小字
+func _choice(big: String, small: String, selected: bool, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.text = big + ("\n" + small if small != "" else "")
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.custom_minimum_size = Vector2(0, 56 if small != "" else 46)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_override("font", Art.font())
+	b.add_theme_font_size_override("font_size", 17)
+	var normal := Art.box(Color("131b2b"), 10, 1, Art.PANEL_EDGE)
+	var on := Art.box(Color("7a0c12"), 10, 2, Art.GOLD)
+	var hover := Art.box(Color("1b2638"), 10, 1, Art.GOLD)
+	var base := on if selected else normal
+	for st in ["normal", "focus"]:
+		b.add_theme_stylebox_override(st, base)
+	b.add_theme_stylebox_override("hover", on if selected else hover)
+	b.add_theme_stylebox_override("pressed", on)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Art.GOLD_LIGHT if selected else Art.CREAM)
+	b.pressed.connect(on_press)
+	return b
+
+
+# 押注選項（照 PG Soft 的「投注選項」）：總押注 = 押注 × 20，挑一格就換好關掉
+func _fill_bet() -> void:
+	var body: VBoxContainer = _bet_sheet.get_meta("body")
+	_clear(body)
+	body.add_child(_body("Total bet = bet per line × %d lines. Wins, wolf HP and bounties all scale with it." % Rules.BASE_BET, 12))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for i in Rules.BET_LEVELS.size():
+		var bet: int = Rules.BET_LEVELS[i]
+		var k := i
+		grid.add_child(_choice(Art.money(Rules.total_bet(bet)), "%s × %d" % [Art.money(bet), Rules.BASE_BET], i == state.bet, func():
+			_close_sheet(_bet_sheet)
+			_set_bet(k)))
+	body.add_child(grid)
+
+
+# 自動旋轉（照 PG Soft）：挑次數就開始；轉動鍵中間顯示剩幾轉，按轉動鍵或 AUTO 停
+func _fill_auto() -> void:
+	var body: VBoxContainer = _auto_sheet.get_meta("body")
+	_clear(body)
+	body.add_child(_body("Pick how many spins. Tap SPIN or AUTO to stop; auto spin also stops when your balance runs low.", 12))
+	var grid := GridContainer.new()
+	grid.columns = AUTO_COUNTS.size()
+	grid.add_theme_constant_override("h_separation", 6)
+	for n in AUTO_COUNTS:
+		var count: int = n
+		grid.add_child(_choice(Art.fmt(count), "", false, func(): _start_auto(count)))
+	body.add_child(grid)
+
+
+# ---------- 選單：賠率表（照美術給的 paytable 排）與設定 ----------
 
 func _body(text: String, size := 13) -> Label:
 	var l := Label.new()
@@ -1170,7 +1325,7 @@ func _pay_cell(id: String, bet: int) -> Control:
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 6)
 		row.add_child(Art.label(str(n), Art.label_settings(12, Art.GOLD, "light")))
-		var v := Art.label(Art.fmt(Rules.pay(id, n, bet)), Art.label_settings(12, Art.CREAM, "light"), HORIZONTAL_ALIGNMENT_LEFT)
+		var v := Art.label(Art.money(Rules.pay(id, n, bet)), Art.label_settings(12, Art.CREAM, "light"), HORIZONTAL_ALIGNMENT_LEFT)
 		v.custom_minimum_size = Vector2(34, 0)
 		row.add_child(v)
 		box.add_child(row)
@@ -1217,7 +1372,7 @@ func _fill_menu() -> void:
 	for c in _menu_body.get_children():
 		c.queue_free()
 	var bet: int = Rules.BET_LEVELS[state.bet]
-	_menu_body.add_child(_body("Values are coins for your current bet (BET %s · TOTAL BET %s)." % [Art.fmt(bet), Art.fmt(Rules.total_bet(bet))], 12))
+	_menu_body.add_child(_body("Wins per way at your current bet (%s per line, TOTAL BET %s)." % [Art.money(bet), Art.money(Rules.total_bet(bet))], 12))
 	for ids in [["wolf", "raven", "lantern", "basket", "potion"], ["ace", "king", "queen", "jack", "ten"]]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 4)
@@ -1225,13 +1380,13 @@ func _fill_menu() -> void:
 			row.add_child(_pay_cell(id, bet))
 		_menu_body.add_child(row)
 	_menu_body.add_child(_divider("SPECIAL SYMBOLS"))
-	_menu_body.add_child(_special("hood", "WILD", ["Substitutes for all symbols except BONUS.", "Appears on reels 2, 3 and 4 only. Gold-framed symbols that win turn into WILD."]))
+	_menu_body.add_child(_special("hood", "WILD", ["Substitutes for all symbols except SCATTER.", "Appears on reels 2, 3 and 4 only.", "Gold-framed symbols (reels 2–4) don't burst when they win: they flip into WILD and stay for the next cascade."]))
 	var sc := []
 	for n in [5, 4, 3]:
-		sc.append("%d  ×  %s coins" % [n, Art.fmt(Rules.scatter_pay(n, bet))])
-	_menu_body.add_child(_special("key", "BONUS", ["3 or more BONUS anywhere trigger Free Spins: 3 = 8, 4 = 10, 5 = 12 spins."] + sc))
+		sc.append("%d  ×  %s" % [n, Art.money(Rules.scatter_pay(n, bet))])
+	_menu_body.add_child(_special("key", "SCATTER", ["3 or more SCATTER anywhere trigger Free Spins: 3 = 8, 4 = 10, 5 = 12 spins."] + sc))
 	_menu_body.add_child(_divider("FREE SPINS"))
-	_menu_body.add_child(_body("Free spins cost nothing. Cascade multipliers are doubled: ×2, ×4, ×6, then ×10. 3 or more BONUS during free spins add more spins."))
+	_menu_body.add_child(_body("Free spins cost nothing. Cascade multipliers are doubled: ×2, ×4, ×6, then ×10. 3 or more SCATTER during free spins add more spins."))
 	_menu_body.add_child(_divider("1024 WAYS & CASCADES"))
 	var ways := HBoxContainer.new()
 	ways.add_theme_constant_override("separation", 12)
@@ -1241,7 +1396,9 @@ func _fill_menu() -> void:
 	ways.add_child(wtxt)
 	_menu_body.add_child(ways)
 	_menu_body.add_child(_divider("AUTO-RUN"))
-	_menu_body.add_child(_body("Red Hood walks to Grandma's house on her own. When a wolf blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. Defeat wolves for coins and XP; every 5th is the Wolf King."))
+	_menu_body.add_child(_body("Red Hood walks to Grandma's house on her own. When a wolf blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while no wolf is around, and any overkill, is stored and unleashed on the next one. Defeat wolves for coins and XP; every 5th is the Wolf King."))
+	var n: int = state.kills % Rules.BOSS_EVERY + 1
+	_menu_body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · Stage %d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), _stage(), n], 12))
 	_menu_body.add_child(_divider("SETTINGS"))
 	var check := CheckButton.new()
 	check.text = "Sound"
@@ -1275,10 +1432,11 @@ func _fill_menu() -> void:
 			armed[0] = true
 			reset.text = "Tap again to reset coins, level and stage"
 			return
-		for k in ["coins", "bet", "level", "xp", "kills"]:
-			state[k] = {"coins": Rules.START_COINS, "bet": 2, "level": 1, "xp": 0, "kills": 0}[k]
+		for k in ["coins", "bet", "level", "xp", "kills", "charge"]:
+			state[k] = {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0}[k]
 		_shown_coins = state.coins
 		field.set_stage(1)
+		field.set_charge(0, 0, 0.0)
 		_refresh_all()
 		_save()
 		_menu.visible = false
@@ -1295,6 +1453,12 @@ func _boot() -> void:
 	await Sfx.build_all(func(p: float): _web("asProgress", p))
 	started = true
 	_web("asReady", 1.0)
+	# 預覽 BIG WIN 演出：網址帶 ?bigwin 時一進遊戲就演一次總押注 60 倍（只是演出，不動餘額）
+	if OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("bigwin"):
+		var tb := Rules.total_bet(Rules.BET_LEVELS[state.bet])
+		busy = true
+		await _big_win(60 * tb, tb)
+		busy = false
 
 
 # 通知網頁外殼（web/shell.html）的 loading 畫面：進度、可以收起來了

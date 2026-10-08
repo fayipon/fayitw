@@ -3,14 +3,19 @@
 # - 連鎖消除（參考 Pinata Wins）：中獎的格子消掉、上面的往下掉、空位補新符號，一直連到沒有中獎；
 #   第 1、2、3、4 段以後分別乘 MULTIPLIERS 的倍率，整串連鎖結束才一次結算
 # - 中間三軸的一般符號可能帶金框：金框符號中獎時不消失，而是變成小紅帽 WILD 留在原位
-# - 小紅帽是 WILD（只在第 2～4 軸，代替 BONUS 以外的符號）；金鑰匙是 BONUS（scatter 型：出現在哪都算），
+# - 小紅帽是 WILD（只在第 2～4 軸，代替 SCATTER 以外的符號）；金鑰匙是 SCATTER（出現在哪都算），
 #   每軸最多一個，連鎖完的盤面上 3／4／5 個依 SCATTER_PAYS 給總押注的倍數，並觸發 8／10／12 次 Free Spins
-# - Free Spins 不扣押注，連鎖倍率換成 FS_MULTIPLIERS（加倍）；免費轉中再出 3 個以上 BONUS 會加次數
-# - 總押注 = BET × 20；賠率表 pays 是每一路在 BET 20 時贏的金幣（跟美術給的 paytable 同一組數字），
-#   實際 = pays × 路數 × BET ÷ 20。BET 都是 4 的倍數、pays 都是 5 的倍數，所以一定整除。
+# - Free Spins 不扣押注，連鎖倍率換成 FS_MULTIPLIERS（加倍）；免費轉中再出 3 個以上 SCATTER 會加次數
+# - 金額一律用「分」記（整數，畫面上 ÷ 100 顯示兩位小數）。押注照 PG Soft：總押注 = 每線押注 × 20 線，
+#   每線押注 BET_LEVELS 從 0.05 到 10.00（總押注 1.00～200.00）
+# - 賠率表 pays 是每一路在每線押注 20 時贏的金額（跟美術給的 paytable 同一組數字），
+#   實際 = pays × 路數 × 每線押注 ÷ 20。押注小的時候會有不到 1 分的零頭：每一段連鎖算完（含倍率）才四捨五入到分，
+#   所以最低押注的回收率跟高押注幾乎一樣（測試會比對）。
 #   符號組照介面設計稿（狼、烏鴉、提燈、籃子、藥水、金鑰匙、小紅帽）；藥水用 paytable 上魔法書那一級
-# - 自走打怪：每一轉贏的金幣就是傷害，再加一次基本攻擊；敵人血量與賞金是出現當下總押注的倍數
-# - 盤面每一格是 { id, gold }；照現在的權重模擬：主遊戲約 69%、Free Spins 約 11%、打怪賞金約 9%
+# - 自走打怪：每一轉贏的金幣就是傷害，再加一次基本攻擊；敵人血量與賞金是出現當下總押注的倍數。
+#   傷害不浪費：沒有狼可以打時（走路中、剛打倒）打的、打倒時多出來的都存起來，下一隻站定就一次打出去
+#   （存與放在 main.gd）。賞金 ÷ 血量跟押注無關，所以換押注不會多賺或少賺
+# - 盤面每一格是 { id, gold }；照現在的權重模擬：主遊戲約 67%、Free Spins 約 12%、打怪賞金約 19%
 extends RefCounted
 
 const COLS := 5
@@ -18,13 +23,15 @@ const ROWS := 4
 const CELLS := COLS * ROWS
 const BASE_BET := 20
 const PAY_DIV := 20
-const BET_LEVELS := [4, 8, 20, 40, 100, 200]
-const START_COINS := 50000
-const REFILL := 25000
+# 每線押注（分）：0.05、0.10、0.20、0.50、1.00、2.00、5.00、10.00
+const BET_LEVELS := [5, 10, 20, 50, 100, 200, 500, 1000]
+const DEFAULT_BET := 1
+const START_COINS := 200000
+const REFILL := 100000
 const MULTIPLIERS := [1, 2, 3, 5]
 const FS_MULTIPLIERS := [2, 4, 6, 10]
 const FS_AWARD := {3: 8, 4: 10, 5: 12}
-# BONUS 的獎金：總押注 × 這個數 ÷ 20（3 個 = 0.25 倍、4 個 = 1 倍、5 個 = 5 倍）
+# SCATTER 的獎金：總押注 × 這個數 ÷ 20（3 個 = 0.25 倍、4 個 = 1 倍、5 個 = 5 倍）
 const SCATTER_PAYS := {3: 5, 4: 20, 5: 100}
 const GOLD_CHANCE := 0.115
 const MAX_STEPS := 40
@@ -110,11 +117,12 @@ static func spin_board(rng: RandomNumberGenerator) -> Array:
 	return board
 
 
-# 算 1024 路：wins 是每個中獎符號的 { symbol, reels, ways, amount, cells }（amount 是實際金幣），
+# 算 1024 路：wins 是每個中獎符號的 { symbol, reels, ways, amount, cells }（amount 是分，可能有零頭），
+# raw 是這一盤的總贏分 × 20（整數，沒有零頭），total 是四捨五入到分；
 # 另外回傳盤面上的 SCATTER 格子，3 個以上 triggered 為 true
 static func evaluate(board: Array, bet: int) -> Dictionary:
 	var wins := []
-	var total := 0
+	var raw := 0
 	for id in SYMBOL_IDS:
 		if is_wild(id) or is_scatter(id):
 			continue
@@ -134,17 +142,17 @@ static func evaluate(board: Array, bet: int) -> Dictionary:
 			cells.append_array(hit)
 		# 第一軸沒有百搭，所以第一軸一定是這個符號本身
 		if reels >= 3:
-			var amount: int = pay(id, reels, bet) * ways
-			wins.append({"symbol": id, "reels": reels, "ways": ways, "amount": amount, "cells": cells})
-			total += amount
+			var r: int = SYMBOLS[id].pays[reels - 3] * bet * ways
+			wins.append({"symbol": id, "reels": reels, "ways": ways, "amount": r / float(PAY_DIV), "cells": cells})
+			raw += r
 	wins.sort_custom(func(a, b): return a.amount > b.amount)
 	var scatter := scatters(board)
-	return {"wins": wins, "total": total, "scatter": scatter, "triggered": scatter.size() >= 3}
+	return {"wins": wins, "raw": raw, "total": roundi(raw / float(PAY_DIV)), "scatter": scatter, "triggered": scatter.size() >= 3}
 
 
-# 一路 n 連在這個 BET 贏多少（賠率表上顯示的也是這個數）
-static func pay(id: String, reels: int, bet: int) -> int:
-	return SYMBOLS[id].pays[reels - 3] * bet / PAY_DIV
+# 一路 n 連在這個每線押注贏多少分（可能有零頭；賠率表上顯示的也是這個數）
+static func pay(id: String, reels: int, bet: int) -> float:
+	return SYMBOLS[id].pays[reels - 3] * bet / float(PAY_DIV)
 
 
 static func scatters(board: Array) -> Array:
@@ -156,7 +164,8 @@ static func scatters(board: Array) -> Array:
 
 
 # 轉一次，連鎖到沒有中獎為止。每一段 step：
-#   board 這段開始的盤面、wins／base 這段的中獎（未乘倍率）、mult 倍率、win = base × mult、
+#   board 這段開始的盤面、wins／base 這段的中獎（未乘倍率，raw 是 × 20 的整數）、mult 倍率、
+#   win = raw × mult ÷ 20 四捨五入到分、
 #   cells 中獎格子、removed 消掉的格子、to_wild 金框變百搭的格子、
 #   moves 往下掉的 { col, from, to }（列）、added 補進來的 { col, row, cell }、next 掉完的盤面
 # free = true 是 Free Spins：倍率用 FS_MULTIPLIERS
@@ -213,8 +222,8 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: A
 					next[i] = cell
 					added.append({"col": c, "row": r, "cell": cell})
 				n += 1
-		var win: int = ev.total * mult
-		steps.append({"board": board, "wins": ev.wins, "base": ev.total, "mult": mult, "win": win,
+		var win: int = roundi(ev.raw * mult / float(PAY_DIV))
+		steps.append({"board": board, "wins": ev.wins, "base": ev.total, "raw": ev.raw, "mult": mult, "win": win,
 			"cells": cells, "removed": removed, "to_wild": to_wild, "moves": moves, "added": added, "next": next})
 		total += win
 		board = next

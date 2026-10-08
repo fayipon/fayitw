@@ -11,7 +11,8 @@ var height := 200.0        # 畫面上的身高（像素），腳底在原點
 var facing := 1.0          # 1 面向右、-1 面向左（圖本來的方向由 flip_source 決定）
 var flip_source := false
 var base_tint := Color.WHITE
-var aura := 0.0             # 狼王：身後一圈暗紅光
+var aura := 0.0             # 身後一圈光：狼王是暗紅色，小紅帽存著傷害時是金色
+var aura_color := Color(0.8, 0.05, 0.05)
 # 動作都疊在圖上（不動節點位置），畫面縮放時節點直接放回原位就好
 var kick_x := 0.0           # 被打往後退
 var hop_y := 0.0            # 跳一下
@@ -50,6 +51,14 @@ func set_pose(name: String) -> void:
 	var tex: Texture2D = poses[name]
 	_sprite.texture = tex
 	_fit()
+
+
+# 所有姿勢裡最寬的寬高比：用來依寬度限制身高，換姿勢時大小才不會跳
+func widest() -> float:
+	var k := 1.0
+	for t in poses.values():
+		k = maxf(k, float(t.get_width()) / t.get_height())
+	return k
 
 
 func set_height(h: float) -> void:
@@ -93,11 +102,11 @@ func _apply() -> void:
 		_sprite.position = Vector2(_base_x + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
 
 
-# 腳下的影子（狼王身後再加一圈暗紅光）
+# 腳下的影子（有光暈的話身後再加一圈光）
 func _draw() -> void:
 	if aura > 0.0:
 		for k in 6:
-			draw_circle(Vector2(0, -height * 0.5), height * (0.62 - k * 0.07), Color(0.8, 0.05, 0.05, 0.06 * aura * fade))
+			draw_circle(Vector2(0, -height * 0.5), height * (0.62 - k * 0.07), Color(aura_color, 0.06 * aura * fade))
 	var w := height * 0.36
 	for k in 4:
 		var f := 1.0 - k * 0.22

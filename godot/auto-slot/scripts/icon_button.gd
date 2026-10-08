@@ -1,5 +1,5 @@
-# 圓形按鈕：轉動鍵（荊棘古金圈＋金色循環箭頭）、選單、TURBO、AUTO（銅圈＋金色圖示，底下可帶小字）、
-# 押注加減（細金圈）、補幣（綠寶石）。圈是 art/ui 的圖，圖示用程式畫
+# 圓形按鈕（照設計稿與 PG Soft 的投注列）：轉動鍵（紅色圓盤＋古金圈，中間畫金色循環箭頭；自動旋轉時改寫剩幾轉）、
+# 選單、TURBO、AUTO、押注加減（古金細圈＋深藍底，底下可帶小字）、補幣（綠寶石）。圈是 art/ui 的圖，圖示用程式畫
 extends BaseButton
 
 const Art := preload("res://scripts/art.gd")
@@ -9,6 +9,16 @@ var caption := ""
 var busy := false:
 	set(v):
 		busy = v
+		queue_redraw()
+# 亮起來（AUTO 自動旋轉中）
+var lit := false:
+	set(v):
+		lit = v
+		queue_redraw()
+# 轉動鍵中間顯示的數字（自動旋轉剩幾轉；0 = 畫箭頭）
+var count := 0:
+	set(v):
+		count = v
 		queue_redraw()
 var _t := 0.0
 var _spin_speed := 0.0
@@ -29,7 +39,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var on := toggle_mode and button_pressed
+	var on := lit or (toggle_mode and button_pressed)
 	if kind == "spin":
 		# 轉動中箭頭加速旋轉，停下來慢慢減速
 		_spin_speed = move_toward(_spin_speed, 9.0 if busy else 0.6, delta * 12.0)
@@ -50,12 +60,6 @@ func _draw() -> void:
 	match kind:
 		"spin":
 			_spin_face(r)
-		"plus", "minus":
-			draw_circle(Vector2.ZERO, r, Color(0, 0, 0, 0.55))
-			draw_arc(Vector2.ZERO, r - 1.0, 0, TAU, 40, Art.GOLD_DEEP, 1.6, true)
-			draw_line(Vector2(-r * 0.42, 0), Vector2(r * 0.42, 0), Art.GOLD, 2.2, true)
-			if kind == "plus":
-				draw_line(Vector2(0, -r * 0.42), Vector2(0, r * 0.42), Art.GOLD, 2.2, true)
 		"refill":
 			draw_circle(Vector2(0, 1.5), r, Color(0, 0, 0, 0.4))
 			draw_circle(Vector2.ZERO, r, Art.GOLD_DEEP)
@@ -70,22 +74,23 @@ func _draw() -> void:
 	if caption != "":
 		var f := Art.font()
 		var fs := int(clampf(d * 0.26, 9, 13))
-		var on := toggle_mode and button_pressed
+		var on := lit or (toggle_mode and button_pressed)
 		var base := Vector2(-10, size.y - 1)
 		draw_string_outline(f, base, caption, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, 3, Art.INK)
-		draw_string(f, base, caption, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, Art.GOLD_LIGHT if on else Art.GOLD)
+		draw_string(f, base, caption, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, Art.GOLD_LIGHT if on else Art.CREAM)
 
 
-# 銅圈按鈕：選單三條線、TURBO 閃電、AUTO 循環箭頭；開著的時候外圈發金光
+# 古金細圈按鈕：選單三條線、TURBO 閃電、AUTO 循環箭頭、押注加減；開著的時候外圈發金光
 func _ring_face(r: float) -> void:
-	var on := toggle_mode and button_pressed
+	var on := lit or (toggle_mode and button_pressed)
 	if on:
 		for k in 4:
-			draw_circle(Vector2.ZERO, r * (1.12 - k * 0.04), Color(1, 0.75, 0.3, 0.08))
+			draw_circle(Vector2.ZERO, r * (1.16 - k * 0.05), Color(1, 0.75, 0.3, 0.1))
+	draw_circle(Vector2(0, r * 0.08), r * 0.98, Color(0, 0, 0, 0.45))
 	var ring := Art.ui("ring")
 	var rs := r * 2.0 / ring.get_width()
 	draw_texture_rect(ring, Rect2(-Vector2(ring.get_width(), ring.get_height()) * rs / 2.0, Vector2(ring.get_width(), ring.get_height()) * rs), false)
-	var ink := Art.GOLD_LIGHT if on else (Art.GOLD if not is_hovered() else Art.GOLD_LIGHT)
+	var ink := Art.GOLD_LIGHT if on or is_hovered() else Color("f3dfae")
 	match kind:
 		"menu":
 			for k in 3:
@@ -99,11 +104,13 @@ func _ring_face(r: float) -> void:
 			draw_colored_polygon(bolt, ink)
 		"auto":
 			draw_set_transform(size.x / 2.0 * Vector2.ONE, _t if on else 0.0, Vector2.ONE)
-			_arrows(r * 0.4, maxf(2.0, r * 0.09), ink)
+			_arrows(r * 0.4, maxf(2.0, r * 0.1), ink)
 			draw_set_transform(size.x / 2.0 * Vector2.ONE)
-			var f := Art.font()
-			var fs := int(r * 0.5)
-			draw_string(f, Vector2(-r, fs * 0.36), "A", HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, ink)
+		"plus", "minus":
+			var w := maxf(2.4, r * 0.12)
+			draw_line(Vector2(-r * 0.4, 0), Vector2(r * 0.4, 0), ink, w, true)
+			if kind == "plus":
+				draw_line(Vector2(0, -r * 0.4), Vector2(0, r * 0.4), ink, w, true)
 
 
 # 兩段弧＋箭頭的循環符號
@@ -124,22 +131,26 @@ func _arrows(rr: float, width: float, ink: Color, outline := Color.TRANSPARENT) 
 		draw_colored_polygon(head, ink)
 
 
-# 轉動鍵：荊棘古金圈（圓心對準按鈕中心），深色圓心裡畫金色循環箭頭
+# 轉動鍵：紅色圓盤＋古金圈的圖蓋滿按鈕，中間畫金色循環箭頭；自動旋轉時改寫剩幾轉
 func _spin_face(r: float) -> void:
-	var ring := Art.ui("spin-ring")
-	var hole: Array = Art.ui_meta()["spin-ring-hole"]
-	var k := r * 0.6 / float(hole[2])
-	draw_circle(Vector2(0, r * 0.06), r * 0.86, Color(0, 0, 0, 0.45))
-	draw_texture_rect(ring, Rect2(-Vector2(hole[0], hole[1]) * k, Vector2(ring.get_width(), ring.get_height()) * k), false)
-	# 圓心微微透出紅光
-	for i in 5:
-		draw_circle(Vector2.ZERO, r * (0.58 - i * 0.09), Color(0.6, 0.05, 0.05, 0.08))
-	draw_set_transform(size / 2.0, _t, Vector2.ONE * (0.93 if is_pressed() else 1.0))
-	_arrows(r * 0.36, r * 0.11, Art.GOLD, Art.GOLD_INK)
-	draw_set_transform(size / 2.0, _t, Vector2.ONE * (0.93 if is_pressed() else 1.0))
-	for kk in 2:
-		var a0 := kk * PI + 0.45
-		draw_arc(Vector2.ZERO, r * 0.36 - r * 0.025, a0, a0 + PI * 0.55, 18, Color(Art.GOLD_LIGHT, 0.8), r * 0.03, true)
-	draw_set_transform(size / 2.0)
+	var tex := Art.ui("spin")
+	draw_circle(Vector2(0, r * 0.07), r * 0.98, Color(0, 0, 0, 0.5))
+	for i in 4:
+		draw_circle(Vector2.ZERO, r * (1.12 - i * 0.04), Color(1, 0.3, 0.15, 0.06))
+	draw_texture_rect(tex, Rect2(-r, -r, r * 2.0, r * 2.0), false)
+	if count > 0:
+		var f := Art.font()
+		var text := str(count)
+		var fs := int(r * (0.5 if text.length() <= 2 else 0.38))
+		var base := Vector2(-r, fs * 0.36)
+		draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, 6, Art.GOLD_INK)
+		draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, Art.GOLD_LIGHT)
+	else:
+		draw_set_transform(size / 2.0, _t, Vector2.ONE * (0.93 if is_pressed() else 1.0))
+		_arrows(r * 0.4, r * 0.12, Art.GOLD, Art.GOLD_INK)
+		for kk in 2:
+			var a0 := kk * PI + 0.45
+			draw_arc(Vector2.ZERO, r * 0.4 - r * 0.028, a0, a0 + PI * 0.55, 18, Color(Art.GOLD_LIGHT, 0.8), r * 0.034, true)
+		draw_set_transform(size / 2.0)
 	if disabled:
-		draw_circle(Vector2.ZERO, r * 0.6, Color(0, 0, 0, 0.45))
+		draw_circle(Vector2.ZERO, r * 0.78, Color(0, 0, 0, 0.45))

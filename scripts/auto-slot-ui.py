@@ -1,11 +1,14 @@
-# 自走SLOT 暗黑哥德版介面：把 Leonardo 原檔（assets-src/auto-slot/g-*.jpg）轉成 Godot 用的圖
-# python scripts/auto-slot-gothic.py（需要 numpy、opencv-python）
+# 自走SLOT 介面：把 Leonardo 原檔（assets-src/auto-slot/r-*.jpg）轉成 Godot 用的圖
+# python scripts/auto-slot-ui.py（需要 numpy、opencv-python）
 # - 符號磚：白底上的方形滿版磚，找出每一塊切下來、往內縮掉白邊，統一成 256 × 266（跟轉輪格子一樣 1 : 1.04）
 #   → godot/auto-slot/art/tiles/<id>.webp
-# - 介面零件：灰底挖空（只挖連到圖邊的灰，邊緣半透明並扣掉灰色），依位置命名 → art/ui/
-# - 轉輪外框（g-frame2）：白底挖空，量出中間黑色開口、木框厚度與頂端紅寶石的位置，
-#   寫進 art/ui/ui.json 的 "frame"，Godot 依此把轉輪對進開口
-# - 森林地面背景：縮成 768 寬 → art/ui/floor.webp
+# - 介面零件（r-ui）：灰底挖空（只挖連到圖邊的灰，邊緣半透明並扣掉灰色），依位置命名：
+#   轉動鍵 spin（紅色圓盤，Godot 在中間畫旋轉箭頭）、小圓鈕 ring、Feature Buy 底板 buy、資訊面板 panel → art/ui/
+# - 圖示（r-icons）：2 × 2 排，左上錢包、右上金幣堆、左下 WIN 徽章、右下金幣 → art/ui/
+# - 標題字（r-logo，已去背）：切掉透明邊 → art/ui/logo.webp；BIG WIN 三級標題（r-title-*，已去背）→ art/ui/title-*.webp
+# - 轉輪外框（r-frame）：白底挖空，量出中間黑色開口與木框厚度，
+#   寫進 art/ui/ui.json 的 "frame"，Godot 依此用九宮格畫外框（四角金飾等比、木框邊拉長）
+# - 底部背景（r-floor）：縮成 768 寬 → art/ui/floor.webp
 import json
 import os
 import sys
@@ -19,8 +22,8 @@ ART = os.path.join(ROOT, 'godot', 'auto-slot', 'art')
 TILE = (256, 266)
 
 
-def load(name):
-    img = cv2.imread(os.path.join(SRC, name), cv2.IMREAD_COLOR)
+def load(name, flags=cv2.IMREAD_COLOR):
+    img = cv2.imread(os.path.join(SRC, name), flags)
     if img is None:
         sys.exit(f'missing {name}')
     return img
@@ -70,7 +73,7 @@ def tiles(sheet, names, inset=4):
 
 def key_out(img, bg, lo=10.0, hi=42.0, holes=False):
     """只挖跟底色相近、而且連到圖邊的像素；邊緣依距離給半透明並扣掉底色。
-    holes：被花紋或藤蔓圍住的底色也挖（含有幾乎等於底色的像素的那一塊就算）"""
+    holes：被花紋圍住的底色也挖（含有幾乎等於底色的像素的那一塊就算）"""
     f = img.astype(np.float32)
     bgv = np.array(bg, np.float32)
     dist = np.linalg.norm(f - bgv, axis=2)
@@ -96,22 +99,19 @@ def trim(rgba, pad=4):
     return rgba[y0:y1, x0:x1]
 
 
-def ui_parts():
-    img = load('g-ui.jpg')
-    bg = np.median(np.concatenate([img[:8, :8].reshape(-1, 3), img[-8:, -8:].reshape(-1, 3)]), axis=0)
-    keyed = key_out(img, bg, holes=True)
-    boxes = blobs(img, bg, 6000, thresh=30)
-    # 依位置認零件：左上大圓、右上小圓、中間寬的花飾、左下金幣、右下名牌
-    named = {}
+def corner_bg(img):
+    return np.median(np.concatenate([img[:8, :8].reshape(-1, 3), img[-8:, -8:].reshape(-1, 3)]), axis=0)
+
+
+def parts(sheet, classify, sizes=None, holes=True):
+    """灰底素材表：挖空後依 classify(中心 x, y, 寬, 高) 回傳的名字分組，各自切成一張圖"""
+    img = load(sheet)
+    bg = corner_bg(img)
+    keyed = key_out(img, bg, holes=holes)
     h, w = img.shape[:2]
-    for (x, y, bw, bh) in boxes:
-        cx, cy = x + bw / 2, y + bh / 2
-        if cy < h * 0.45:
-            name = 'spin-ring' if cx < w * 0.5 else 'ring'
-        elif cy < h * 0.68:
-            name = 'crest'
-        else:
-            name = 'coin' if cx < w * 0.35 else 'plate'
+    named = {}
+    for (x, y, bw, bh) in blobs(img, bg, 3000, thresh=30):
+        name = classify((x + bw / 2) / w, (y + bh / 2) / h)
         named.setdefault(name, []).append((x, y, bw, bh))
     meta = {}
     for name, bs in named.items():
@@ -120,23 +120,47 @@ def ui_parts():
         x1 = max(b[0] + b[2] for b in bs)
         y1 = max(b[1] + b[3] for b in bs)
         part = trim(keyed[max(y0 - 6, 0):y1 + 6, max(x0 - 6, 0):x1 + 6])
-        if name == 'coin':
-            part = cv2.resize(part, (128, 128 * part.shape[0] // part.shape[1]), interpolation=cv2.INTER_AREA)
+        if sizes and name in sizes and part.shape[1] > sizes[name]:
+            k = sizes[name] / part.shape[1]
+            part = cv2.resize(part, (sizes[name], round(part.shape[0] * k)), interpolation=cv2.INTER_AREA)
         save(part, 'ui', f'{name}.webp', quality=90)
         meta[name] = [int(part.shape[1]), int(part.shape[0])]
         print('ui', name, part.shape[1], part.shape[0])
-    # 轉動鍵的深色圓心：量出半徑，Godot 在上面畫旋轉箭頭
-    ring = cv2.imread(os.path.join(ART, 'ui', 'spin-ring.webp'), cv2.IMREAD_UNCHANGED)
-    gray = cv2.cvtColor(ring[..., :3], cv2.COLOR_BGR2GRAY)
-    dark = ((gray < 40) & (ring[..., 3] > 200)).astype(np.uint8)
-    n, labels, stats, cents = cv2.connectedComponentsWithStats(dark)
-    k = 1 + int(np.argmax(stats[1:, 4]))
-    meta['spin-ring-hole'] = [round(float(cents[k][0]), 1), round(float(cents[k][1]), 1), round(float(np.sqrt(stats[k][4] / np.pi)), 1)]
     return meta
 
 
+def ui_parts():
+    # 上排左邊大圓是轉動鍵、右邊小圓是一般按鈕；中間寬的是 Feature Buy 底板；下面是資訊面板
+    return parts('r-ui.jpg', lambda cx, cy: ('spin' if cx < 0.5 else 'ring') if cy < 0.4 else ('buy' if cy < 0.66 else 'panel'))
+
+
+def icons():
+    names = {(0, 0): 'wallet', (1, 0): 'coins', (0, 1): 'win', (1, 1): 'coin'}
+    return parts('r-icons.jpg', lambda cx, cy: names[(int(cx >= 0.5), int(cy >= 0.5))],
+                 sizes={'wallet': 160, 'coins': 160, 'win': 200, 'coin': 128})
+
+
+def cutout(src, out, width):
+    """已去背的圖：切掉透明邊、縮到指定寬度"""
+    part = trim(load(src, cv2.IMREAD_UNCHANGED))
+    if part.shape[1] > width:
+        part = cv2.resize(part, (width, round(part.shape[0] * width / part.shape[1])), interpolation=cv2.INTER_AREA)
+    save(part, 'ui', f'{out}.webp', quality=90)
+    print(out, part.shape[1], part.shape[0])
+    return [int(part.shape[1]), int(part.shape[0])]
+
+
+def logo():
+    return cutout('r-logo-cut.png', 'logo', 640)
+
+
+def titles():
+    return {f'title-{k}': cutout(f'r-title-{k}-cut.png', f'title-{k}', 760) for k in ['big', 'mega', 'super']}
+
+
+
 def frame():
-    img = load('g-frame2.jpg')
+    img = load('r-frame.jpg')
     keyed = key_out(img, (255, 255, 255), lo=8, hi=36, holes=True)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     n, labels, stats, _ = cv2.connectedComponentsWithStats((gray < 22).astype(np.uint8))
@@ -153,26 +177,22 @@ def frame():
     wood = int(x - ox - (clear.max() + 1)) if len(clear) else 0
     save(keyed, 'ui', 'frame.webp', quality=88)
     inner = [int(x - ox), int(y - oy), int(x + bw - ox), int(y + bh - oy)]
-    # 頂端花飾的紅寶石中心：倍率徽章疊在這裡
-    top = keyed[:inner[1], :, :3].astype(int)
-    red = (top[..., 2] > 150) & (top[..., 1] < 70) & (top[..., 0] < 80) & (keyed[:inner[1], :, 3] > 200)
-    red[:, :int(keyed.shape[1] * 0.42)] = False
-    red[:, int(keyed.shape[1] * 0.58):] = False
-    gy, gx = np.nonzero(red)
-    gem = [round(float(gx.mean()), 1), round(float(gy.mean()), 1)] if len(gx) else [keyed.shape[1] / 2, inner[1] / 2]
-    print('frame', keyed.shape[1], keyed.shape[0], 'inner', inner, 'wood', wood, 'gem', gem)
-    return {'size': [int(keyed.shape[1]), int(keyed.shape[0])], 'inner': inner, 'wood': wood, 'gem': gem}
+    print('frame', keyed.shape[1], keyed.shape[0], 'inner', inner, 'wood', wood)
+    return {'size': [int(keyed.shape[1]), int(keyed.shape[0])], 'inner': inner, 'wood': wood}
 
 
 def floor():
-    img = load('g-floor.jpg')
+    img = load('r-floor.jpg')
     save(cv2.resize(img, (768, img.shape[0] * 768 // img.shape[1]), interpolation=cv2.INTER_AREA), 'ui', 'floor.webp', quality=80)
 
 
 if __name__ == '__main__':
-    tiles('g-symbols.jpg', ['wolf', 'raven', 'lantern', 'potion', 'basket', 'key', 'hood', None])
-    tiles('g-royals.jpg', ['ten', 'jack', 'queen', 'king', 'ace'])
+    tiles('r-symbols.jpg', ['wolf', 'raven', 'lantern', 'potion', 'basket', 'key', 'hood', None])
+    tiles('r-royals.jpg', ['ten', 'jack', 'queen', 'king', 'ace'])
     meta = ui_parts()
+    meta.update(icons())
+    meta['logo'] = logo()
+    meta.update(titles())
     meta['frame'] = frame()
     floor()
     with open(os.path.join(ART, 'ui', 'ui.json'), 'w', encoding='utf-8') as fp:

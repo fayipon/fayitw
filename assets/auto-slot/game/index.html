@@ -8,10 +8,10 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&display=swap">
 	<style>
-/* 自走SLOT 的網頁外殼：引擎下載與遊戲準備音效時，一路蓋著暗黑風 loading 畫面（月夜森林、小紅帽與狼人對峙、金色進度條），
+/* 自走SLOT 的網頁外殼：引擎下載與遊戲準備音效時，一路蓋著 loading 畫面（月夜森林、標題字、小紅帽與大野狼對峙、金色進度條），
    遊戲準備好呼叫 window.asReady() 後淡出，直接進遊戲 */
 html, body, #canvas { margin: 0; padding: 0; border: 0; }
-body { color: #f1e4c6; background: #0b0809; overflow: hidden; touch-action: none; font-family: "Cinzel", "Times New Roman", serif; }
+body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none; font-family: "Cinzel", "Times New Roman", serif; }
 #canvas { display: block; }
 #canvas:focus { outline: none; }
 
@@ -24,7 +24,7 @@ body { color: #f1e4c6; background: #0b0809; overflow: hidden; touch-action: none
 	justify-items: center;
 	overflow: hidden;
 	padding: 8vh 24px 7vh;
-	background: #0b0809;
+	background: #070a12;
 	transition: opacity .6s;
 }
 #status::before {
@@ -36,28 +36,14 @@ body { color: #f1e4c6; background: #0b0809; overflow: hidden; touch-action: none
 	filter: brightness(.62) saturate(1.05);
 	animation: as-drift 26s ease-in-out infinite alternate;
 }
-#status::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 35%, transparent 30%, rgba(11, 8, 9, .55) 70%), linear-gradient(transparent 45%, #0b0809 94%); }
+#status::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 35%, transparent 30%, rgba(7, 10, 18, .55) 70%), linear-gradient(transparent 45%, #070a12 94%); }
 @keyframes as-drift { from { transform: scale(1.04) translateX(-1.5%); } to { transform: scale(1.1) translateX(1.5%); } }
 #status.is-done { opacity: 0; pointer-events: none; }
 
-.as-logo { text-align: center; line-height: 1; }
-.as-logo small { display: block; font-size: clamp(16px, 4.6vw, 22px); font-weight: 600; letter-spacing: .32em; color: #f1e4c6; text-shadow: 0 2px 8px rgba(0, 0, 0, .9); }
-.as-logo b {
-	display: block;
-	margin-top: .08em;
-	font-size: clamp(54px, 18vw, 92px);
-	font-weight: 900;
-	letter-spacing: .06em;
-	background: linear-gradient(#ffe9a8, #f2c96b 50%, #a8761f);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
-	filter: drop-shadow(0 3px 0 #2a1806) drop-shadow(0 0 22px rgba(196, 22, 28, .45));
-}
-.as-logo em { display: block; margin-top: 10px; font-style: normal; font-size: clamp(12px, 3.4vw, 15px); font-weight: 600; letter-spacing: .26em; color: #f2c96b; text-shadow: 0 2px 6px #000; }
-.as-logo em::before, .as-logo em::after { content: "◆"; margin: 0 .7em; font-size: .7em; color: #c4161c; }
+.as-logo { text-align: center; }
+.as-logo img { display: block; width: min(62vw, 280px); height: auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .8)) drop-shadow(0 0 26px rgba(196, 22, 28, .35)); }
 
-/* 小紅帽與狼人對峙，輕輕呼吸 */
+/* 小紅帽與大野狼對峙，輕輕呼吸 */
 .as-stands { position: relative; display: flex; align-items: flex-end; justify-content: space-between; width: min(100%, 460px); height: 100%; min-height: 180px; }
 .as-stands img { width: 47%; height: min(42vh, 360px); object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .75)); transform-origin: 50% 100%; }
 .as-hero { animation: as-breathe 2.4s ease-in-out infinite alternate; }
@@ -83,7 +69,7 @@ body { color: #f1e4c6; background: #0b0809; overflow: hidden; touch-action: none
 	<noscript>Your browser does not support JavaScript.</noscript>
 
 	<div id="status">
-		<div class="as-logo"><small>AUTO-RUN</small><b>SLOT</b><em>Little Red Riding Hood</em></div>
+		<div class="as-logo"><img src="../loading-logo.webp" alt="Red Riding Hood"></div>
 		<div class="as-stands" aria-hidden="true">
 			<img class="as-hero" src="../loading-hero.webp" alt="">
 			<img class="as-wolf" src="../loading-wolf.webp" alt="">
@@ -98,7 +84,7 @@ body { color: #f1e4c6; background: #0b0809; overflow: hidden; touch-action: none
 
 	<script src="index.js"></script>
 	<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":7360840,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8016820,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

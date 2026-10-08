@@ -1,5 +1,5 @@
-# 盤面上的一格：滿版的符號磚圖；金框符號加一圈古金框與四角紅寶石；
-# WILD／BONUS 底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
+# 盤面上的一格：滿版的符號磚圖（WILD、金鑰匙、大野狼的框已經畫在圖上）；金框符號加一圈古金框與四角紅寶石；
+# WILD、SCATTER（金鑰匙）底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
 extends Control
 
 const Rules := preload("res://scripts/rules.gd")
@@ -35,12 +35,10 @@ func _draw() -> void:
 	draw_texture_rect(Art.symbol(id), r, false)
 	if gold:
 		_gold_frame(r)
-	if Rules.is_wild(id) or Rules.is_scatter(id):
-		# 特殊符號：一圈橘金邊（設計稿的 WILD／BONUS 磚）
-		var w := maxf(1.5, size.x * 0.03)
-		draw_rect(r.grow(-w * 0.5), Color("d9902a"), false, w)
-		draw_rect(r.grow(-w * 1.4), Color(Art.GOLD_LIGHT, 0.6), false, 1.0)
-		_tag("WILD" if Rules.is_wild(id) else "BONUS")
+	if Rules.is_wild(id):
+		_tag("WILD")
+	elif Rules.is_scatter(id):
+		_tag("SCATTER")
 	if glow > 0.01:
 		if not _glow_box:
 			_glow_box = Art.box(Color.TRANSPARENT, 6, 3, Art.GOLD)
@@ -69,8 +67,9 @@ func _gold_frame(r: Rect2) -> void:
 func _tag(text: String) -> void:
 	var h := size.y * 0.34
 	var top := size.y - h
-	draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(size.x, top), size, Vector2(0, size.y)]),
-		PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.85), Color(0, 0, 0, 0.85)]))
+	var inset := size.x * 0.06
+	draw_polygon(PackedVector2Array([Vector2(inset, top), Vector2(size.x - inset, top), Vector2(size.x - inset, size.y - inset), Vector2(inset, size.y - inset)]),
+		PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.8), Color(0, 0, 0, 0.8)]))
 	var font := Art.font()
 	var fs := int(size.y * 0.24)
 	while fs > 8 and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > size.x * 0.9:
