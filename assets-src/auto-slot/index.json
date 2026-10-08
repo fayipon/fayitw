@@ -1,0 +1,46 @@
+{
+  "hero-run": {
+    "imageId": "28c7f76a-6ea1-4af1-bb1c-86439bf7f16c",
+    "file": "hero-run.jpg",
+    "generationId": "1f1c2b29-57cf-6e40-ba12-c2e6fb6ed38d",
+    "cut": "hero-run-cut.png"
+  },
+  "wolf": {
+    "imageId": "ec1495eb-23ea-43c9-814f-3eb24ed995a1",
+    "file": "wolf.jpg",
+    "generationId": "1f1c2b29-551a-6880-82c1-7fcb25a73175",
+    "cut": "wolf-cut.png"
+  },
+  "bg": {
+    "imageId": "a3db5370-dd6c-4b2d-8deb-58abb5a8310a",
+    "file": "bg.jpg",
+    "generationId": "1f1c2b29-59cb-6b40-a568-0de6a03106a1"
+  },
+  "symbols": {
+    "imageId": "089ebf14-ef60-495e-b55f-cdb6296e8c21",
+    "file": "symbols.jpg",
+    "generationId": "1f1c2b29-56a8-67b0-9956-b53b7a6e7122",
+    "cut": "symbols-cut.png"
+  },
+  "hero-run2": {
+    "imageId": "695fd83a-77c6-4d69-9dad-e93d5faa5007",
+    "file": "hero-run2.jpg",
+    "generationId": "1f1c2b2a-1754-6360-b8c0-5c984662f8b8",
+    "cut": "hero-run2-cut.png"
+  },
+  "royals": {
+    "imageId": "b7c11915-5754-4671-a066-04d1bb051a51",
+    "file": "royals.jpg",
+    "generationId": "1f1c2b36-ec62-6550-ab02-ca2c8a31c3a2"
+  },
+  "hero-rig": {
+    "imageId": "64ca2f18-6be8-4dfb-ae08-fd910300702a",
+    "file": "hero-rig.jpg",
+    "generationId": "1f1c2b93-8049-6a00-af07-c481079b945b"
+  },
+  "wolf-rig": {
+    "imageId": "d510046e-05db-4640-9959-4815e9a5cc60",
+    "file": "wolf-rig.jpg",
+    "generationId": "1f1c2b94-61fb-6f20-894b-e7a5dd3e3404"
+  }
+}

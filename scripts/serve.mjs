@@ -21,6 +21,8 @@ const types = {
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.mp4': 'video/mp4',
+  '.wasm': 'application/wasm',
+  '.pck': 'application/octet-stream',
 };
 
 createServer(async (req, res) => {

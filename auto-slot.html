@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>自走SLOT — FAYI</title>
+  <meta name="description" content="自走SLOT：用 Godot 做的小紅帽手機老虎機。上方紙板人偶小紅帽自己往外婆家走、遇到大野狼就開打；中間 5 × 4 連鎖消除 SLOT，每連一次倍率往上跳；下方投注區。">
+  <meta name="theme-color" content="#140d09">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235df5c2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800;900&family=Lilita+One&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/affiliate.css">
+  <link rel="stylesheet" href="css/auto-slot.css">
+</head>
+<body class="aff as-page">
+  <header class="aff-top">
+    <a class="logo" href="index.html"><span class="logo-mark"></span>FAYI</a>
+    <a class="home-back" href="index.html"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>返回首頁</a>
+    <span class="top-title">自走SLOT</span>
+  </header>
+
+  <main class="as-main">
+    <!-- 遊戲本體是 Godot 匯出的 Web 版（原始專案在 godot/auto-slot/），這裡用 iframe 嵌進來 -->
+    <section class="as-game" aria-label="自走SLOT 遊戲">
+      <iframe src="assets/auto-slot/game/index.html" title="自走SLOT 遊戲" allow="autoplay; fullscreen"></iframe>
+    </section>
+
+    <section class="as-about" aria-labelledby="as-title">
+      <p class="eyebrow">Auto-run slot · Little Red Riding Hood · Godot</p>
+      <h1 id="as-title">自走<em>SLOT</em></h1>
+      <p>小紅帽主題的手機老虎機，用 Godot 做、匯出成網頁版。畫面分三塊：上方是自走區，紙板人偶小紅帽自己往外婆家走；中間是 5 × 4 的連鎖消除 SLOT；下方是投注區。</p>
+      <ol>
+        <li>按雙劍轉一次，或開 <b>AUTO</b> 一直轉。中獎的符號會爆開、上面的掉下來補位，一路連鎖，每連一次倍率 ×1 → ×2 → ×3 → ×5。</li>
+        <li>中間三軸的金框符號中獎後變成 <b>WILD</b>；外婆家 <b>BONUS</b> 出現 3 個以上會觸發小遊戲。</li>
+        <li>大野狼擋路時，每一段連鎖贏的金幣都會變成丟過去的蘋果；打倒牠紙板會散開，每關第 5 隻是狼王。</li>
+      </ol>
+      <p class="as-credit">角色、符號與場景由 Leonardo 生成；遊戲裡的金幣只是示範用，不能兌換。</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2026 FAYI · 自走SLOT</span>
+      <a href="index.html#pages">所有頁面 →</a>
+    </div>
+  </footer>
+</body>
+</html>

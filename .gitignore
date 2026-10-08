@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 .codegraph/
+# Godot 的匯入快取（編輯器或 --import 會重建）
+godot/**/.godot/
+godot/**/*.import

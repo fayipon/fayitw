@@ -5,6 +5,7 @@
 | 頁面 | 內容 |
 |---|---|
 | `index.html` | 首頁：所有頁面的入口卡片 |
+| `auto-slot.html` | 自走SLOT：用 Godot 做的小紅帽手機老虎機（Web 匯出版用 iframe 嵌進頁面）。上方自走區是 Candy Crush 風格的關節紙板人偶，小紅帽自己往外婆家走、遇到大野狼就把每段連鎖的獎金當蘋果丟過去；中間 5 × 4、1024 路的連鎖消除 SLOT（10、J、Q、K、A、五個主題符號、WILD、BONUS，倍率 ×1→×2→×3→×5）；下方投注區。開場有網頁 loading 與遊戲內的 TAP TO START |
 | `pdoom-jingshen.html` | 精神版 I'm Upping My P(doom)：同一首歌拍成時裝秀，東北精神小妹 11 套 Look（洗浴中心、雪夜燒烤、迪廳社會搖、鐵西老廠房）；Seedance 2.0 生成的 31 段影片不帶任何字，Look 卡、吊牌、歌詞、翻牌看板、資料卡與時裝秀 HUD 由程式即時疊上 |
 | `pdoom.html` | I'm Upping My P(doom) 的真人 MV：主歌是日系 16mm 的東京日常，副歌切進 K-pop 布景與群舞；Seedance 2.0 生成的 16 段影片照剪接表剪成一支含原曲的影片，鼓點推鏡、閃白、故障、調色、HUD、章節卡與 P(doom) 儀表由程式即時疊上 |
 | `claude-pop.html` | Claude Pop：真人 × 剪紙的音樂錄影帶。原創歌曲在瀏覽器裡即時合成，從 104 BPM 一路加速到 330 BPM，在「奇點」一刀切斷；演員與場景是 Leonardo 生成的真人劇照，鏡頭、跟拍子切動作、對嘴、複製人海、歌詞排版與迷因由程式做出來，下方附演員表與原始需求對照 |
@@ -72,6 +73,35 @@ npm run optimize:farm
 4. 轉成網頁用的檔案：`python scripts/claude-pop-photos.py assets-src/claude-pop assets/claude-pop`。
 
 費用參考（2026-10）：一張 1376×768 的劇照約 140 點 API 額度，去背一張約 70 點。
+
+## 自走SLOT（Godot）
+
+遊戲本體是 Godot 4.7 專案 `godot/auto-slot/`（GDScript，Compatibility 渲染），匯出成 Web 版放在 `assets/auto-slot/game/`，`auto-slot.html` 用 iframe 嵌進來。部署時直接用匯出好的檔案，Docker 裡不需要 Godot。
+
+- 規則與數學在 `scripts/rules.gd`（純計算）：5 軸 × 4 列、1024 路，連鎖消除，第 1、2、3、4 段以後分別 ×1、×2、×3、×5，整串結束才結算；中間三軸的金框符號中獎後變成 WILD。總押注 = BET × 20，賠率表是每一路的分數。
+- 外婆家 BONUS 3 個以上會呼叫 `main.gd` 的 `_bonus_game()`，小遊戲之後接在那裡；現在先依 3／4／5 個給總押注的 12／30／100 倍（`BONUS_PRIZE`）。
+- 照現在的權重模擬：連線回收約 72%、BONUS 約 10%、打怪賞金約 8%，大約每 125 轉觸發一次 BONUS。
+- 畫面：`field.gd` 自走區（捲動背景、紙板道具、倍率吊牌、打怪）、`puppet.gd` 關節紙板人偶（部件繞黃銅釘轉；被打倒時釘子彈開、紙板四散）、`slot_view.gd` 轉輪與連鎖、`main.gd` 排版、投注、BIG WIN、說明與設定、開場畫面。音效在 `sfx.gd` 用程式合成，不需要音檔。
+- 遊戲裡的文字是英文，字型只帶 Lilita One（OFL）。
+- 進度（金幣、押注、等級、關卡）存在 `user://save.cfg`，網頁版會存進瀏覽器。
+
+匯出與測試（Godot 用 winget 安裝的 `Godot_v4.7.2-stable_win64_console.exe`，以下用 `godot` 代稱）：
+
+```bash
+godot --headless --path godot/auto-slot --export-release "Web"
+```
+
+```bash
+godot --headless --path godot/auto-slot --script res://tests/test_rules.gd
+```
+
+`tests/test_rules.gd` 驗算 1024 路、WILD、BONUS、連鎖與倍率，並模擬 3 萬轉檢查回收率；`tests/smoke.gd` 載入主畫面、點開始、自動轉一陣子，確認不會卡住或報錯。網頁外殼（loading 畫面）是 `godot/auto-slot/web/shell.html`，背景與立牌圖讀 `assets/auto-slot/` 裡的檔案。
+
+美術用 Leonardo（Nano Banana Pro）生成，原檔放在 `assets-src/auto-slot/`（不會打包上線）：
+
+1. `node scripts/auto-slot-leonardo.mjs [名稱...]`：生成主題符號表、撲克牌面、森林背景，以及兩張「組裝好＋拆成部件」的紙板人偶綁定圖（需要環境變數 `LEONARDO_API_KEY`，已經生成過的會跳過）。2026-10 這一套共花約 1,400 點。
+2. `python scripts/auto-slot-puppets.py`：把綁定圖切成部件、記下黃銅釘轉軸（`rig.json`），輸出到 `godot/auto-slot/art/puppets/`；小紅帽拆開的頭沒有臉，會把組裝圖的五官移植過去。另外存網頁 loading 畫面用的立牌圖。
+3. `node scripts/auto-slot-assets.mjs`：切符號與前景道具並挖掉灰底、把背景接成循環長條，輸出到 `godot/auto-slot/art/`，再產生首頁封面（需要 `npm install`）。
 
 ## P(doom) MV
 

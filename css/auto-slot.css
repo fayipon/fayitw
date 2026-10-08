@@ -1,0 +1,40 @@
+/* =========================================================
+   自走SLOT（auto-slot.html）：Godot 匯出的遊戲用 iframe 嵌進來
+   - 手機：遊戲佔滿頁首以下的畫面，說明在下面
+   - 桌機：遊戲是手機大小的框放右邊，說明放左邊
+   ========================================================= */
+
+.as-page { --gold: #ffd25a; }
+
+.as-main { display: grid; }
+.as-game { height: calc(100vh - 64px); height: calc(100dvh - 64px); min-height: 520px; background: #140d09; }
+.as-game iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+.as-about { padding: 36px var(--pad) 56px; }
+.as-about h1 { margin: 6px 0 12px; font-size: clamp(32px, 4vw, 48px); font-weight: 900; line-height: 1.15; }
+.as-about h1 em { margin-left: .1em; color: var(--gold); font-family: "Lilita One", var(--font); font-style: normal; font-weight: 400; letter-spacing: .02em; }
+.as-about > p { max-width: 34em; color: var(--muted); }
+.as-about ol { display: grid; gap: 8px; max-width: 34em; margin: 18px 0; padding-left: 1.3em; }
+.as-about li::marker { color: var(--gold); font-weight: 900; }
+.as-about b { color: var(--gold); }
+.as-about .as-credit { font-size: 13px; }
+
+@media (min-width: 900px) {
+  .as-main {
+    grid-template-columns: minmax(0, 1fr) 430px;
+    align-items: center;
+    gap: clamp(32px, 5vw, 72px);
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px var(--pad) 40px;
+  }
+  .as-about { order: -1; padding: 0; }
+  .as-game {
+    height: min(900px, calc(100dvh - 64px - 56px));
+    min-height: 640px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 210, 90, .22);
+    border-radius: 30px;
+    box-shadow: 0 40px 90px -40px #000, 0 0 0 8px #0b0705, 0 0 0 9px rgba(255, 255, 255, .06);
+  }
+}

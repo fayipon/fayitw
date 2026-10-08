@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+	<title>自走SLOT</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap">
+	<style>
+/* 自走SLOT 的網頁外殼：Godot 引擎下載中顯示 loading 畫面（森林背景、紙板立牌、金色進度條） */
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+body { color: #fff4dc; background: #140d09; overflow: hidden; touch-action: none; font-family: "Lilita One", system-ui, sans-serif; }
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+
+#status {
+	position: fixed;
+	inset: 0;
+	z-index: 2;
+	display: grid;
+	grid-template-rows: auto 1fr auto;
+	justify-items: center;
+	overflow: hidden;
+	padding: 9vh 24px 8vh;
+	background: #140d09;
+	transition: opacity .45s;
+}
+#status::before {
+	content: "";
+	position: absolute;
+	inset: -20px;
+	z-index: -2;
+	background: url("../bg-loop.webp") center / cover;
+	filter: brightness(.55) saturate(1.1) blur(2px);
+	animation: as-pan 40s linear infinite;
+}
+#status::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(transparent 40%, #140d09 92%); }
+@keyframes as-pan { to { background-position: -1016px center; } }
+#status.is-done { opacity: 0; pointer-events: none; }
+
+.as-logo { text-align: center; line-height: 1; text-shadow: 0 4px 0 #4a1606, 0 0 24px rgba(0, 0, 0, .5); }
+.as-logo small { display: block; font-size: clamp(20px, 6vw, 30px); letter-spacing: .06em; -webkit-text-stroke: 6px #4a1606; paint-order: stroke; }
+.as-logo b {
+	display: block;
+	margin-top: .05em;
+	font-size: clamp(64px, 22vw, 104px);
+	font-weight: 400;
+	background: linear-gradient(#fff6c8, #ffd25a 48%, #e07a10);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	filter: drop-shadow(0 5px 0 #5a2a00) drop-shadow(0 0 18px rgba(255, 170, 40, .45));
+}
+.as-logo em { display: block; margin-top: 8px; font-style: normal; font-size: clamp(15px, 4.4vw, 19px); -webkit-text-stroke: 5px #2a0d04; paint-order: stroke; }
+
+/* 紙板立牌：左右輕輕搖、上下彈 */
+.as-stands { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 4vw; width: min(100%, 440px); height: 100%; min-height: 160px; }
+.as-stands img { height: min(34vh, 300px); max-width: 44vw; object-fit: contain; filter: drop-shadow(5px 6px 0 rgba(107, 71, 41, .95)) drop-shadow(0 12px 12px rgba(0, 0, 0, .45)); transform-origin: 50% 100%; }
+.as-hero { animation: as-hop .7s ease-in-out infinite alternate; }
+.as-wolf { transform: scaleX(-1); animation: as-sway 1.1s ease-in-out infinite alternate; }
+@keyframes as-hop { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(-10px); } }
+@keyframes as-sway { from { transform: scaleX(-1) rotate(-4deg); } to { transform: scaleX(-1) rotate(2deg); } }
+
+.as-load { width: min(78vw, 320px); text-align: center; }
+.as-bar { position: relative; height: 22px; padding: 3px; border: 2px solid rgba(255, 210, 90, .65); border-radius: 12px; background: rgba(0, 0, 0, .55); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
+.as-bar i { display: block; width: 0; height: 100%; border-radius: 8px; background: linear-gradient(#fff0a8, #ffd25a 45%, #e8a020); box-shadow: inset 0 -3px 0 rgba(150, 70, 0, .35); transition: width .25s; }
+.as-bar.is-busy i { width: 100%; background-size: 40px 100%; background-image: repeating-linear-gradient(115deg, #ffd25a 0 14px, #ffe48a 14px 28px); animation: as-stripes .7s linear infinite; }
+@keyframes as-stripes { to { background-position: 40px 0; } }
+.as-pct { margin-top: 10px; font-size: 18px; -webkit-text-stroke: 4px #2a0d04; paint-order: stroke; }
+.as-tip { min-height: 1.4em; margin-top: 4px; color: #e6d6b8; font-family: system-ui, sans-serif; font-size: 13px; }
+#status-notice { display: none; max-width: 22em; margin-top: 12px; padding: 12px 16px; border: 1px solid #ff6a50; border-radius: 12px; background: rgba(90, 20, 12, .85); color: #ffe6dc; font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { #status::before, .as-stands img, .as-bar.is-busy i { animation: none; } }
+	</style>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+</head>
+<body>
+	<canvas id="canvas">Your browser does not support the canvas tag.</canvas>
+	<noscript>Your browser does not support JavaScript.</noscript>
+
+	<div id="status">
+		<div class="as-logo"><small>AUTO-RUN</small><b>SLOT</b><em>Little Red Riding Hood</em></div>
+		<div class="as-stands" aria-hidden="true">
+			<img class="as-hero" src="../hero-stand.webp" alt="">
+			<img class="as-wolf" src="../wolf-stand.webp" alt="">
+		</div>
+		<div class="as-load">
+			<div class="as-bar is-busy" role="progressbar" aria-label="Loading"><i></i></div>
+			<div class="as-pct">Loading…</div>
+			<div class="as-tip"></div>
+			<div id="status-notice"></div>
+		</div>
+	</div>
+
+	<script src="index.js"></script>
+	<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3822872,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_THREADS_ENABLED = false;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const overlay = document.getElementById('status');
+	const bar = overlay.querySelector('.as-bar');
+	const fill = bar.querySelector('i');
+	const pct = overlay.querySelector('.as-pct');
+	const tip = overlay.querySelector('.as-tip');
+	const notice = document.getElementById('status-notice');
+	const tips = ['Red Hood is packing her basket…', 'Polishing the brass pins…', 'Waking up the Big Bad Wolf…', 'Baking a fresh cherry pie…', 'Counting the coins…'];
+	let k = 0;
+	tip.textContent = tips[0];
+	const tipTimer = setInterval(() => { k = (k + 1) % tips.length; tip.textContent = tips[k]; }, 1800);
+
+	function fail(err) {
+		console.error(err);
+		clearInterval(tipTimer);
+		bar.style.display = 'none';
+		pct.textContent = 'Something went wrong';
+		notice.textContent = err instanceof Error ? err.message : String(err || 'An unknown error occurred.');
+		notice.style.display = 'block';
+	}
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	if (missing.length !== 0) {
+		fail('Your browser is missing features this game needs:\n' + missing.join('\n'));
+		return;
+	}
+	engine.startGame({
+		onProgress(current, total) {
+			if (current > 0 && total > 0) {
+				bar.classList.remove('is-busy');
+				const p = Math.min(100, Math.round(current / total * 100));
+				fill.style.width = p + '%';
+				pct.textContent = 'Loading ' + p + '%';
+			}
+		},
+	}).then(() => {
+		clearInterval(tipTimer);
+		overlay.classList.add('is-done');
+		setTimeout(() => overlay.remove(), 500);
+	}, fail);
+}());
+	</script>
+</body>
+</html>
+
