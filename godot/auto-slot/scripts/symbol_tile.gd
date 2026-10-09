@@ -1,5 +1,5 @@
 # 盤面上的一格：每一格都畫同一塊石板底（art/tiles/bg.webp，設計稿的空白石板磚），上面放去背的符號（透明圖）；
-# 一般格子不畫框，金框符號才畫亮金框、四角鑲紅寶石；偏暗的圖案（大野狼、烏鴉、提燈）後面墊一團淡淡的背景光；
+# 一般格子不畫框，金框符號才畫一道細金線、四角鑲小顆紅寶石；偏暗的圖案（大野狼、烏鴉、提燈）後面墊一團淡淡的背景光；
 # WILD、SCATTER（金鑰匙）底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
 # 轉動中有動態模糊：同一張圖往下錯開疊幾層（越下面越新、越清楚），模糊時字樣、金框、光框先不畫；
 # SCATTER 落定後一直亮著（lit）：不用框，石板底淡入成「石板透金光」（bg-lit.webp），之後一呼一吸
@@ -116,18 +116,25 @@ static func _backlight_tex() -> GradientTexture2D:
 	return _backlight
 
 
-# 金框：外深金、內亮金兩道線，四角菱形紅寶石
+# 金框（細緻版）：往內縮一點、落在石板圓角裡；外側墊一圈淡暗影把金線跟石板分開，
+# 一道細金線、裡面再一道更細的淡亮金線；四角各一顆小菱形：金邊包紅寶石、左上一點反光
 func _gold_frame(r: Rect2) -> void:
-	var w := maxf(2.0, size.x * 0.045)
-	draw_rect(r.grow(-w * 0.5), Art.GOLD_DEEP, false, w)
-	draw_rect(r.grow(-w * 1.3), Color(Art.GOLD_LIGHT, 0.9), false, maxf(1.0, w * 0.45))
-	var g := size.x * 0.07
-	for p in [r.position, Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), r.end]:
-		var c: Vector2 = p + (r.get_center() - p).sign() * w * 1.1
-		var dia := PackedVector2Array([c + Vector2(0, -g), c + Vector2(g, 0), c + Vector2(0, g), c + Vector2(-g, 0)])
-		draw_colored_polygon(dia, Art.GOLD)
-		var inner := PackedVector2Array([c + Vector2(0, -g * 0.55), c + Vector2(g * 0.55, 0), c + Vector2(0, g * 0.55), c + Vector2(-g * 0.55, 0)])
-		draw_colored_polygon(inner, Art.RED)
+	var u := size.x / 100.0
+	var f := r.grow(-3.2 * u)
+	var w := maxf(1.4, 1.5 * u)
+	draw_rect(f, Color(0, 0, 0, 0.45), false, w + 2.0, true)
+	draw_rect(f, Art.GOLD, false, w, true)
+	draw_rect(f.grow(-w - 1.8 * u), Color(Art.GOLD_LIGHT, 0.45), false, 1.0, true)
+	var g := maxf(4.0, 5.2 * u)
+	for c in [f.position, Vector2(f.end.x, f.position.y), Vector2(f.position.x, f.end.y), f.end]:
+		draw_colored_polygon(_diamond(c, g + 1.5), Color(0, 0, 0, 0.5))
+		draw_colored_polygon(_diamond(c, g), Art.GOLD)
+		draw_colored_polygon(_diamond(c, g * 0.58), Art.RED)
+		draw_colored_polygon(_diamond(c + Vector2(-g, -g) * 0.16, g * 0.2), Color(1, 0.86, 0.86, 0.9))
+
+
+static func _diamond(c: Vector2, g: float) -> PackedVector2Array:
+	return PackedVector2Array([c + Vector2(0, -g), c + Vector2(g, 0), c + Vector2(0, g), c + Vector2(-g, 0)])
 
 
 # 底部壓暗再寫金字（字寬超過格子時自動縮小）

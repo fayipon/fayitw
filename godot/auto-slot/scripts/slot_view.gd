@@ -500,7 +500,7 @@ func quick_stop() -> void:
 
 # ---------- 中獎與連鎖 ----------
 
-# 轉輪只有在捲動、掉落時才裁切；平常不裁，中獎的光暈與放大才不會被切掉
+# 轉輪只有在捲動、掉落時才裁切；平常（含連鎖爆開）不裁，中獎的光暈與放大才不會被切掉
 func _set_clip(on: bool) -> void:
 	for reel in _reels:
 		reel.clip_contents = on
@@ -545,15 +545,17 @@ func mark(cells: Array) -> void:
 func cascade(step: Dictionary, k: int) -> void:
 	var speed := 0.6 if turbo else 1.0
 	_stop_marks()
-	_set_clip(true)
-	# 1. 爆開
+	# 1. 爆開：在原地閃白、只脹一點點（不蓋到隔壁格），再縮小淡掉，碎片從中間噴出來；
+	# 這時還不裁切，光框才不會被切掉左右兩邊、只剩上下兩條
 	for i in step.removed:
 		var t: Control = tiles[i]
 		_burst(tile_center(i), Art.SYMBOL_COLORS.get(t.id, Art.GOLD))
 		var tw := create_tween()
-		tw.tween_property(t, "scale", Vector2(1.28, 1.28), 0.09 * speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(t, "scale", Vector2(0.1, 0.1), 0.14 * speed).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(t, "modulate:a", 0.0, 0.14 * speed)
+		tw.tween_property(t, "scale", Vector2(1.06, 1.06), 0.08 * speed).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(t, "glow", 1.0, 0.08 * speed)
+		tw.parallel().tween_property(t, "modulate", Color(1.7, 1.7, 1.7), 0.08 * speed)
+		tw.tween_property(t, "scale", Vector2(0.4, 0.4), 0.15 * speed).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(t, "modulate", Color(1.7, 1.7, 1.7, 0.0), 0.15 * speed)
 	if not step.removed.is_empty():
 		Sfx.play("pop", 1.0 + k * 0.12)
 	# 2. 金框翻成 WILD
@@ -569,7 +571,9 @@ func cascade(step: Dictionary, k: int) -> void:
 	if not step.to_wild.is_empty():
 		Sfx.play("wild")
 	await get_tree().create_timer(0.3 * speed).timeout
-	# 3. 往下掉、補新符號（照 Rules.resolve 同樣的順序：每軸由下往上收集留下來的格子）
+	# 3. 往下掉、補新符號（照 Rules.resolve 同樣的順序：每軸由下往上收集留下來的格子）；
+	# 新符號從軸的上面掉進來，這時才開裁切
+	_set_clip(true)
 	var removed := {}
 	for i in step.removed:
 		removed[i] = true

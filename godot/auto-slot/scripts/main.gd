@@ -1592,6 +1592,7 @@ func _boot() -> void:
 	_web("asReady", 1.0)
 	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN；
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
+	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
 	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）
 	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
 	if search.contains("bigwin"):
@@ -1607,6 +1608,16 @@ func _boot() -> void:
 					board[r * Rules.COLS + c] = {"id": "ten", "gold": false}
 		for at in [[1, 0], [2, 1], [0, 3]]:
 			board[at[0] * Rules.COLS + at[1]] = {"id": "key", "gold": false}
+		busy = true
+		Sfx.play("spin")
+		await slot.spin(board)
+		busy = false
+	if search.contains("gold"):
+		var board := Rules.spin_board(rng)
+		for at in [[0, 1], [1, 2], [2, 3], [1, 1]]:
+			var cell: Dictionary = board[at[0] * Rules.COLS + at[1]]
+			if not Rules.is_wild(cell.id) and not Rules.is_scatter(cell.id):
+				cell.gold = true
 		busy = true
 		Sfx.play("spin")
 		await slot.spin(board)
