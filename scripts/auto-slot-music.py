@@ -7,7 +7,8 @@
 #   Godot 用 AudioStreamSynchronized 跟 base 同步播放，平常音量壓到最低，有狼、連擊時才推上來。
 #   原曲低頻的重音每 12 個八分音符一循環（第 0、4、10 個最重），鼓就照這個型打：大太鼓、中太鼓、小鼓，每 4 小段加一次滾奏
 # - bigwin.mp3：BIG WIN 曲（Triumphant Dark Fairytale）開頭 24 秒（第一拍就是重擊），最後 2 秒淡出；只播一次，不循環
-# 迴圈的接縫：結尾最後一個八分音符跟「開頭前面那一個八分音符」等功率交叉淡入，繞回開頭時就是原曲本來的接續；
+# 迴圈的接縫：結尾最後一小節（8 個八分音符，約 2.6 秒）跟「開頭前面那一小節」等功率交叉淡入，繞回開頭時就是原曲本來的接續
+# （頭尾兩段只是很像、旋律細節對不上，原本只淡入一個八分音符時聽得出斷層；三種接法試聽後選了拉長到一小節）；
 # 再整段當成週期訊號用 FFT 重新取樣成 32 kHz（不會在接縫產生濾波邊緣），音量統一到 RMS -20 dBFS（BIG WIN -18）。
 # wav 匯入 Godot 時壓成 QOA、設成向前循環（迴圈點精準到樣本；MP3、Ogg 只能設循環起點）
 import os
@@ -33,6 +34,8 @@ LOOPS = {
 FIGURE = [(0, 'boom', 1.0), (4, 'boom', 0.85), (10, 'boom', 0.9), (8, 'taiko', 0.7), (11, 'taiko', 0.6),
           (2, 'rim', 0.35), (3, 'rim', 0.3), (6, 'rim', 0.35), (7, 'rim', 0.3), (9, 'rim', 0.3)]
 FIGURE_LEN = 12
+# 迴圈接縫交叉淡入的長度（八分音符個數，8 = 一小節）
+CROSSFADE = 8
 # 找拍點的分析窗（46 ms）會讓量到的拍點比實際早半個窗左右；用同樣方法比對鼓與原曲的起音，鼓要晚 34 ms 才對齊
 DRUM_DELAY = 0.034
 
@@ -96,7 +99,7 @@ def make_loop(name, src, start, eighth, count):
     x = decode(src)
     s = int(round(start * SR_IN))
     n = int(round(eighth * count))
-    xf = int(round(eighth))
+    xf = int(round(eighth * CROSSFADE))
     seg = x[s:s + n].copy()
     t = np.linspace(0.0, 1.0, xf)[:, None]
     seg[n - xf:] = seg[n - xf:] * np.cos(t * np.pi / 2) + x[s - xf:s] * np.sin(t * np.pi / 2)

@@ -59,12 +59,277 @@ body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none
 .as-tip { min-height: 1.4em; margin-top: 4px; color: #b9a98c; font-family: Georgia, "Times New Roman", serif; font-size: 13px; font-style: italic; }
 #status-notice { display: none; max-width: 22em; margin-top: 12px; padding: 12px 16px; border: 1px solid #c4161c; border-radius: 10px; background: rgba(60, 6, 10, .9); color: #ffe6dc; font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { #status::before, .as-stands img, .as-bar.is-busy i { animation: none; } }
+
+/* 開發商 HAPPY GAME 的開場頁：象牙紙底上的剪紙徽章，花草長出來、翅膀展開拍動、HAPPY GAME 一開始就在，字母一個個泛起金光再掃過一道金光；
+   約 4 秒後淡出，露出底下的遊戲 loading；遊戲先載入完就直接收掉進遊戲（點一下也可略過）。圖層是 scripts/happy-game-logo.py 從 LOGO 原圖拆的 */
+#hg-splash { position: fixed; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; background: radial-gradient(ellipse at 50% 44%, #fbf6ec 0%, #f3ebdc 52%, #e2d3b9 100%); transition: opacity .6s; cursor: pointer; }
+#hg-splash.is-done { opacity: 0; pointer-events: none; }
+#hg-canvas { width: min(96vw, 64vh, 640px); aspect-ratio: 1; }
+.hg-tag { color: #702a26; font-size: clamp(11px, 3.3vw, 14px); font-weight: 600; letter-spacing: .34em; text-indent: .34em; opacity: 0; transform: translateY(6px); transition: opacity .8s, transform .8s; }
+.hg-tag.is-on { opacity: .85; transform: none; }
+.hg-tag i { font-style: normal; color: #c9a063; }
 	</style>
 	$GODOT_HEAD_INCLUDE
 </head>
 <body>
 	<canvas id="canvas">Your browser does not support the canvas tag.</canvas>
 	<noscript>Your browser does not support JavaScript.</noscript>
+
+	<div id="hg-splash" role="img" aria-label="HAPPY GAME">
+		<canvas id="hg-canvas"></canvas>
+		<div class="hg-tag">PLAY MORE <i>·</i> A KINDER WORLD</div>
+	</div>
+	<script>
+// HAPPY GAME 開場：底圖（紅盤、長髮的女孩、緞帶與 HAPPY GAME 字樣）放大淡入 → 左右花草從根部長出來 → 翅膀從肩膀展開、用力拍兩下、之後一直輕輕拍 →
+// 頭髮上的花綻開 → 字母由左到右一個個泛起金光 → 緞帶下的花轉著綻開、噴出光點 → 字上掃過一道金光、周圍星光閃爍 → 淡出。
+// 座標都是 logo.json 的 1024 見方；圖載不到（或太慢）就直接跳過開場。網址加 ?splash=0.25 用四分之一速度播（檢查動畫用）
+(function () {
+	const splash = document.getElementById('hg-splash');
+	const cv = document.getElementById('hg-canvas');
+	const ctx = cv.getContext('2d');
+	const tag = splash.querySelector('.hg-tag');
+	const DIR = '../../happy-game/';
+	const V = '?v=1';
+	const NAMES = ['base', 'left', 'right', 'wing', 'hair-flower', 'letters', 'banner-flower'];
+	const END = 4.1;
+	const SPEED = parseFloat((location.search.match(/splash=([\d.]+)/) || [])[1]) || 1;
+	const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const img = {};
+	const off = {};
+	let meta = null, t0 = 0, raf = 0, done = false, k = 1;
+	const sparks = [];
+
+	const clamp = (v) => Math.max(0, Math.min(1, v));
+	const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+	const back = (p) => { const c = 1.7; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
+	const phase = (t, a, d) => clamp((t - a) / d);
+
+	function finish() {
+		if (done) return;
+		done = true;
+		splash.classList.add('is-done');
+		setTimeout(() => { cancelAnimationFrame(raf); splash.remove(); }, 700);
+	}
+	splash.addEventListener('pointerdown', finish);
+	// 遊戲載入完成時（下面的 loading 收起來時）開場也直接收掉，不必等動畫演完
+	window.hgSkip = finish;
+	// 太慢就不演了（網路慢時別讓玩家多等）
+	const giveUp = setTimeout(() => { if (!meta) finish(); }, 3000);
+
+	const load = (src) => new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = src; });
+	Promise.all([fetch(DIR + 'logo.json' + V).then((r) => r.json()), ...NAMES.map((n) => load(DIR + n + '.webp' + V))]).then(([m, ...ims]) => {
+		if (done) return;
+		clearTimeout(giveUp);
+		NAMES.forEach((n, i) => { img[n] = ims[i]; });
+		for (const n of ['left', 'right', 'shine', 'gold']) {
+			const src = img[n === 'shine' || n === 'gold' ? 'letters' : n];
+			const c = document.createElement('canvas');
+			c.width = src.width;
+			c.height = src.height;
+			off[n] = c;
+		}
+		// 金色的字形（字母亮起來時疊加用）
+		const gc = off.gold.getContext('2d');
+		gc.drawImage(img.letters, 0, 0);
+		gc.globalCompositeOperation = 'source-in';
+		gc.fillStyle = '#ffcf78';
+		gc.fillRect(0, 0, off.gold.width, off.gold.height);
+		meta = m;
+		fit();
+		window.addEventListener('resize', fit);
+		t0 = performance.now();
+		raf = requestAnimationFrame(frame);
+	}, finish);
+
+	function fit() {
+		const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+		cv.width = cv.height = Math.round(cv.clientWidth * dpr);
+		k = cv.width / meta.size;
+	}
+
+	// 花草長出來：以根部為圓心，一圈一圈往外露出來（邊緣柔和），同時從根部微微放大
+	function grow(name, p, t) {
+		const L = meta.layers[name];
+		const ax = L.anchor[0], ay = L.anchor[1];
+		ctx.save();
+		const sway = p >= 1 ? Math.sin(t * 1.3 + (name === 'right' ? 1.7 : 0)) * 0.012 : 0;
+		const s = 0.82 + 0.18 * easeOut(p);
+		ctx.translate(ax, ay);
+		ctx.rotate(sway);
+		ctx.scale(s, s);
+		ctx.translate(-ax, -ay);
+		if (p >= 1) {
+			ctx.drawImage(img[name], L.x, L.y);
+		} else {
+			const c = off[name], o = c.getContext('2d');
+			const lx = ax - L.x, ly = ay - L.y;
+			const far = Math.hypot(Math.max(lx, c.width - lx), Math.max(ly, c.height - ly));
+			const r = easeOut(p) * (far + 60);
+			o.globalCompositeOperation = 'source-over';
+			o.clearRect(0, 0, c.width, c.height);
+			o.drawImage(img[name], 0, 0);
+			o.globalCompositeOperation = 'destination-in';
+			const g = o.createRadialGradient(lx, ly, 0, lx, ly, Math.max(1, r));
+			g.addColorStop(0, '#000');
+			g.addColorStop(Math.max(0, (r - 60) / Math.max(r, 1)), '#000');
+			g.addColorStop(1, 'rgba(0,0,0,0)');
+			o.fillStyle = g;
+			o.fillRect(0, 0, c.width, c.height);
+			ctx.drawImage(c, L.x, L.y);
+		}
+		ctx.restore();
+	}
+
+	// 花綻開：從中心轉著放大（略微超過再回來）
+	function bloom(name, p, spin) {
+		if (p <= 0) return;
+		const L = meta.layers[name];
+		const ax = L.anchor[0], ay = L.anchor[1];
+		ctx.save();
+		ctx.globalAlpha = clamp(p * 3);
+		ctx.translate(ax, ay);
+		ctx.rotate((1 - easeOut(p)) * spin);
+		const s = back(p);
+		ctx.scale(s, s);
+		ctx.translate(-ax, -ay);
+		ctx.drawImage(img[name], L.x, L.y);
+		ctx.restore();
+	}
+
+	// 翅膀：從肩膀收著（往身上轉、縮小）展開，略過頭再回來；接著繞肩膀往外用力拍兩下，之後一直輕輕拍
+	// （底圖是沒有翅膀、頭髮完整的那張，翅膀展開前看到的是完整的人物）
+	function wing(t) {
+		const p = phase(t, 0.35, 0.8);
+		if (p <= 0) return;
+		const L = meta.layers.wing;
+		const ax = L.anchor[0], ay = L.anchor[1];
+		const open = back(p);
+		const strong = t > 1.15 && t < 2.5;
+		const amp = strong ? 0.1 : 0.04;
+		const freq = strong ? 1.5 : 0.6;
+		const start = strong ? 1.15 : 2.5;
+		const lift = t > 1.15 ? amp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * freq * (t - start))) : 0;
+		ctx.save();
+		ctx.globalAlpha = clamp(p * 4);
+		ctx.translate(ax, ay);
+		ctx.rotate(-0.55 * (1 - open) + lift);
+		const s = 0.5 + 0.5 * open;
+		ctx.scale(s * (1 + lift * 0.25), s * (1 - lift * 0.15));
+		ctx.translate(-ax, -ay);
+		ctx.drawImage(img.wing, L.x, L.y);
+		ctx.restore();
+	}
+
+	// HAPPY GAME（字一開始就在底圖上）：字母由左到右一個個泛起金光，接著一道金光從字上掃過
+	function letters(t) {
+		const L = meta.layers.letters;
+		meta.letters.forEach((r, i) => {
+			const p = phase(t, 0.95 + i * 0.09, 0.55);
+			const g = Math.sin(p * Math.PI);
+			if (g <= 0.01) return;
+			ctx.save();
+			ctx.globalCompositeOperation = 'lighter';
+			ctx.globalAlpha = g * 0.8;
+			ctx.shadowColor = 'rgba(255,196,90,0.95)';
+			ctx.shadowBlur = 26 * k * g;
+			ctx.drawImage(off.gold, r[0] - L.x, r[1] - L.y, r[2], r[3], r[0], r[1], r[2], r[3]);
+			ctx.restore();
+		});
+		const sp = phase(t, 2.05, 0.95);
+		if (sp > 0 && sp < 1) {
+			const c = off.shine, g2 = c.getContext('2d');
+			const x = -160 + sp * (c.width + 320);
+			g2.globalCompositeOperation = 'source-over';
+			g2.clearRect(0, 0, c.width, c.height);
+			g2.drawImage(img.letters, 0, 0);
+			g2.globalCompositeOperation = 'source-in';
+			const g = g2.createLinearGradient(x - 90, 0, x + 90, 0);
+			g.addColorStop(0, 'rgba(255,214,120,0)');
+			g.addColorStop(0.5, 'rgba(255,240,190,0.95)');
+			g.addColorStop(1, 'rgba(255,214,120,0)');
+			g2.fillStyle = g;
+			g2.fillRect(0, 0, c.width, c.height);
+			ctx.save();
+			ctx.globalCompositeOperation = 'lighter';
+			ctx.drawImage(c, L.x, L.y);
+			ctx.restore();
+		}
+	}
+
+	// 四角星光
+	function star(x, y, r, a) {
+		if (a <= 0) return;
+		ctx.save();
+		ctx.globalAlpha = a;
+		const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
+		g.addColorStop(0, 'rgba(255,236,170,0.7)');
+		g.addColorStop(1, 'rgba(255,236,170,0)');
+		ctx.fillStyle = g;
+		ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, Math.PI * 2); ctx.fill();
+		ctx.fillStyle = '#fff6d6';
+		ctx.beginPath();
+		ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x, y, x + r * 0.32, y);
+		ctx.quadraticCurveTo(x, y, x, y + r); ctx.quadraticCurveTo(x, y, x - r * 0.32, y);
+		ctx.quadraticCurveTo(x, y, x, y - r);
+		ctx.moveTo(x - r * 0.75, y); ctx.quadraticCurveTo(x, y, x, y - r * 0.24);
+		ctx.quadraticCurveTo(x, y, x + r * 0.75, y); ctx.quadraticCurveTo(x, y, x, y + r * 0.24);
+		ctx.quadraticCurveTo(x, y, x - r * 0.75, y);
+		ctx.fill();
+		ctx.restore();
+	}
+	const TWINKLE = [[150, 300, 0], [890, 230, 0.4], [945, 540, 0.9], [96, 620, 1.3], [512, 70, 0.6], [880, 860, 1.1], [150, 880, 0.2], [700, 150, 1.6]];
+	let burst = false;
+
+	function frame(now) {
+		if (done && !splash.isConnected) return;
+		const real = (now - t0) / 1000 * SPEED;
+		const t = reduce ? 9 : real;
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.clearRect(0, 0, cv.width, cv.height);
+		ctx.setTransform(k, 0, 0, k, 0, 0);
+		// 整個徽章放大淡入
+		const ap = phase(t, 0, 0.6);
+		const s = 0.9 + 0.1 * back(ap);
+		ctx.save();
+		ctx.globalAlpha = easeOut(phase(t, 0, 0.45));
+		ctx.translate(512, 520);
+		ctx.scale(s, s);
+		ctx.translate(-512, -520);
+		ctx.drawImage(img.base, 0, 0);
+		grow('left', phase(t, 0.25, 1.15), t);
+		grow('right', phase(t, 0.5, 0.95), t);
+		wing(t);
+		bloom('hair-flower', phase(t, 1.0, 0.5), -1.4);
+		letters(t);
+		const fp = phase(t, 1.85, 0.6);
+		bloom('banner-flower', fp, 2.6);
+		ctx.restore();
+		// 花綻開時噴一圈光點
+		if (!burst && fp > 0.55 && !reduce) {
+			burst = true;
+			const c = meta.layers['banner-flower'].anchor;
+			for (let i = 0; i < 18; i++) {
+				const a = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
+				const v = 140 + Math.random() * 120;
+				sparks.push({ x: c[0], y: c[1], vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, t: t, life: 0.7 + Math.random() * 0.4 });
+			}
+		}
+		for (const p of sparks) {
+			const age = t - p.t;
+			if (age > p.life) continue;
+			const f = age / p.life;
+			star(p.x + p.vx * age, p.y + p.vy * age + 60 * age * age, 9 * (1 - f), 1 - f);
+		}
+		for (const [x, y, d] of TWINKLE) {
+			const tw = t - 1.9 - d * 0.4;
+			if (tw > 0) star(x, y, 14 * (0.6 + 0.4 * Math.sin(tw * 4 + d)), clamp(tw * 2) * (0.55 + 0.45 * Math.sin(tw * 3 + d * 2)));
+		}
+		if (t > 2.3) tag.classList.add('is-on');
+		if (real > (reduce ? 1.6 : END)) finish();
+		raf = requestAnimationFrame(frame);
+	}
+}());
+	</script>
 
 	<div id="status">
 		<div class="as-logo"><img src="../loading-logo.webp?v=3" alt="Red Riding Hood"></div>
@@ -108,6 +373,7 @@ const engine = new Engine(GODOT_CONFIG);
 		if (done) return;
 		done = true;
 		clearInterval(tipTimer);
+		if (window.hgSkip) window.hgSkip();
 		show(100);
 		overlay.classList.add('is-done');
 		setTimeout(() => overlay.remove(), 700);

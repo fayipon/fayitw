@@ -103,6 +103,7 @@ var _toast_tween: Tween
 var _auto_running := false
 var _defeating := false
 var _hp_tween: Tween
+var _touched := false
 
 
 func _ready() -> void:
@@ -1784,12 +1785,14 @@ func _boot() -> void:
 	started = true
 	Music.mode("base")
 	_web("asReady", 1.0)
-	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN；
+	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN（網頁版等第一次點擊、有聲音了才演）；
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
 	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
 	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）
 	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
 	if search.contains("bigwin"):
+		while OS.has_feature("web") and not _touched:
+			await get_tree().process_frame
 		var tb := Rules.total_bet(Rules.BET_LEVELS[state.bet])
 		busy = true
 		await _big_win(60 * tb, tb)
@@ -1831,6 +1834,12 @@ func _boot() -> void:
 func _web(fn: String, value: float) -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.%s && window.%s(%f)" % [fn, fn, value])
+
+
+# 第一次點擊（瀏覽器這時才讓網頁出聲）
+func _input(e: InputEvent) -> void:
+	if not _touched and (e is InputEventMouseButton or e is InputEventScreenTouch or e is InputEventKey) and e.is_pressed():
+		_touched = true
 
 
 func _unhandled_input(e: InputEvent) -> void:

@@ -47,10 +47,13 @@ func _ready() -> void:
 	_players.bigwin = _player(preload("res://music/bigwin.mp3"))
 
 
+# 網頁版的一般音檔預設交給瀏覽器直接播（sample），播放中改音量不一定吃得到，從靜音淡入時會一直沒聲音；
+# 音樂一律由引擎自己混音（stream），淡入淡出才可靠（主遊戲那首是同步串流，本來就只能這樣播）
 func _player(stream: AudioStream) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.stream = stream
 	p.bus = "Music"
+	p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	p.volume_db = SILENT
 	add_child(p)
 	return p
