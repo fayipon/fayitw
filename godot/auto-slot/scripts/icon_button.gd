@@ -1,5 +1,5 @@
 # 圓形按鈕（照設計稿與 PG Soft 的投注列）：轉動鍵（紅色圓盤＋古金圈，中間畫金色循環箭頭；自動旋轉時改寫剩幾轉）、
-# 選單、TURBO（照 PG 的開關：閃電＋下方開口的金弧，關著劃掉寫 OFF、開著發光寫 TURBO）、AUTO、押注加減（古金細圈＋深藍底，底下可帶小字）、
+# 選單、TURBO（關著閃電被斜線劃掉、底下寫 OFF，開著寫 TURBO）、AUTO、押注加減（古金細圈＋深藍底，底下可帶小字）、
 # 補幣（綠寶石）。圈是 art/ui 的圖，圖示用程式畫
 extends BaseButton
 
@@ -49,9 +49,6 @@ func _process(delta: float) -> void:
 	elif on and kind == "auto":
 		_t += delta * 3.0
 		queue_redraw()
-	elif on and kind == "turbo":
-		_t += delta
-		queue_redraw()
 
 
 func _draw() -> void:
@@ -64,8 +61,6 @@ func _draw() -> void:
 	match kind:
 		"spin":
 			_spin_face(r)
-		"turbo":
-			_turbo_face(r, toggle_mode and button_pressed)
 		"refill":
 			draw_circle(Vector2(0, 1.5), r, Color(0, 0, 0, 0.4))
 			draw_circle(Vector2.ZERO, r, Art.GOLD_DEEP)
@@ -82,11 +77,13 @@ func _draw() -> void:
 		var fs := int(clampf(d * 0.26, 9, 13))
 		var on := lit or (toggle_mode and button_pressed)
 		var base := Vector2(-10, size.y - 1)
-		draw_string_outline(f, base, caption, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, 3, Art.INK)
-		draw_string(f, base, caption, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, Art.GOLD_LIGHT if on else Art.CREAM)
+		# TURBO 關著時底下寫 OFF
+		var text := "OFF" if kind == "turbo" and not on else caption
+		draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, 3, Art.INK)
+		draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, Art.GOLD_LIGHT if on else Art.CREAM)
 
 
-# 古金細圈按鈕：選單三條線、AUTO 循環箭頭、押注加減；開著的時候外圈發金光
+# 古金細圈按鈕：選單三條線、TURBO 閃電、AUTO 循環箭頭、押注加減；開著的時候外圈發金光
 func _ring_face(r: float) -> void:
 	var on := lit or (toggle_mode and button_pressed)
 	if on:
@@ -102,6 +99,19 @@ func _ring_face(r: float) -> void:
 			for k in 3:
 				var y := (k - 1) * r * 0.26
 				draw_line(Vector2(-r * 0.34, y), Vector2(r * 0.34, y), ink, maxf(2.0, r * 0.1), true)
+		"turbo":
+			var s := r * 0.5
+			var bolt := PackedVector2Array([Vector2(0.15, -1.0), Vector2(-0.55, 0.12), Vector2(-0.05, 0.12), Vector2(-0.2, 1.0), Vector2(0.55, -0.15), Vector2(0.05, -0.15)])
+			for i in bolt.size():
+				bolt[i] *= s
+			draw_colored_polygon(bolt, ink)
+			if not on:
+				# 關著：一道斜線劃掉（先用深藍底色切開閃電，再畫細線）
+				var from := Vector2(-s * 0.75, -s * 0.8)
+				var to := Vector2(s * 0.75, s * 0.8)
+				var w := maxf(1.8, r * 0.08)
+				draw_line(from, to, Color("0b1020"), w * 2.4, true)
+				draw_line(from, to, ink, w, true)
 		"auto":
 			draw_set_transform(size.x / 2.0 * Vector2.ONE, _t if on else 0.0, Vector2.ONE)
 			_arrows(r * 0.4, maxf(2.0, r * 0.1), ink)
@@ -111,54 +121,6 @@ func _ring_face(r: float) -> void:
 			draw_line(Vector2(-r * 0.4, 0), Vector2(r * 0.4, 0), ink, w, true)
 			if kind == "plus":
 				draw_line(Vector2(0, -r * 0.4), Vector2(0, r * 0.4), ink, w, true)
-
-
-# TURBO 開關（照 PG Soft）：一圈下方開口的金色弧線，開口處寫字，中間一道閃電；
-# 關著：顏色調暗、閃電被一道斜線劃掉、寫 OFF；開著：亮金色、外圈發光、閃電每 0.6 秒閃一下、寫 TURBO
-func _turbo_face(r: float, on: bool) -> void:
-	var p := 0.5 + 0.5 * sin(_t * 6.0)
-	var flash := clampf(1.0 - fmod(_t, 0.6) / 0.15, 0.0, 1.0) if on else 0.0
-	var gold := Color(1, 0.8, 0.22) if on else Color(0.86, 0.72, 0.42)
-	var ink := Art.INK
-	if on:
-		for k in 5:
-			draw_circle(Vector2.ZERO, r * (1.24 - k * 0.07 + 0.04 * p), Color(1, 0.62, 0.1, 0.08 + 0.04 * p))
-	draw_circle(Vector2(0, r * 0.06), r * 0.98, Color(0, 0, 0, 0.5))
-	draw_circle(Vector2.ZERO, r * 0.92, Color(0.05, 0.06, 0.1, 0.9))
-	if on:
-		for k in 4:
-			draw_circle(Vector2(0, -r * 0.12), r * (0.62 - k * 0.12), Color(1, 0.7, 0.2, 0.07 + 0.05 * flash))
-	# 弧線：下方留 70 度的開口寫字
-	var gap := deg_to_rad(70.0)
-	var a0 := PI / 2.0 + gap / 2.0
-	var a1 := PI / 2.0 + TAU - gap / 2.0
-	var w := maxf(2.0, r * 0.1)
-	draw_arc(Vector2.ZERO, r * 0.82, a0, a1, 48, ink, w + 3.0, true)
-	draw_arc(Vector2.ZERO, r * 0.82, a0, a1, 48, gold, w, true)
-	# 閃電
-	var shape := [Vector2(0.15, -1.0), Vector2(-0.55, 0.12), Vector2(-0.05, 0.12), Vector2(-0.2, 1.0), Vector2(0.55, -0.15), Vector2(0.05, -0.15)]
-	var s := r * 0.4
-	var o := Vector2(0, -r * 0.12)
-	var bolt := PackedVector2Array()
-	for v in shape:
-		bolt.append(o + v * s)
-	var ring := bolt.duplicate()
-	ring.append(bolt[0])
-	draw_polyline(ring, ink, maxf(2.0, r * 0.08), true)
-	draw_colored_polygon(bolt, gold.lerp(Color.WHITE, flash * 0.8))
-	if not on:
-		# 斜線劃掉：先畫一道深色寬線把閃電切開，再畫金色細線
-		var from := o + Vector2(-s * 0.75, -s * 0.8)
-		var to := o + Vector2(s * 0.75, s * 0.8)
-		draw_line(from, to, Color(0.05, 0.06, 0.1), w * 1.7, true)
-		draw_line(from, to, gold, w * 0.75, true)
-	# 開口處的字
-	var f := Art.font()
-	var text := "TURBO" if on else "OFF"
-	var fs := int(r * (0.3 if on else 0.36))
-	var base := Vector2(-r, r * 0.86)
-	draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, 4, ink)
-	draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, gold)
 
 
 # 兩段弧＋箭頭的循環符號

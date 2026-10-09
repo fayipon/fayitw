@@ -614,8 +614,8 @@ func _build_betbar() -> Control:
 	menu.name = "Menu"
 	menu.pressed.connect(_open_menu)
 	bar.add_child(menu)
-	# TURBO 的字寫在按鈕圈裡（OFF／TURBO），底下不再帶小字
-	_turbo_btn = IconButton.new("turbo")
+	# TURBO 底下的字：關著寫 OFF、開著寫 TURBO
+	_turbo_btn = IconButton.new("turbo", "TURBO")
 	_turbo_btn.toggle_mode = true
 	_turbo_btn.set_pressed_no_signal(state.turbo)
 	_turbo_btn.toggled.connect(_on_turbo)
