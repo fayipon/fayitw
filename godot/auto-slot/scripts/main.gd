@@ -132,7 +132,7 @@ func _ready() -> void:
 	field = Field.new()
 	add_child(field)
 	field.tint = Field.TINTS[(_stage() - 1) % Field.TINTS.size()]
-	field.set_charge(state.charge, 0, _charge_power())
+	field.set_charge(state.charge, 0, _charge_power(), _charge_cap())
 	slot = SlotView.new()
 	slot.z_index = 20
 	add_child(slot)
@@ -261,14 +261,14 @@ func _plate_box(radius := 8, alpha := 0.92) -> StyleBoxFlat:
 
 
 # 橫向三段的底圖（資訊面板、Feature Buy）：整張依高度等比縮，左右兩端（金花角）不變形、中段橫向拉長
-func _three_slice(c: CanvasItem, tex: Texture2D, r: Rect2, cap: float) -> void:
+func _three_slice(c: CanvasItem, tex: Texture2D, r: Rect2, cap: float, mod := Color.WHITE) -> void:
 	var k := r.size.y / tex.get_height()
 	var w := minf(cap * k, r.size.x / 2.0)
 	var tw := float(tex.get_width())
 	var src_cap := w / k
-	c.draw_texture_rect_region(tex, Rect2(r.position, Vector2(w, r.size.y)), Rect2(0, 0, src_cap, tex.get_height()))
-	c.draw_texture_rect_region(tex, Rect2(r.position.x + w, r.position.y, r.size.x - w * 2.0, r.size.y), Rect2(src_cap, 0, tw - src_cap * 2.0, tex.get_height()))
-	c.draw_texture_rect_region(tex, Rect2(r.end.x - w, r.position.y, w, r.size.y), Rect2(tw - src_cap, 0, src_cap, tex.get_height()))
+	c.draw_texture_rect_region(tex, Rect2(r.position, Vector2(w, r.size.y)), Rect2(0, 0, src_cap, tex.get_height()), mod)
+	c.draw_texture_rect_region(tex, Rect2(r.position.x + w, r.position.y, r.size.x - w * 2.0, r.size.y), Rect2(src_cap, 0, tw - src_cap * 2.0, tex.get_height()), mod)
+	c.draw_texture_rect_region(tex, Rect2(r.end.x - w, r.position.y, w, r.size.y), Rect2(tw - src_cap, 0, src_cap, tex.get_height()), mod)
 
 
 # 菱形頭像（血條右邊的大野狼）：符號磚的臉部裁成菱形，外圈古金框
@@ -396,7 +396,10 @@ func _refresh_fs() -> void:
 	_ladder.queue_redraw()
 
 
-# ---------- Feature Buy：紅色古金框底板；目前只放按鈕，Free Spins 時改寫剩幾轉 ----------
+# ---------- Feature Buy：金框木頭底板；目前只放按鈕，Free Spins 時改寫剩幾轉 ----------
+
+# 底板原圖（art/ui/buy.webp）兩端金色捲花的寬度（原圖像素），三段式拉長時這兩段不變形
+const BUY_CAP := 140.0
 
 func _build_buy() -> Button:
 	var b := Button.new()
@@ -407,13 +410,17 @@ func _build_buy() -> Button:
 	b.draw.connect(func():
 		var press := 0.95 if b.is_pressed() else 1.0
 		var r := Rect2(Vector2.ZERO, b.size)
-		var k := minf(r.size.x / tex.get_width(), r.size.y / tex.get_height()) * press
-		var sz := Vector2(tex.get_width(), tex.get_height()) * k
-		var at := r.get_center() - sz / 2.0
-		b.draw_texture_rect(tex, Rect2(at, sz), false, Color(0.75, 0.75, 0.75) if free else Color.WHITE)
+		var sz := r.size * press
+		var plate := Rect2(r.get_center() - sz / 2.0, sz)
+		# 底板拉滿整個按鈕寬：兩端的金色捲花不變形、中間木板橫向拉長（原圖比例偏高，等比縮的話中間太窄、字會超出框）
+		_three_slice(b, tex, plate, BUY_CAP, Color(0.75, 0.75, 0.75) if free else Color.WHITE)
 		var text := "FREE SPINS  %d / %d" % [fs_done, fs_done + fs_left] if free else "Feature Buy"
 		var f := Art.font()
+		# 字只放在中間木板裡（扣掉兩端捲花與金邊），太長就縮小
+		var room := plate.size.x - 2.0 * BUY_CAP * plate.size.y / tex.get_height() - 12.0
 		var fs := int(14 if free else 18)
+		while fs > 9 and f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+			fs -= 1
 		var base := Vector2(0, r.size.y * 0.5 + fs * 0.36)
 		b.draw_string_outline(f, base + Vector2(0, 1.5), text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 5, Color(0, 0, 0, 0.6))
 		b.draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 4, Color("3a0608"))
@@ -776,6 +783,7 @@ func _set_bet(k: int) -> void:
 	Sfx.play("click")
 	_save()
 	_refresh_all()
+	field.set_charge(state.charge, 0, _charge_power(), _charge_cap())
 
 
 func _on_turbo(on: bool) -> void:
@@ -1280,8 +1288,13 @@ func _store(amount: int) -> void:
 	if amount <= 0:
 		return
 	state.charge += amount
-	field.set_charge(state.charge, amount, _charge_power())
+	field.set_charge(state.charge, amount, _charge_power(), _charge_cap())
 	Sfx.play("coin", 1.5, -12.0)
+
+
+# 頭上藍色能量條的上限：總押注 × 100（換押注時跟著變）
+func _charge_cap() -> int:
+	return 100 * Rules.total_bet(Rules.BET_LEVELS[state.bet])
 
 
 # 存越多小紅帽身上的金光越亮：存到一隻狼的血量就最亮
@@ -1709,7 +1722,7 @@ func _fill_rules() -> void:
 		state.history = []
 		_shown_coins = state.coins
 		field.set_stage(1)
-		field.set_charge(0, 0, 0.0)
+		field.set_charge(0, 0, 0.0, _charge_cap())
 		_refresh_all()
 		_save()
 		_close_sheet(_rules)
@@ -1797,8 +1810,11 @@ func _boot() -> void:
 	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN（網頁版等第一次點擊、有聲音了才演）；
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
 	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
-	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）
+	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）；
+	# ?slow=0.25 整個遊戲用四分之一速度跑（檢查動作用，可以跟上面幾個一起帶）
 	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
+	if search.contains("slow="):
+		Engine.time_scale = clampf(search.get_slice("slow=", 1).get_slice("&", 0).to_float(), 0.05, 1.0)
 	if search.contains("bigwin"):
 		while OS.has_feature("web") and not _touched:
 			await get_tree().process_frame

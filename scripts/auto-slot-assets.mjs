@@ -3,7 +3,7 @@
 // - 自走區（2026-10 繪本奇幻版，照設計稿 s-ref-a 的白天森林）：
 //   遠景 s-far（陽光、樹林、外婆家的小屋、林間小路）不捲動 → godot/auto-slot/art/field/far.webp
 //   近景 s-near（左右的大樹、前景草地）：洋紅底挖空，沿著頭尾最像的路線接成可以無限往左捲的長條 → art/field/near.webp
-// - 角色（已去背）：小紅帽跑步、架式、揮砍，大野狼 → art/field/<名稱>.webp
+// - 角色（已去背）：小紅帽架式、揮砍、蓄力、跳起，大野狼與受擊 → art/field/<名稱>.webp
 // - 網頁 loading 畫面的背景（用遠景：整張場景圖 s-scene 底下多畫了金色裝飾）、標題字與兩個角色 → assets/auto-slot/loading-*.webp
 // - 首頁卡片封面 → assets/posters/auto-slot.webp
 import sharp from 'sharp';
@@ -76,7 +76,7 @@ await sharp(`${src}/s-far.jpg`).webp({ quality: 80 }).toFile(`${art}/field/far.w
 
 /* ---------- 角色：切掉透明邊、統一高度 ---------- */
 const trimmed = async (name, height) => sharp(await sharp(`${src}/${name}-cut.png`).trim({ threshold: 1 }).png().toBuffer()).resize({ height });
-for (const [name, out] of [['s-hero-run', 'hero-run'], ['s-hero-stance', 'hero-stance'], ['s-hero-slash', 'hero-slash'], ['s-wolf', 'wolf']]) {
+for (const [name, out] of [['s-hero-stance', 'hero-stance'], ['s-hero-slash', 'hero-slash'], ['s-hero-windup', 'hero-windup'], ['s-hero-jump', 'hero-jump'], ['s-wolf', 'wolf'], ['s-wolf-hurt', 'wolf-hurt']]) {
   await (await trimmed(name, 720)).webp({ quality: 86, alphaQuality: 92 }).toFile(`${art}/field/${out}.webp`);
 }
 

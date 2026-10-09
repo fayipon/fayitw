@@ -10,7 +10,7 @@
 # - 介面零件（s-ui）：深灰底挖空（只挖連到圖邊的灰，邊緣半透明並扣掉灰色），依位置命名：
 #   轉動鍵 spin（紅寶石圓盤，Godot 在中間畫旋轉箭頭）、小圓鈕 ring（金圈木頭心）、Feature Buy 底板 buy、資訊面板 panel → art/ui/
 # - 圖示（s-icons）：2 × 2 排，左上錢包、右上金幣堆、左下 WIN 徽章、右下金幣 → art/ui/
-# - 標題字（s-logo，已去背）：切掉透明邊 → art/ui/logo.webp；BIG WIN 三級標題（s-title-*，已去背）→ art/ui/title-*.webp
+# - 標題字（s-logo，已去背）：切掉透明邊 → art/ui/logo.webp；BIG WIN 三級標題（s-title-big、s-title-mega2、s-title-super2，已去背）→ art/ui/title-*.webp
 # - 轉輪外框（s-frame，纏藤蔓的蜂蜜色木框）：白底挖空，量出中間黑色開口與木框厚度，寫進 art/ui/ui.json 的 "frame"；
 #   黑色開口挖成透明（Godot 自己畫開口的底色），四個角給 Godot 切下來貼；
 #   四邊另外用上邊中段那段木板（EDGE），兩端交叉淡入做成可以無縫接續的長條 → art/ui/frame-edge.webp，Godot 把它轉向貼滿四邊
@@ -258,7 +258,9 @@ def logo():
 
 
 def titles():
-    return {f'title-{k}': cutout(f'{V}-title-{k}-cut.png', f'title-{k}', 760) for k in ['big', 'mega', 'super']}
+    # MEGA、SUPER MEGA 用重畫的第二版（第一版字上鑲了太多紅寶石）
+    src = {'big': f'{V}-title-big', 'mega': f'{V}-title-mega2', 'super': f'{V}-title-super2'}
+    return {f'title-{k}': cutout(f'{src[k]}-cut.png', f'title-{k}', 760) for k in src}
 
 
 
@@ -306,6 +308,49 @@ def frame(src=f'{V}-frame.jpg', out='frame.webp'):
     return {'size': [int(keyed.shape[1]), int(keyed.shape[0])], 'inner': inner, 'wood': wood}
 
 
+# 連續格（整張去背後的一排動作）：依連通塊切出 n 格、照 x 排好；每格用同一個高度範圍（保留圖上原本的著地線，
+# 騰空那格自然比較高）、同一個寬度，水平以頭部（上面 30% 的重心）對齊，播放時頭才不會左右晃；
+# flip 是原圖畫反了方向（大野狼要面向左）。統一縮成 720 高 → godot/auto-slot/art/field/<out>-<i>.webp
+def frames(src, out, n, flip=False):
+    rgba = load(src, cv2.IMREAD_UNCHANGED)
+    a = rgba[..., 3]
+    # 各格排得很近（尾巴快碰到前一隻）：小膨脹找色塊，每塊依中心落在整張平均分的哪一欄歸到那一格
+    mask = cv2.dilate((a > 40).astype(np.uint8), np.ones((5, 5), np.uint8))
+    count, lab0, st, cents = cv2.connectedComponentsWithStats(mask)
+    lab = np.zeros_like(lab0)
+    W = rgba.shape[1]
+    for i in range(1, count):
+        if st[i][4] >= 150:
+            lab[lab0 == i] = min(int(cents[i][0] / (W / n)), n - 1) + 1
+    blobs_ = list(range(1, n + 1))
+    boxes = []
+    for i in blobs_:
+        ys, xs = np.nonzero((lab == i) & (a > 40))
+        if not len(ys):
+            sys.exit(f'{src}: frame {i} is empty')
+        top = ys.min()
+        head = (ys < top + (ys.max() - top) * 0.3)
+        boxes.append((xs.min(), ys.min(), xs.max(), ys.max(), xs[head].mean()))
+    y0 = min(b[1] for b in boxes) - 6
+    y1 = max(b[3] for b in boxes) + 6
+    half = max(max(cx - b[0], b[2] - cx) for b in boxes for cx in [b[4]]) + 6
+    for k, (bx0, by0, bx1, by1, cx) in enumerate(boxes):
+        x0 = int(round(cx - half))
+        crop = np.zeros((y1 - y0, int(half * 2), 4), np.uint8)
+        sx0, sx1 = max(x0, 0), min(x0 + crop.shape[1], rgba.shape[1])
+        # 只拿這一格自己的像素（隔壁格的披風、尾巴伸過來也不要）
+        part = rgba[y0:y1, sx0:sx1].copy()
+        part[lab[y0:y1, sx0:sx1] != blobs_[k]] = 0
+        crop[:, sx0 - x0:sx0 - x0 + part.shape[1]] = part
+        if flip:
+            crop = crop[:, ::-1]
+        h = 720
+        crop = cv2.resize(crop, (round(crop.shape[1] * h / crop.shape[0]), h), interpolation=cv2.INTER_CUBIC)
+        path = os.path.join(ART, 'field', f'{out}-{k + 1}.webp')
+        cv2.imwrite(path, crop, [cv2.IMWRITE_WEBP_QUALITY, 88])
+    print('frames', out, n, crop.shape[1], crop.shape[0])
+
+
 def floor():
     img = load(f'{V}-floor.jpg')
     save(cv2.resize(img, (768, img.shape[0] * 768 // img.shape[1]), interpolation=cv2.INTER_AREA), 'ui', 'floor.webp', quality=80)
@@ -321,6 +366,8 @@ if __name__ == '__main__':
     meta['logo'] = logo()
     meta.update(titles())
     meta['frame'] = frame()
+    frames(f'{V}-hero-runsheet-cut.png', 'hero-run', 4)
+    frames(f'{V}-wolf-walksheet-cut.png', 'wolf-walk', 4, flip=True)
     floor()
     with open(os.path.join(ART, 'ui', 'ui.json'), 'w', encoding='utf-8') as fp:
         json.dump(meta, fp, indent=1)

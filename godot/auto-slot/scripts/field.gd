@@ -45,10 +45,14 @@ var _fog: Texture2D
 var _actors: Node2D
 var _leaves: CPUParticles2D
 var _texts: Control
-# 存起來的傷害：小紅帽頭上的「STORED 1,240」小牌子
-var _tag: PanelContainer
-var _tag_num: Label
+# 存起來的傷害：小紅帽頭上的藍色能量條（_fill 是畫出來的長度 0～1，補間追上去）
+var _tag: Control
 var _tag_tw: Tween
+var _fill := 0.0
+var _fill_tw: Tween
+static var _gauge_frame: StyleBoxFlat
+static var _gauge_fill: StyleBoxFlat
+static var _gauge_shine: StyleBoxFlat
 var _rng := RandomNumberGenerator.new()
 var _enemy_k := 1.0
 var _t := 0.0
@@ -59,6 +63,9 @@ var _enter: Tween
 var _sp := 1.0
 var _crit := false
 var _combo: Node2D
+# 出招中（招式自己換姿勢，_process 不要插手）；歡呼的跳躍姿勢要維持到這個時間
+var _striking := false
+var _pose_hold := 0.0
 
 
 func _ready() -> void:
@@ -83,10 +90,22 @@ func _ready() -> void:
 	_actors.z_index = 4
 	add_child(_actors)
 	hero = Fighter.new({
-		"run": Art.tex("res://art/field/hero-run.webp"),
+		"run": Art.tex("res://art/field/hero-run-1.webp"),
+		"run2": Art.tex("res://art/field/hero-run-2.webp"),
+		"run3": Art.tex("res://art/field/hero-run-3.webp"),
+		"run4": Art.tex("res://art/field/hero-run-4.webp"),
 		"stance": Art.tex("res://art/field/hero-stance.webp"),
 		"slash": Art.tex("res://art/field/hero-slash.webp"),
+		"windup": Art.tex("res://art/field/hero-windup.webp"),
+		"jump": Art.tex("res://art/field/hero-jump.webp"),
 	}, "run")
+	# 跑步 4 格輪流播；蓄力、跳起比較寬（披風張開），身高上限只看平常的姿勢
+	hero.run_frames = ["run", "run2", "run3", "run4"]
+	hero.sizing = ["run", "run2", "run3", "run4", "stance", "slash"]
+	# 跑步時每一步著地，腳後揚起一小團塵土
+	hero.stepped.connect(func():
+		if walking:
+			_dust(Vector2(hero.position.x - hero.height * 0.12, ground), 3, 1.0, 0.6))
 	_actors.add_child(hero)
 	_leaves = _make_leaves()
 	_leaves.z_index = 9
@@ -105,11 +124,16 @@ func _ready() -> void:
 	_combo.z_index = 13
 	add_child(_combo)
 	hero.aura_color = Color(1.0, 0.72, 0.25)
-	# 劍的位置（量自三張立繪，劍根 → 劍尖）：架式劍尖朝右上，跑步時劍拿在後手、朝右下，揮砍時往右平伸（劍尖碰到圖邊）
+	# 劍的位置（量自立繪，劍根 → 劍尖）：架式劍尖朝右上，跑步時劍拿在後手、朝右下（4 格各量一次），
+	# 揮砍時往右平伸（劍尖碰到圖邊），跳起時舉過頭往右上；蓄力時劍收在頭後面，不冒火
 	hero.blades = {
 		"stance": [Vector2(0.786, 0.533), Vector2(0.99, 0.265)],
-		"run": [Vector2(0.462, 0.577), Vector2(0.671, 0.802)],
+		"run": [Vector2(0.346, 0.621), Vector2(0.538, 0.824)],
+		"run2": [Vector2(0.338, 0.59), Vector2(0.526, 0.794)],
+		"run3": [Vector2(0.328, 0.636), Vector2(0.526, 0.827)],
+		"run4": [Vector2(0.338, 0.606), Vector2(0.526, 0.818)],
 		"slash": [Vector2(0.742, 0.452), Vector2(1.0, 0.348)],
+		"jump": [Vector2(0.447, 0.217), Vector2(0.771, 0.01)],
 	}
 	resized.connect(layout)
 
@@ -130,6 +154,7 @@ func layout() -> void:
 		_place_enemy()
 	_leaves.position = Vector2(size.x / 2.0, -10)
 	_leaves.emission_rect_extents = Vector2(size.x * 0.6, 4)
+	_tag.size = Vector2(clampf(hero.height * 0.5, 54.0, 96.0), clampf(hero.height * 0.07, 9.0, 13.0))
 	queue_redraw()
 
 
@@ -144,13 +169,15 @@ func set_stage(stage: int) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	hero.walking = walking
+	var idle := not _striking and _t > _pose_hold
 	if walking:
 		scroll += size.y * NEAR_SPEED * delta
-		if hero.pose != "run" and hero.pose != "slash":
+		if idle and not hero.running_pose() and hero.pose != "slash":
 			hero.set_pose("run")
-	elif hero.pose == "run":
+	elif idle and (hero.running_pose() or hero.pose == "jump" or hero.pose == "windup"):
 		hero.set_pose("stance")
 	if _tag.visible:
+		_tag.queue_redraw()
 		_tag.pivot_offset = _tag.size / 2.0
 		_tag.position = Vector2(maxf(6.0, hero.position.x - _tag.size.x / 2.0), hero.position.y - hero.height - _tag.size.y - 6.0)
 		if avoid.intersects(Rect2(_tag.position, _tag.size)):
@@ -220,43 +247,58 @@ func _make_leaves() -> CPUParticles2D:
 
 # ---------- 存起來的傷害 ----------
 
-func _make_tag() -> PanelContainer:
-	var p := PanelContainer.new()
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := Art.box(Art.PANEL, 10, 2, Art.GOLD_DEEP)
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
-	sb.content_margin_top = 2
-	sb.content_margin_bottom = 2
-	p.add_theme_stylebox_override("panel", sb)
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 6)
-	row.add_child(Art.label("STORED", Art.label_settings(11, Art.GOLD, "light")))
-	_tag_num = Art.label("0", Art.label_settings(17, Art.GOLD_LIGHT, "num", 4, Art.GOLD_INK))
-	row.add_child(_tag_num)
-	p.add_child(row)
-	p.visible = false
-	return p
+func _make_tag() -> Control:
+	var c := Control.new()
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.size = Vector2(72, 10)
+	c.draw.connect(func(): _draw_gauge(c))
+	c.visible = false
+	return c
 
 
-# 沒有狼可以打時傷害先存起來：頭上的牌子更新數字、跳出「+120」、身上的金光跟著變亮（power 0～1）
-func set_charge(amount: int, gained: int, power: float) -> void:
-	# 剛打出去的牌子還在淡掉的話直接停掉
+# 能量條：深胡桃木底、古金細邊，裡面藍色（上半截亮一點像玻璃）；存滿時整條一閃一閃
+func _draw_gauge(c: Control) -> void:
+	if not _gauge_frame:
+		_gauge_frame = Art.box(Color(0.12, 0.07, 0.03, 0.9), 6, 1, Art.GOLD_DEEP)
+		_gauge_frame.shadow_color = Color(0, 0, 0, 0.35)
+		_gauge_frame.shadow_size = 3
+		_gauge_fill = Art.box(Color("2f7fe0"), 4)
+		_gauge_shine = Art.box(Color(0.62, 0.86, 1.0, 0.75), 4)
+	var r := Rect2(Vector2.ZERO, c.size)
+	c.draw_style_box(_gauge_frame, r)
+	var inner := r.grow(-2.0)
+	var w := inner.size.x * _fill
+	if w < 1.0:
+		return
+	var fr := Rect2(inner.position, Vector2(w, inner.size.y))
+	c.draw_style_box(_gauge_fill, fr)
+	c.draw_style_box(_gauge_shine, Rect2(fr.position, Vector2(w, inner.size.y * 0.45)))
+	if _fill >= 0.999:
+		c.draw_style_box(Art.box(Color(1, 1, 1, 0.22 + 0.22 * sin(_t * 8.0)), 4), fr)
+
+
+# 沒有狼可以打時傷害先存起來：頭上的藍色能量條變長（上限 cap = 總押注 × 100，不寫數字），
+# 身上的金光跟著變亮（power 0～1）；gained > 0 是剛存進來，條子彈一下
+func set_charge(amount: int, gained: int, power: float, cap: int) -> void:
+	# 剛打出去的能量條還在淡掉的話直接停掉
 	if _tag_tw:
 		_tag_tw.kill()
+	if _fill_tw:
+		_fill_tw.kill()
 	_tag.visible = amount > 0
 	_tag.modulate.a = 1.0
 	_tag.scale = Vector2.ONE
-	_tag_num.text = Art.money(amount)
+	var to := clampf(float(amount) / maxf(float(cap), 1.0), 0.0, 1.0)
 	create_tween().tween_property(hero, "aura", power if amount > 0 else 0.0, 0.3)
 	if gained <= 0 or amount <= 0:
+		_fill = to
+		_tag.queue_redraw()
 		return
+	_fill_tw = create_tween()
+	_fill_tw.tween_property(self, "_fill", to, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_tag_tw = create_tween()
-	_tag_tw.tween_property(_tag, "scale", Vector2(1.2, 1.2), 0.08)
-	_tag_tw.tween_property(_tag, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	var top := hero.position + Vector2(0, -hero.height - 44.0)
-	float_text("+%s" % Art.money(gained), top, Art.GOLD_LIGHT, 20, Art.GOLD_INK)
+	_tag_tw.tween_property(_tag, "scale", Vector2(1.1, 1.4), 0.08)
+	_tag_tw.tween_property(_tag, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 # SCATTER（金鑰匙）落下：小紅帽的劍點燃、全身泛出火光，張數越多燒越旺（1 張小火、2 張大火、3 張以上烈焰）；
@@ -273,7 +315,7 @@ func scatter_fire(count: int) -> void:
 	tw.tween_property(hero, "glow", to, dur)
 
 
-# 狼站定了：牌子放大淡掉、金光收回，接著小紅帽把存的傷害一刀打出去
+# 狼站定了：能量條放大淡掉、金光收回，接著小紅帽把存的傷害一刀打出去
 func release_charge() -> void:
 	create_tween().tween_property(hero, "aura", 0.0, 0.4)
 	if not _tag.visible:
@@ -285,6 +327,7 @@ func release_charge() -> void:
 	_tag_tw.parallel().tween_property(_tag, "modulate:a", 0.0, 0.2)
 	_tag_tw.tween_callback(func():
 		_tag.visible = false
+		_fill = 0.0
 		_tag.scale = Vector2.ONE
 		_tag.modulate.a = 1.0)
 
@@ -293,7 +336,18 @@ func release_charge() -> void:
 
 # 大野狼從右邊的陰影裡走出來
 func spawn_enemy(kind: String) -> void:
-	enemy = Fighter.new({"idle": Art.tex("res://art/field/wolf.webp")}, "idle")
+	enemy = Fighter.new({
+		"idle": Art.tex("res://art/field/wolf.webp"),
+		"hurt": Art.tex("res://art/field/wolf-hurt.webp"),
+		"walk1": Art.tex("res://art/field/wolf-walk-1.webp"),
+		"walk2": Art.tex("res://art/field/wolf-walk-2.webp"),
+		"walk3": Art.tex("res://art/field/wolf-walk-3.webp"),
+		"walk4": Art.tex("res://art/field/wolf-walk-4.webp"),
+	}, "walk1")
+	enemy.sizing = ["idle"]
+	# 走進場時 4 格走路輪流播，站定後換回站姿
+	enemy.run_frames = ["walk1", "walk2", "walk3", "walk4"]
+	enemy.run_fps = 7.0
 	# 大野狼的圖本來就面向左
 	enemy.facing = -1.0
 	enemy.flip_source = true
@@ -313,6 +367,7 @@ func spawn_enemy(kind: String) -> void:
 	await _enter.finished
 	if enemy:
 		enemy.walking = false
+		enemy.set_pose("idle")
 		# 站定時低吼一下：身體一縮一撐
 		var roar := create_tween()
 		roar.tween_property(enemy, "scale", Vector2(1.06, 0.95), 0.12)
@@ -333,7 +388,7 @@ func enemy_center() -> Vector2:
 
 # 小紅帽出招：連擊段數（level）越多招式越多——
 # 1 衝上去一刀；2 交叉兩刀；3 再接升龍斬（跳起往上砍）；4 亂舞五刀拖殘影、收一記重斬；
-# 5 以上亂舞後穿過狼身來回各兩刀，再跳起轉身落地重劈。每一刀狼都會閃一下、噴火花；
+# 5 以上亂舞後穿過狼身來回各兩刀，再跳起轉身落地重劈。每一刀都先蓄力再砍出去，狼受擊（換受擊立繪、往後仰）、噴火花；
 # crit（大獎）刀光更大、震得更兇；turbo 時整套快一點
 func strike(level: int, crit := false) -> void:
 	if not enemy:
@@ -344,6 +399,7 @@ func strike(level: int, crit := false) -> void:
 	# 上一招還在退回來的話直接接著衝
 	if _lunge:
 		_lunge.kill()
+	_striking = true
 	hero.set_pose("slash")
 	await _dash(_reach(), 0.11, level >= 3)
 	Sfx.play("throw")
@@ -364,6 +420,7 @@ func strike(level: int, crit := false) -> void:
 		await _phantom()
 		await _plunge()
 	await _wait(0.08)
+	_striking = false
 	# 退回原位
 	hero.tilt = 0.0
 	hero.face(1.0)
@@ -374,18 +431,21 @@ func strike(level: int, crit := false) -> void:
 			hero.set_pose("run" if walking else "stance"))
 
 
-# 衝刺停下來砍的位置：狼前面一點
+# 衝刺停下來砍的位置：狼身體的左緣（照站著的立繪算，受擊時往後仰不算）再往回一點，劍剛好砍到狼、人不會疊進狼身裡
 func _reach() -> float:
-	return lerpf(size.x * HERO_X, enemy.position.x - enemy.height * 0.3, 0.62)
+	var wolf_left: float = enemy.position.x - enemy.height * enemy.widest() * 0.42
+	return maxf(size.x * HERO_X, wolf_left - hero.height * 0.4)
 
 
 func _wait(t: float) -> void:
 	await get_tree().create_timer(t * _sp).timeout
 
 
-# 衝到 x（往前傾）；trail 時一路留殘影
+# 衝到 x（往前傾、腳下揚起塵土）；trail 時一路留殘影
 func _dash(x: float, t: float, trail: bool) -> void:
-	hero.tilt = 0.12 * signf(x - hero.position.x)
+	var dir := signf(x - hero.position.x)
+	_dust(Vector2(hero.position.x, ground), 7, dir)
+	hero.tilt = 0.12 * dir
 	_lunge = create_tween()
 	_lunge.tween_property(hero, "position:x", x, t * _sp).set_ease(Tween.EASE_OUT)
 	if trail:
@@ -396,22 +456,33 @@ func _dash(x: float, t: float, trail: bool) -> void:
 	hero.tilt = 0.0
 
 
-# 一刀：在狼身上畫刀光，狼閃一下、噴火花；k 決定刀光方向（沒給 angle 時隨機）
+# 一刀：先蓄力（收刀、身體往後一仰）再砍出去（往前踏一小步、身體一伸），在狼身上畫劍光，狼受擊、噴火花；
+# k 決定劍光方向（沒給 angle 時隨機）
 func _cut(k: int, angle := INF, big := 1.0) -> void:
 	if not enemy:
 		return
-	# 揮刀的手感：先收一下刀（換站姿）再砍出去，往前踏一小步
-	hero.set_pose("stance")
-	await get_tree().create_timer(0.03 * _sp).timeout
+	hero.set_pose("windup")
+	hero.tilt = -0.05
+	await get_tree().create_timer(0.05 * _sp).timeout
 	hero.set_pose("slash")
-	hero.position.x += 5.0
+	hero.tilt = 0.06
+	hero.bump(Vector2(1.08, 0.94), 0.04, 0.18)
+	hero.position.x += 6.0
+	_hit(k, angle, big, 0.45)
+	await get_tree().create_timer(0.09 * _sp).timeout
+	hero.tilt = 0.0
+
+
+# 打中：劍光、火花、狼受擊、音效（不換姿勢；跳起來砍時直接用）
+func _hit(k: int, angle := INF, big := 1.0, strength := 0.45) -> void:
+	if not enemy:
+		return
 	var a := angle if angle != INF else _rng.randf_range(-1.0, 1.0) + (k % 2) * 0.9
 	var at := enemy_center() + Vector2(_rng.randf_range(-14, 14), _rng.randf_range(-30, 24))
 	_slash(at, a, big * (1.25 if _crit else 1.0))
 	_burst(at, Color("ffb070"), 8)
-	enemy.hurt(0.45)
+	enemy.hurt(strength)
 	Sfx.play("hit", 1.1 + k * 0.06, -7.0)
-	await get_tree().create_timer(0.09 * _sp).timeout
 
 
 # 亂舞：n 刀連砍，身體前後抖、每刀留殘影
@@ -422,26 +493,38 @@ func _flurry(n: int) -> void:
 		await _cut(k)
 
 
-# 升龍斬：跳起來往上砍一刀（刀光直的），再落地
+# 升龍斬：蹲一下蓄力、跳起來往上砍一刀（劍光直的、用跳起的立繪），再落地（壓扁、揚起塵土）
 func _rising() -> void:
+	hero.set_pose("windup")
+	hero.bump(Vector2(1.1, 0.88), 0.05, 0.12)
+	await _wait(0.06)
+	_dust(Vector2(hero.position.x, ground), 8)
+	hero.set_pose("jump")
+	hero.bump(Vector2(0.92, 1.1), 0.06, 0.2)
 	var up := create_tween()
 	up.tween_property(hero, "hop_y", hero.height * 0.45, 0.16 * _sp).set_ease(Tween.EASE_OUT)
 	for i in 3:
 		up.parallel().tween_callback(func(): hero.ghost(GHOST, 0.25)).set_delay(0.05 * _sp * i)
 	await get_tree().create_timer(0.06 * _sp).timeout
-	await _cut(2, -PI * 0.5, 1.3)
+	_hit(2, -PI * 0.5, 1.3, 0.8)
+	await get_tree().create_timer(0.09 * _sp).timeout
 	# 砍完時往上跳的補間可能已經結束了（finished 已經發過），還在跑才等
 	if up.is_running():
 		await up.finished
 	var down := create_tween()
-	down.tween_property(hero, "hop_y", 0.0, 0.18 * _sp).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	down.tween_property(hero, "hop_y", 0.0, 0.16 * _sp).set_ease(Tween.EASE_IN)
 	await down.finished
+	hero.set_pose("slash")
+	hero.land(0.8)
+	_dust(Vector2(hero.position.x, ground), 10)
 
 
-# 重斬：往後收一下，再一記橫的大刀光，畫面震
+# 重斬：往後收一下蓄力，再一記橫的大劍光，畫面震
 func _heavy() -> void:
+	hero.set_pose("windup")
+	hero.tilt = -0.08
 	var back := create_tween()
-	back.tween_property(hero, "position:x", hero.position.x - 16.0, 0.08 * _sp)
+	back.tween_property(hero, "position:x", hero.position.x - 16.0, 0.1 * _sp)
 	await back.finished
 	hero.ghost(GHOST, 0.3)
 	hero.position.x += 22.0
@@ -472,23 +555,33 @@ func _pass(x: float, dir: float) -> void:
 		_slash(at, -0.6 * dir, 1.2)
 		_slash(at + Vector2(0, 10), 0.6 * dir, 1.2)
 		_burst(at, Color("ffb070"), 12)
-		enemy.hurt(0.7)
+		enemy.hurt(0.8)
 		Sfx.play("hit", 1.25, -5.0)
 	await tw.finished
 	hero.tilt = 0.0
 
 
-# 落地重劈：跳很高、空中轉一圈，從上往下劈，落地時畫面大震、噴一圈金火花
+# 落地重劈：蹲一下、跳很高（跳起的立繪）、空中轉一圈，從上往下劈，落地時壓扁、揚起塵土、畫面大震、噴一圈金火花
 func _plunge() -> void:
+	hero.set_pose("windup")
+	hero.bump(Vector2(1.12, 0.86), 0.05, 0.12)
+	await _wait(0.06)
+	_dust(Vector2(hero.position.x, ground), 10)
+	hero.set_pose("jump")
+	hero.bump(Vector2(0.9, 1.12), 0.06, 0.22)
 	var tw := create_tween()
 	tw.tween_property(hero, "hop_y", hero.height * 0.5, 0.2 * _sp).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(hero, "position:x", _reach() - 10.0, 0.2 * _sp)
 	tw.tween_property(hero, "turn", -1.0, 0.07 * _sp)
 	tw.tween_property(hero, "turn", 1.0, 0.07 * _sp)
-	tw.tween_callback(func(): hero.ghost(GHOST, 0.3))
+	tw.tween_callback(func():
+		hero.set_pose("slash")
+		hero.ghost(GHOST, 0.3))
 	tw.tween_property(hero, "hop_y", 0.0, 0.09 * _sp).set_ease(Tween.EASE_IN)
 	await tw.finished
 	hero.turn = 1.0
+	hero.land(1.4)
+	_dust(Vector2(hero.position.x, ground), 16)
 	if not enemy:
 		return
 	var at := enemy_center()
@@ -500,26 +593,72 @@ func _plunge() -> void:
 	quake.emit(12.0 if _crit else 8.0)
 
 
-# 一道刀光：白芯紅邊的新月形，張開後淡掉；angle 是刀光的方向、big 是大小
+# 一道劍光：月牙形（中間厚、兩頭尖），從刀頭往前掃過去、尾巴跟著收掉；月牙的正中央落在打中的位置（劃過狼身）。
+# 三層疊起來：外圈一層橘金柔光（白天的亮背景上才有輪廓）、中間金色的刀身、外緣一條白芯，掃出去的那一下中間閃一顆星光。
+# angle 是方向、big 是大小
 func _slash(at: Vector2, angle: float, big := 1.0) -> void:
 	var arc := Node2D.new()
-	arc.position = at
-	arc.rotation = angle
 	var r := size.y * 0.24 * big
+	arc.position = at - Vector2.from_angle(angle) * r * 0.95
+	arc.rotation = angle
 	arc.set_meta("p", 0.0)
-	arc.draw.connect(func():
-		var p: float = arc.get_meta("p")
-		var a := 1.0 - p
-		for i in 3:
-			var w := r * (0.16 - i * 0.05) * (1.0 - p * 0.6)
-			var col: Color = [Color(0.85, 0.05, 0.08, 0.55 * a), Color(1, 0.55, 0.45, 0.8 * a), Color(1, 1, 1, a)][i]
-			arc.draw_arc(Vector2.ZERO, r * (0.9 + p * 0.25), -1.2, 1.2, 24, col, maxf(1.0, w), true))
+	arc.draw.connect(func(): _draw_slash(arc, r, arc.get_meta("p")))
 	fx.add_child(arc)
 	var tw := arc.create_tween()
 	tw.tween_method(func(v: float):
 		arc.set_meta("p", v)
-		arc.queue_redraw(), 0.0, 1.0, 0.28)
+		arc.queue_redraw(), 0.0, 1.0, 0.32)
 	tw.tween_callback(arc.queue_free)
+
+
+const SLASH_SPAN := 2.5
+const SLASH_SEG := 26
+# 三層：[寬度倍率, 半徑偏移, 顏色]
+const SLASH_LAYERS := [
+	[2.0, 0.05, Color(1.0, 0.48, 0.12, 0.42)],
+	[1.0, 0.0, Color(1.0, 0.84, 0.42, 0.95)],
+	[0.36, -0.005, Color(1.0, 1.0, 0.96, 1.0)],
+]
+
+
+func _draw_slash(c: Node2D, r: float, p: float) -> void:
+	# 刀頭在前 40% 的時間掃到底、尾巴從 30% 開始追上去；最後 35% 整道淡掉
+	var head := 1.0 - pow(1.0 - clampf(p / 0.4, 0.0, 1.0), 3.0)
+	var tail := pow(clampf((p - 0.3) / 0.7, 0.0, 1.0), 1.6)
+	if head - tail < 0.01:
+		return
+	var fade := 1.0 - clampf((p - 0.65) / 0.35, 0.0, 1.0)
+	var grow := 1.0 + 0.08 * p
+	for layer in SLASH_LAYERS:
+		var col: Color = layer[2]
+		var outer := PackedVector2Array()
+		var inner := PackedVector2Array()
+		var alpha := PackedFloat32Array()
+		for i in SLASH_SEG + 1:
+			var u := lerpf(tail, head, float(i) / SLASH_SEG)
+			var th := -SLASH_SPAN / 2.0 + SLASH_SPAN * u
+			# 越靠近刀頭越厚越亮；整道照月牙的形狀中間厚、兩頭尖
+			var lead := clampf((u - tail) / maxf(head - tail, 0.001), 0.0, 1.0)
+			var w: float = maxf(0.8, r * 0.2 * layer[0] * sin(PI * u) * (0.3 + 0.7 * lead))
+			var ro: float = r * (1.0 + layer[1]) * grow
+			outer.append(Vector2.from_angle(th) * ro)
+			inner.append(Vector2.from_angle(th) * (ro - w))
+			alpha.append(col.a * fade * (0.1 + 0.9 * lead))
+		# 一段一段畫成四邊形（外緣亮、內緣淡），不用整個多邊形三角化，兩頭尖的地方才不會出錯
+		for i in SLASH_SEG:
+			c.draw_polygon(PackedVector2Array([outer[i], outer[i + 1], inner[i + 1], inner[i]]),
+				PackedColorArray([Color(col, alpha[i]), Color(col, alpha[i + 1]), Color(col, alpha[i + 1] * 0.25), Color(col, alpha[i] * 0.25)]))
+	# 星光：掃出去的那一下，月牙中間閃一顆四角星（不跟著劍光轉，永遠正的）
+	var g := sin(PI * clampf(p / 0.45, 0.0, 1.0))
+	if g > 0.01:
+		var at := Vector2(r * grow * 0.98, 0)
+		var sz := r * 0.22 * g
+		for k in 2:
+			var pts := PackedVector2Array()
+			for j in 8:
+				var rr := sz * (1.0 if j % 2 == 0 else 0.16) * (1.0 - k * 0.45)
+				pts.append(at + Vector2.from_angle(PI / 4.0 * j - c.rotation) * rr)
+			c.draw_colored_polygon(pts, Color(1, 1, 1, 0.95 * g) if k == 1 else Color(1, 0.8, 0.4, 0.6 * g))
 
 
 # 連擊計數：第 n 段打中（或沒有狼可打、傷害存起來時）；一輪打完收起來
@@ -558,7 +697,44 @@ func defeat_enemy() -> void:
 	enemy = null
 	gone.dissolve(0.9)
 	get_tree().create_timer(1.1).timeout.connect(gone.queue_free)
+	# 打倒了：舉劍跳起來歡呼（招式還沒收完的話只跳、不換姿勢）
+	if not _striking:
+		hero.set_pose("jump")
+		_pose_hold = _t + 0.45
 	hero.cheer()
+
+
+# 腳下揚起的塵土：幾團淡褐色的柔光往外散、慢慢變大淡掉；dir 是往哪邊踢（0 是往兩邊）、big 是大小
+func _dust(at: Vector2, amount := 10, dir := 0.0, big := 1.0) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.85
+	p.amount = amount
+	p.lifetime = 0.55
+	p.texture = Fighter._soft_dot()
+	p.direction = Vector2(-dir, -0.35) if dir != 0.0 else Vector2.UP
+	p.spread = 30.0 if dir != 0.0 else 80.0
+	p.initial_velocity_min = 40.0
+	p.initial_velocity_max = 120.0
+	p.damping_min = 120.0
+	p.damping_max = 200.0
+	p.gravity = Vector2(0, -30)
+	var k := size.y / 300.0 * big
+	p.scale_amount_min = 0.35 * k
+	p.scale_amount_max = 0.65 * k
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.5))
+	curve.add_point(Vector2(1.0, 1.0))
+	p.scale_amount_curve = curve
+	p.color = Color(0.86, 0.76, 0.56, 0.55)
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color.WHITE)
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = ramp
+	fx.add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
 
 
 func _burst(at: Vector2, color: Color, amount: int) -> void:

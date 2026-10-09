@@ -1,15 +1,26 @@
-# 自走區的角色（設計稿的動漫風立繪）：一張圖一個姿勢，動作用程式做——
-# 跑步上下彈、站著呼吸、揮砍時往前衝、被打時閃紅後退、倒下時從邊緣燒成灰（溶解 shader）；
-# 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）；
+# 自走區的角色（繪本風立繪）：一張圖一個姿勢，動作用程式做——
+# 跑步上下彈（著地壓扁、騰空拉長）、站著呼吸、揮砍時往前衝、倒下時從邊緣燒成灰（溶解 shader）；
+# 被打：閃紅、往後仰、壓扁再彈回、往後退，有受擊立繪（hurt）的換成受擊姿勢，重擊頭上轉一圈金星；
+# 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）、落地壓扁（land）、伸展（stretch）；
 # 劍上的火（flame，SCATTER 落下時點燃）：劍身一道橘光、沿著劍身冒火焰與火星（火焰留在原地往上飄，衝刺時會拖出一道火尾），
 # 全身外圍泛出火光（glow，fighter_glow.gdshader）；點燃那一下 flare 讓光再亮一點
 extends Node2D
+
+# 跑步時每一步腳著地（field 在腳後揚起一小團塵土）
+signal stepped
 
 const SHADER := preload("res://scripts/fighter.gdshader")
 const GLOW_SHADER := preload("res://scripts/fighter_glow.gdshader")
 
 var poses := {}            # 名稱 → Texture2D
 var pose := ""
+# 各姿勢的身高倍率（縮成身子的跳躍姿勢等）；沒寫的是 1
+var pose_k := {}
+# 算身高上限時只看這幾個姿勢（空的就全部看）：特殊姿勢比較寬，不該讓角色整個縮小
+var sizing: Array = []
+# 跑步／走路的連續格：走路中、目前姿勢是其中一格時，每秒 run_fps 格輪流播（第 1、3 格著地、第 2、4 格換腳）
+var run_frames: Array = []
+var run_fps := 8.0
 var walking := false
 var height := 200.0        # 畫面上的身高（像素），腳底在原點
 var facing := 1.0          # 1 面向右、-1 面向左（圖本來的方向由 flip_source 決定）
@@ -23,6 +34,9 @@ var hop_y := 0.0            # 跳一下
 var fade := 1.0             # 燒成灰時影子與光暈一起淡掉
 var turn := 1.0             # 水平縮放：1 → -1 → 1 看起來像原地轉一圈
 var tilt := 0.0             # 以腳底為軸前傾（衝刺時）
+var recoil := 0.0           # 被打往後仰（以腳底為軸）
+var squash := Vector2.ONE   # 壓扁／拉長（以腳底為準，寬高反向變）
+var dizzy := 0.0            # 頭上轉圈的金星還剩幾秒
 # 劍的位置：姿勢 → [護手, 劍尖]（以圖的寬高為 1 的座標），沒有的姿勢不冒火
 var blades := {}
 var flame := 0.0            # 劍上的火（0～1）
@@ -38,6 +52,11 @@ var _move: Tween
 var _lift := 0.0
 var _breath := 0.0
 var _rot := 0.0
+var _run_sq := 1.0
+var _step := 0
+var _hurt_until := -1.0
+var _rest_pose := ""
+var _sq: Tween
 var _halo: Node2D
 var _halo_mat: ShaderMaterial
 var _blade_fx: Node2D
@@ -87,11 +106,13 @@ func set_pose(name: String) -> void:
 	_fit()
 
 
-# 所有姿勢裡最寬的寬高比：用來依寬度限制身高，換姿勢時大小才不會跳
+# 主要姿勢裡最寬的寬高比：用來依寬度限制身高，換姿勢時大小才不會跳
 func widest() -> float:
 	var k := 1.0
-	for t in poses.values():
-		k = maxf(k, float(t.get_width()) / t.get_height())
+	for name in poses:
+		if sizing.is_empty() or name in sizing:
+			var t: Texture2D = poses[name]
+			k = maxf(k, float(t.get_width()) / t.get_height())
 	return k
 
 
@@ -105,7 +126,7 @@ func _fit() -> void:
 	if not _sprite or not _sprite.texture:
 		return
 	var tex := _sprite.texture
-	_s = height / tex.get_height()
+	_s = height * float(pose_k.get(pose, 1.0)) / tex.get_height()
 	var flip := (facing < 0.0) != flip_source
 	_sprite.scale = Vector2(-_s if flip else _s, _s)
 	_base_x = tex.get_width() * _s * (0.5 if flip else -0.5)
@@ -116,16 +137,38 @@ func _fit() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if walking:
-		# 跑步：一步一彈、身體微微前傾
-		var step := absf(sin(_t * 9.0))
-		_lift = step * height * 0.035
-		_rot = sin(_t * 9.0) * 0.025
+		# 跑步：一步一彈、身體微微前後擺；腳一著地壓扁、騰空時拉長，每一步著地發一次 stepped。
+		# 有連續格的話照格播（格子本身就有腳步，彈得小一點）；只有一張圖時用正弦波彈
+		var step: float
+		if not run_frames.is_empty() and running_pose():
+			var phase := fposmod(_t * run_fps, float(run_frames.size()))
+			var want: String = run_frames[int(phase)]
+			if want != pose:
+				set_pose(want)
+				if int(phase) % 2 == 0:
+					stepped.emit()
+			step = sin(PI * fposmod(phase, 2.0) / 2.0)
+			_lift = step * height * 0.025
+			_rot = sin(PI * phase) * 0.02
+		else:
+			step = absf(sin(_t * 9.0))
+			_lift = step * height * 0.045
+			_rot = sin(_t * 9.0) * 0.03
+			var n := int(floorf(_t * 9.0 / PI))
+			if n != _step:
+				_step = n
+				stepped.emit()
+		_run_sq = 1.0 + (step - 0.35) * 0.08
 		_breath = 0.0
 	else:
 		_lift = move_toward(_lift, 0.0, delta * 60.0)
 		_rot = move_toward(_rot, 0.0, delta)
+		_run_sq = move_toward(_run_sq, 1.0, delta)
 		_breath = sin(_t * 2.4) * 0.012
-	rotation = _rot + tilt
+	if pose == "hurt" and _t > _hurt_until:
+		set_pose(_rest_pose)
+	dizzy = maxf(0.0, dizzy - delta)
+	rotation = _rot + tilt + recoil
 	_apply()
 	_update_fire()
 	queue_redraw()
@@ -133,10 +176,11 @@ func _process(delta: float) -> void:
 
 func _apply() -> void:
 	if _sprite and _sprite.texture:
-		var sy := _s * (1.0 + _breath)
+		var sq := squash * Vector2(1.0 / _run_sq, _run_sq)
+		var sy := _s * (1.0 + _breath) * sq.y
 		var flip := (facing < 0.0) != flip_source
-		_sprite.scale = Vector2((-_s if flip else _s) * turn, sy)
-		_sprite.position = Vector2(_base_x * turn + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
+		_sprite.scale = Vector2((-_s if flip else _s) * turn * sq.x, sy)
+		_sprite.position = Vector2(_base_x * turn * sq.x + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
 
 
 # 腳下的影子（有光暈的話身後再加一圈光）
@@ -150,6 +194,29 @@ func _draw() -> void:
 		draw_set_transform(Vector2(0, 0), 0.0, Vector2(1.0, 0.22))
 		draw_circle(Vector2.ZERO, w * f * (1.0 - (_lift + hop_y) / (height * 0.2)), Color(0, 0, 0, 0.16 * fade))
 	draw_set_transform(Vector2.ZERO)
+	if dizzy > 0.0:
+		_draw_stars()
+
+
+# 被重擊時頭上轉一圈小金星（橢圓軌道，後面那半圈小一點、暗一點）
+func _draw_stars() -> void:
+	var a := clampf(dizzy / 0.25, 0.0, 1.0) * fade
+	var head := Vector2(facing * height * 0.14, -height * 1.0 - hop_y)
+	for i in 3:
+		var ang := _t * 7.0 + TAU * i / 3.0
+		var p := head + Vector2(cos(ang) * height * 0.16, sin(ang) * height * 0.04)
+		var r := height * (0.035 + 0.012 * sin(ang))
+		var pts := PackedVector2Array()
+		for k in 10:
+			var rr := r if k % 2 == 0 else r * 0.45
+			var t := -PI / 2.0 + PI * k / 5.0 + _t * 3.0
+			pts.append(p + Vector2(cos(t), sin(t)) * rr)
+		draw_colored_polygon(pts, Color(1.0, 0.86, 0.3, a * (0.75 + 0.25 * sin(ang))))
+
+
+# 目前是不是跑步／走路的姿勢（單張的 run 或連續格的其中一格）
+func running_pose() -> bool:
+	return pose == "run" or pose in run_frames
 
 
 # 換面向（1 向右、-1 向左）
@@ -177,15 +244,42 @@ func ghost(color: Color, life := 0.3) -> void:
 	tw.tween_callback(g.queue_free)
 
 
-# 被打：閃紅（越重閃越紅，連段的小刀只閃一點）、往後退一點再回來
+# 被打：閃紅（越重閃越紅，連段的小刀只閃一點）、往後仰再彈回、壓扁再彈回、往後退一點再回來；
+# 有受擊立繪的換成受擊姿勢（連續被打就一直維持，最後一下過了一段時間才換回來）；重擊（strength ≥ 1）頭上轉金星
 func hurt(strength := 1.0) -> void:
 	var f := clampf(strength * 0.7, 0.25, 1.0)
 	_mat.set_shader_parameter("flash", f)
 	var tw := create_tween()
 	tw.tween_method(func(v: float): _mat.set_shader_parameter("flash", v), f, 0.0, 0.3)
+	if poses.has("hurt"):
+		if pose != "hurt":
+			_rest_pose = pose
+			set_pose("hurt")
+		_hurt_until = maxf(_hurt_until, _t + clampf(0.14 + 0.2 * strength, 0.18, 0.5))
+	if strength >= 1.0:
+		dizzy = maxf(dizzy, 0.5 + 0.3 * strength)
+	var back := clampf(0.07 + 0.08 * strength, 0.08, 0.22)
+	var rt := create_tween()
+	rt.tween_property(self, "recoil", -facing * back, 0.05)
+	rt.tween_property(self, "recoil", 0.0, 0.32).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	bump(Vector2(1.0 + 0.06 * strength, 1.0 - 0.07 * strength), 0.05, 0.3)
 	_restart_move()
 	_move.tween_property(self, "kick_x", facing * -height * 0.08 * strength, 0.06)
 	_move.tween_property(self, "kick_x", 0.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# 壓扁／拉長一下再彈回原樣（to：寬高倍率；hold：變形花多久；back：彈回花多久）
+func bump(to: Vector2, hold := 0.06, back := 0.25) -> void:
+	if _sq:
+		_sq.kill()
+	_sq = create_tween()
+	_sq.tween_property(self, "squash", to, hold).set_ease(Tween.EASE_OUT)
+	_sq.tween_property(self, "squash", Vector2.ONE, back).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# 落地：壓扁一下（越重壓越扁）
+func land(strength := 1.0) -> void:
+	bump(Vector2(1.0 + 0.1 * strength, 1.0 - 0.12 * strength), 0.04, 0.28)
 
 
 # 小跳一下（升級、打倒敵人）

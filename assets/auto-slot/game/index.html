@@ -52,7 +52,7 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 
 .as-load { width: min(78vw, 320px); text-align: center; }
 .as-bar { position: relative; height: 14px; padding: 3px; border: 1px solid #a8761f; border-radius: 9px; background: rgba(42, 22, 8, .82); box-shadow: 0 0 0 1px rgba(30, 14, 4, .6), 0 6px 18px rgba(30, 14, 4, .5); }
-.as-bar i { display: block; width: 0; height: 100%; border-radius: 6px; background: linear-gradient(#ffe9a8, #f2c96b 45%, #a8761f); box-shadow: 0 0 10px rgba(242, 201, 107, .6); transition: width .3s; }
+.as-bar i { display: block; width: 0; height: 100%; border-radius: 6px; background: linear-gradient(#ffe9a8, #f2c96b 45%, #a8761f); box-shadow: 0 0 10px rgba(242, 201, 107, .6); transition: width .45s ease-out; }
 .as-bar.is-busy i { width: 100%; background-size: 36px 100%; background-image: repeating-linear-gradient(115deg, #a8761f 0 12px, #f2c96b 12px 24px); animation: as-stripes .8s linear infinite; }
 @keyframes as-stripes { to { background-position: 36px 0; } }
 .as-pct { margin-top: 10px; font-size: 14px; font-weight: 600; letter-spacing: .14em; text-shadow: 0 2px 6px #1e1009; }
@@ -61,7 +61,8 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 @media (prefers-reduced-motion: reduce) { #status::before, .as-stands img, .as-bar.is-busy i { animation: none; } }
 
 /* 開發商 HAPPY GAME 的開場頁：象牙紙底上的剪紙徽章，花草長出來、翅膀展開拍動、HAPPY GAME 一開始就在，字母一個個泛起金光再掃過一道金光；
-   約 4 秒後淡出，露出底下的遊戲 loading；遊戲先載入完就直接收掉進遊戲（點一下也可略過）。圖層是 scripts/happy-game-logo.py 從 LOGO 原圖拆的 */
+   約 4 秒後淡出，露出底下的遊戲 loading。遊戲先載入完也會演完（點一下可略過），之後 loading 畫面停一下、進度條補滿再進遊戲。
+   圖層是 scripts/happy-game-logo.py 從 LOGO 原圖拆的 */
 #hg-splash { position: fixed; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; background: radial-gradient(ellipse at 50% 44%, #fbf6ec 0%, #f3ebdc 52%, #e2d3b9 100%); transition: opacity .6s; cursor: pointer; }
 #hg-splash.is-done { opacity: 0; pointer-events: none; }
 #hg-canvas { width: min(96vw, 64vh, 640px); aspect-ratio: 1; }
@@ -98,7 +99,8 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 	const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 	const img = {};
 	const off = {};
-	let meta = null, t0 = 0, raf = 0, done = false, k = 1;
+	// clock：動畫自己的時鐘（毫秒）。每一格最多前進 1/30 秒，引擎初始化把主執行緒卡住時動畫停在原地，不會一口氣跳過一大段
+	let meta = null, prev = 0, clock = 0, raf = 0, done = false, k = 1;
 	const sparks = [];
 
 	const clamp = (v) => Math.max(0, Math.min(1, v));
@@ -106,15 +108,16 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 	const back = (p) => { const c = 1.7; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
 	const phase = (t, a, d) => clamp((t - a) / d);
 
+	// 開場收掉（演完、點一下略過、圖載不到）：淡出，同時通知下面的 loading（hgOver 給還沒跑到的 loading 程式看）
 	function finish() {
 		if (done) return;
 		done = true;
 		splash.classList.add('is-done');
+		window.hgOver = true;
+		if (window.hgEnded) window.hgEnded();
 		setTimeout(() => { cancelAnimationFrame(raf); splash.remove(); }, 700);
 	}
 	splash.addEventListener('pointerdown', finish);
-	// 遊戲載入完成時（下面的 loading 收起來時）開場也直接收掉，不必等動畫演完
-	window.hgSkip = finish;
 	// 太慢就不演了（網路慢時別讓玩家多等）
 	const giveUp = setTimeout(() => { if (!meta) finish(); }, 3000);
 
@@ -139,7 +142,7 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 		meta = m;
 		fit();
 		window.addEventListener('resize', fit);
-		t0 = performance.now();
+		prev = performance.now();
 		raf = requestAnimationFrame(frame);
 	}, finish);
 
@@ -284,7 +287,9 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 
 	function frame(now) {
 		if (done && !splash.isConnected) return;
-		const real = (now - t0) / 1000 * SPEED;
+		clock += Math.max(0, Math.min(now - prev, 1000 / 30));
+		prev = now;
+		const real = clock / 1000 * SPEED;
 		const t = reduce ? 9 : real;
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.clearRect(0, 0, cv.width, cv.height);
@@ -349,7 +354,7 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 
 	<script src="index.js"></script>
 	<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":13919916,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":18081196,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -370,15 +375,33 @@ const engine = new Engine(GODOT_CONFIG);
 		fill.style.width = p + '%';
 		pct.textContent = 'LOADING ' + p + '%';
 	}
-	let done = false;
-	function finish() {
-		if (done) return;
+	// 遊戲準備好（ready）而且開場演完（shown：開場淡出完、loading 畫面露出來的時間）才收起來：
+	// 先讓進度條補滿到 100%、停一下，再淡出進遊戲。開場還在演時遊戲先好了，就等開場演完
+	const HOLD = 700;
+	let ready = false, done = false, shown = 0;
+	function reveal() {
+		if (shown) return;
+		shown = performance.now() + (document.getElementById('hg-splash') ? 600 : 0);
+		maybeFinish();
+	}
+	window.hgEnded = reveal;
+	if (window.hgOver || !document.getElementById('hg-splash')) reveal();
+	function maybeFinish() {
+		if (done || !ready || !shown) return;
 		done = true;
-		clearInterval(tipTimer);
-		if (window.hgSkip) window.hgSkip();
-		show(100);
-		overlay.classList.add('is-done');
-		setTimeout(() => overlay.remove(), 700);
+		const at = Math.max(0, shown - performance.now());
+		setTimeout(() => {
+			clearInterval(tipTimer);
+			show(100);
+			setTimeout(() => {
+				overlay.classList.add('is-done');
+				setTimeout(() => overlay.remove(), 700);
+			}, HOLD);
+		}, at + 150);
+	}
+	function finish() {
+		ready = true;
+		maybeFinish();
 	}
 	window.asProgress = (p) => show(Math.min(99, 85 + Math.round(p * 15)));
 	window.asReady = finish;

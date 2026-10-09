@@ -212,6 +212,48 @@ const JOBS = [
     name: 's-title-super', w: 1376, h: 768, refs: [['s-title-mega', 'HIGH']], cut: true,
     prompt: `${SB_STYLE} The same win title style as the reference image, same glossy gold storybook lettering with ruby gems, dark brown outline, leaves, flowers, apples and golden leaf crown, but two lines: the word "SUPER" smaller on top and "MEGA WIN" large below, the most luxurious version with golden leafy wings spreading from both sides and extra sparkles. Centered, on a plain flat solid light-grey background, nothing else, exactly the words SUPER MEGA WIN and no other text.`,
   },
+  // MEGA、SUPER MEGA 第一版字上鑲了太多紅寶石、MEGA 和 WIN 黏在一起：照 BIG WIN 的字風重畫，不要寶石
+  {
+    name: 's-title-mega2', w: 1376, h: 768, refs: [['s-title-big', 'HIGH']], cut: true,
+    prompt: `${SB_STYLE} The same win title style as the reference image, same glossy polished gold storybook lettering with beveled edges, same thick dark brown outline, green ivy leaves, little flowers and a few shiny red apples tucked around the letters, but the words "MEGA WIN" on one line with a clear wide space between MEGA and WIN, and a small golden crown of leaves above the middle of the word. Plain solid gold letters: no gems, no jewels, no rubies, no stones set into the letters. Centered, on a plain flat solid light-grey background, nothing else, exactly the words MEGA WIN and no other text.`,
+  },
+  {
+    name: 's-title-super2', w: 1376, h: 768, refs: [['s-title-mega2', 'HIGH']], cut: true,
+    prompt: `${SB_STYLE} The same win title style as the reference image, same glossy polished gold storybook lettering, dark brown outline, ivy leaves, little flowers, red apples and small golden leaf crown, but two lines: the word "SUPER" smaller on top and "MEGA WIN" large below with a clear wide space between MEGA and WIN, the most luxurious version with golden leafy wings spreading from both sides and a few extra sparkles. Plain solid gold letters: no gems, no jewels, no rubies, no stones anywhere. Centered, on a plain flat solid light-grey background, nothing else, exactly the words SUPER MEGA WIN and no other text.`,
+  },
+  // 補動作：出刀前的蓄力、跳起往上砍（升龍斬、落地重劈、打倒狼時的歡呼都用這張）；大野狼被打到的受擊
+  {
+    name: 's-hero-windup', w: 1024, h: 1024, refs: [['s-hero-stance', 'HIGH'], ['s-ref-hero', 'MID']], cut: true,
+    prompt: `${SB_STYLE} The same girl as in the first reference image, same face, same hairstyle, same outfit, same sword, same storybook rendering: ${SB_HERO}. Full body in side view facing right, winding up for a big sword strike: weight on the back foot, knees bent, upper body twisted back, the sword pulled far back behind her shoulder in both hands ready to swing forward, a determined face, the cape swinging forward around her. ${ISOLATED}`,
+  },
+  {
+    name: 's-hero-jump', w: 1024, h: 1024, refs: [['s-hero-stance', 'HIGH'], ['s-ref-hero', 'MID']], cut: true,
+    prompt: `${SB_STYLE} The same girl as in the first reference image, same face, same hairstyle, same outfit, same sword, same storybook rendering: ${SB_HERO}. Full body leaping high into the air toward the right in side view, both feet off the ground with the knees tucked up, swinging the sword upward in a rising slash high above her head, the cape fluttering below and behind her, a fierce happy face. ${ISOLATED}`,
+  },
+  // 跑步第二格：只換腳（另一隻腳在前），腰以上跟第一格一樣，兩張輪流就是跑步循環
+  {
+    name: 's-hero-run2', w: 1024, h: 1024, refs: [['s-hero-run', 'HIGH'], ['s-ref-hero', 'MID']], cut: true,
+    prompt: `${SB_STYLE} The next frame of the same running cycle as the first reference image: exactly the same girl, same face, same outfit, same sword, same storybook rendering, same size and framing, sprinting to the right in side view with the same forward lean. Only the legs change: the leg that was behind now swings forward with the knee up, and the leg that was in front now pushes off far behind her with the foot off the ground. Everything above the waist stays like the reference: same arms, same hand holding the sword low and pointing backward, same streaming cape and hood. ${ISOLATED}`,
+  },
+  // run2 畫出來跟第一格幾乎一樣（腳沒換），改畫跑步循環裡差最多的「過渡姿勢」也一樣（參考圖調到 MID 還是照抄）：兩張都沒用，
+  // 跑步維持一格、動作用程式做（著地壓扁、揚起塵土）
+  {
+    name: 's-hero-pass', w: 1024, h: 1024, refs: [['s-hero-run', 'MID'], ['s-ref-hero', 'LOW']], cut: true,
+    prompt: `${SB_STYLE} The same girl as in the first reference image, same face, same hairstyle, same outfit, same sword, same storybook rendering: ${SB_HERO}. Full body running to the right in side view, caught in the passing pose of a run cycle: her supporting leg is straight with the foot flat on the ground directly under her hips, the other knee is lifted high in front of her with that foot tucked up under her skirt, the body is upright and slightly higher than in a stride. Her arms and sword stay like the reference: the sword held low in her trailing hand pointing backward, the free arm bent in front, the cape and hood streaming behind her. Clearly a different leg position from the reference image. ${ISOLATED}`,
+  },
+  // 改成一張圖畫完整個循環（同一張圖裡角色才會一致、腳才會真的不同）：小紅帽跑步 4 格、大野狼走進場 4 格，整張去背後再切
+  {
+    name: 's-hero-runsheet', w: 1376, h: 768, refs: [['s-hero-stance', 'MID'], ['s-ref-hero', 'MID']], cut: true,
+    prompt: `${SB_STYLE} A sprite sheet for a 2D side-scrolling game: exactly four frames of one complete running cycle of the same girl as in the reference images (same face, same hairstyle, same outfit, same sword, same storybook rendering): ${SB_HERO}. The four frames stand in a single evenly spaced horizontal row with wide empty gaps between them, every frame the same size and drawn at the same scale on the same ground line, all in side view facing right, sprinting to the right with a forward lean, the sword held low in her trailing hand pointing backward, the cape and hood streaming behind her. Only the legs and the free arm change, in this order: 1) her right leg reaches forward and its heel touches the ground, the left leg pushes off far behind; 2) passing: the right leg straight under her hips carrying her weight, the left knee lifted high in front; 3) her left leg reaches forward and its heel touches the ground, the right leg pushes off far behind; 4) passing: the left leg straight under her hips, the right knee lifted high in front. Nothing overlaps, on a plain flat solid light-grey background, no ground, no shadows, no text, no numbers.`,
+  },
+  {
+    name: 's-wolf-walksheet', w: 1376, h: 768, refs: [['s-wolf', 'MID'], ['s-ref-wolf', 'MID']], cut: true,
+    prompt: `${SB_STYLE} A sprite sheet for a 2D side-scrolling game: exactly four frames of one complete walking cycle of the same wolf as in the reference images (same face, same fur, same storybook rendering): ${SB_WOLF}. The four frames stand in a single evenly spaced horizontal row with wide empty gaps between them, every frame the same size and drawn at the same scale on the same ground line, all in side view facing left, the wolf walking to the left on his hind legs, hunched forward with his clawed front paws raised, a sly grin, the bushy tail behind him. Only the legs and paws change, in this order: 1) his left hind leg steps forward onto its heel, the right leg behind; 2) passing: the left leg straight under him, the right knee lifted; 3) his right hind leg steps forward onto its heel, the left leg behind; 4) passing: the right leg straight under him, the left knee lifted. Nothing overlaps, on a plain flat solid light-grey background, no ground, no shadows, no text, no numbers.`,
+  },
+  {
+    name: 's-wolf-hurt', w: 1024, h: 1024, refs: [['s-wolf', 'HIGH'], ['s-ref-wolf', 'MID']], cut: true,
+    prompt: `${SB_STYLE} Full-body art of exactly the same wolf as in the first reference image, same face, same fur, same storybook rendering: ${SB_WOLF}. He stands on his hind legs in side view facing left, and has just been hit: recoiling backward to the right off balance, upper body leaning back, eyes squeezed shut in a comical pained grimace, tongue sticking out, ears flattened, front paws flailing in the air, fur puffed out. A funny cartoon hit reaction, not gory, no blood, no wounds. ${ISOLATED}`,
+  },
   {
     name: 's-floor', w: 768, h: 1376, refs: [['s-ref-a', 'LOW']],
     prompt: `${SB_STYLE} A vertical background texture for the bottom half of a mobile slot game screen, like the bottom of the reference image: warm honey-brown wooden planks seen from the front across the middle and top, a sunny grassy forest floor along the bottom edge with ferns, wildflowers and red-capped mushrooms, soft warm sunlight from above, gentle vignette, calm and low-contrast so buttons stay readable. Absolutely no frames, no panels, no boxes, no buttons, no rectangles, no borders, no UI, no text, no characters.`,
