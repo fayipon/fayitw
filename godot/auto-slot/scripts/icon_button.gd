@@ -1,6 +1,7 @@
 # 圓形按鈕（照設計稿與 PG Soft 的投注列）：轉動鍵（紅色圓盤＋古金圈，中間畫金色循環箭頭；自動旋轉時改寫剩幾轉）、
 # 選單、TURBO（關著閃電被斜線劃掉、底下寫 OFF，開著寫 TURBO）、AUTO、押注加減（古金細圈＋深藍底，底下可帶小字）、
-# 補幣（綠寶石）。圈是 art/ui 的圖，圖示用程式畫
+# 補幣（綠寶石）；選單列的 QUIT、SOUND（靜音時喇叭旁畫叉）、PAYTABLE、RULES、HISTORY、CLOSE 也是同一種古金細圈。
+# 圈是 art/ui 的圖，圖示用程式畫
 extends BaseButton
 
 const Art := preload("res://scripts/art.gd")
@@ -15,6 +16,11 @@ var busy := false:
 var lit := false:
 	set(v):
 		lit = v
+		queue_redraw()
+# SOUND 靜音中
+var muted := false:
+	set(v):
+		muted = v
 		queue_redraw()
 # 轉動鍵中間顯示的數字（自動旋轉剩幾轉；0 = 畫箭頭）
 var count := 0:
@@ -121,6 +127,56 @@ func _ring_face(r: float) -> void:
 			draw_line(Vector2(-r * 0.4, 0), Vector2(r * 0.4, 0), ink, w, true)
 			if kind == "plus":
 				draw_line(Vector2(0, -r * 0.4), Vector2(0, r * 0.4), ink, w, true)
+		_:
+			_menu_glyph(r, ink, maxf(2.0, r * 0.1))
+
+
+# 選單列的圖示：QUIT 開口朝左的圓＋往左穿出的箭頭、SOUND 喇叭（兩道聲波／靜音畫叉）、PAYTABLE 方框裡起伏的折線、
+# RULES 一頁文件（書籤＋三行字）、HISTORY 逆時針箭頭圍著時鐘指針、CLOSE 叉
+func _menu_glyph(r: float, ink: Color, w: float) -> void:
+	match kind:
+		"quit":
+			draw_arc(Vector2(r * 0.06, 0), r * 0.34, deg_to_rad(220), deg_to_rad(500), 32, ink, w, true)
+			var tip := Vector2(-r * 0.46, 0)
+			draw_line(Vector2(r * 0.1, 0), tip, ink, w, true)
+			draw_polyline(PackedVector2Array([tip + Vector2(r * 0.17, -r * 0.17), tip, tip + Vector2(r * 0.17, r * 0.17)]), ink, w, true)
+		"sound":
+			var s := r * 0.42
+			var x := -r * 0.12
+			draw_colored_polygon(PackedVector2Array([Vector2(x - s * 0.75, -s * 0.3), Vector2(x - s * 0.3, -s * 0.3), Vector2(x + s * 0.15, -s * 0.78),
+				Vector2(x + s * 0.15, s * 0.78), Vector2(x - s * 0.3, s * 0.3), Vector2(x - s * 0.75, s * 0.3)]), ink)
+			if muted:
+				var c := Vector2(x + s * 0.8, 0)
+				var d := s * 0.3
+				draw_line(c + Vector2(-d, -d), c + Vector2(d, d), ink, w * 0.9, true)
+				draw_line(c + Vector2(-d, d), c + Vector2(d, -d), ink, w * 0.9, true)
+			else:
+				for rr in [s * 0.52, s * 0.95]:
+					draw_arc(Vector2(x + s * 0.15, 0), rr, deg_to_rad(-45), deg_to_rad(45), 12, ink, w * 0.85, true)
+		"paytable":
+			var h := r * 0.36
+			draw_rect(Rect2(-h, -h, h * 2.0, h * 2.0), ink, false, w * 0.8)
+			draw_polyline(PackedVector2Array([Vector2(-h * 0.65, h * 0.15), Vector2(-h * 0.3, h * 0.15), Vector2(-h * 0.08, -h * 0.45),
+				Vector2(h * 0.2, h * 0.45), Vector2(h * 0.42, 0), Vector2(h * 0.65, 0)]), ink, w * 0.8, true)
+		"rules":
+			draw_rect(Rect2(-r * 0.28, -r * 0.38, r * 0.56, r * 0.76), ink, false, w * 0.8)
+			draw_rect(Rect2(r * 0.03, -r * 0.38, r * 0.13, r * 0.22), ink)
+			for y in [-r * 0.06, r * 0.1, r * 0.25]:
+				draw_line(Vector2(-r * 0.15, y), Vector2(r * 0.15, y), ink, w * 0.7, true)
+		"history":
+			var rr := r * 0.37
+			var a := deg_to_rad(210.0)
+			draw_arc(Vector2.ZERO, rr, a, a + deg_to_rad(295.0), 32, ink, w * 0.9, true)
+			var tip := Vector2.from_angle(a) * rr
+			var radial := Vector2.from_angle(a)
+			var back := Vector2.from_angle(a - PI / 2.0)
+			draw_colored_polygon(PackedVector2Array([tip + back * w * 2.0, tip + radial * w * 1.5, tip - radial * w * 1.5]), ink)
+			draw_line(Vector2.ZERO, Vector2(0, -r * 0.2), ink, w * 0.8, true)
+			draw_line(Vector2.ZERO, Vector2(r * 0.15, r * 0.08), ink, w * 0.8, true)
+		"close":
+			var d := r * 0.28
+			draw_line(Vector2(-d, -d), Vector2(d, d), ink, w, true)
+			draw_line(Vector2(-d, d), Vector2(d, -d), ink, w, true)
 
 
 # 兩段弧＋箭頭的循環符號

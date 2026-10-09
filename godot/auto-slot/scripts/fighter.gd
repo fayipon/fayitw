@@ -1,9 +1,12 @@
 # 自走區的角色（設計稿的動漫風立繪）：一張圖一個姿勢，動作用程式做——
 # 跑步上下彈、站著呼吸、揮砍時往前衝、被打時閃紅後退、倒下時從邊緣燒成灰（溶解 shader）；
-# 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）
+# 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）；
+# 劍上的火（flame，SCATTER 落下時點燃）：劍身一道橘光、沿著劍身冒火焰與火星（火焰留在原地往上飄，衝刺時會拖出一道火尾），
+# 全身外圍泛出火光（glow，fighter_glow.gdshader）；點燃那一下 flare 讓光再亮一點
 extends Node2D
 
 const SHADER := preload("res://scripts/fighter.gdshader")
+const GLOW_SHADER := preload("res://scripts/fighter_glow.gdshader")
 
 var poses := {}            # 名稱 → Texture2D
 var pose := ""
@@ -20,6 +23,11 @@ var hop_y := 0.0            # 跳一下
 var fade := 1.0             # 燒成灰時影子與光暈一起淡掉
 var turn := 1.0             # 水平縮放：1 → -1 → 1 看起來像原地轉一圈
 var tilt := 0.0             # 以腳底為軸前傾（衝刺時）
+# 劍的位置：姿勢 → [護手, 劍尖]（以圖的寬高為 1 的座標），沒有的姿勢不冒火
+var blades := {}
+var flame := 0.0            # 劍上的火（0～1）
+var glow := 0.0             # 全身的火光（0～1）
+var flare := 0.0            # 點燃那一下多亮的光
 
 var _sprite: Sprite2D
 var _mat: ShaderMaterial
@@ -30,6 +38,12 @@ var _move: Tween
 var _lift := 0.0
 var _breath := 0.0
 var _rot := 0.0
+var _halo: Node2D
+var _halo_mat: ShaderMaterial
+var _blade_fx: Node2D
+var _fire: CPUParticles2D
+var _embers: CPUParticles2D
+static var _soft: GradientTexture2D
 
 
 func _init(textures: Dictionary, first: String) -> void:
@@ -38,12 +52,28 @@ func _init(textures: Dictionary, first: String) -> void:
 
 
 func _ready() -> void:
+	# 火光畫在角色後面
+	_halo = Node2D.new()
+	_halo_mat = ShaderMaterial.new()
+	_halo_mat.shader = GLOW_SHADER
+	_halo.material = _halo_mat
+	_halo.visible = false
+	_halo.draw.connect(_draw_halo)
+	add_child(_halo)
 	_sprite = Sprite2D.new()
 	_sprite.centered = false
 	_mat = ShaderMaterial.new()
 	_mat.shader = SHADER
 	_sprite.material = _mat
 	add_child(_sprite)
+	_blade_fx = Node2D.new()
+	_blade_fx.material = _additive()
+	_blade_fx.draw.connect(_draw_blade)
+	add_child(_blade_fx)
+	_fire = _make_fire()
+	add_child(_fire)
+	_embers = _make_embers()
+	add_child(_embers)
 	set_pose(pose)
 	_t = randf() * 10.0
 
@@ -97,6 +127,7 @@ func _process(delta: float) -> void:
 		_breath = sin(_t * 2.4) * 0.012
 	rotation = _rot + tilt
 	_apply()
+	_update_fire()
 	queue_redraw()
 
 
@@ -192,3 +223,143 @@ func tint(c: Color) -> void:
 func sprite_rect() -> Rect2:
 	var sz := _sprite.texture.get_size() * _s
 	return Rect2(position + Vector2(-sz.x / 2.0, -sz.y), sz)
+
+
+# ---------- 劍上的火、全身的火光 ----------
+
+static func _additive() -> CanvasItemMaterial:
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return m
+
+
+# 火焰、火星用的柔邊圓點
+static func _soft_dot() -> GradientTexture2D:
+	if not _soft:
+		var g := Gradient.new()
+		g.offsets = PackedFloat32Array([0.0, 0.35, 1.0])
+		g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		_soft = GradientTexture2D.new()
+		_soft.gradient = g
+		_soft.fill = GradientTexture2D.FILL_RADIAL
+		_soft.fill_from = Vector2(0.5, 0.5)
+		_soft.fill_to = Vector2(1.0, 0.5)
+		_soft.width = 64
+		_soft.height = 64
+	return _soft
+
+
+# 火焰：沿著劍身冒出來、往上竄，由白黃、橘到暗紅淡掉；不跟著角色動（衝刺時拖出火尾）
+func _make_fire() -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.emitting = false
+	p.amount = 64
+	p.lifetime = 0.5
+	p.local_coords = false
+	p.texture = _soft_dot()
+	p.material = _additive()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_POINTS
+	p.direction = Vector2(0, -1)
+	p.spread = 25.0
+	p.gravity = Vector2(0, -240)
+	p.initial_velocity_min = 10.0
+	p.initial_velocity_max = 45.0
+	p.damping_min = 10.0
+	p.damping_max = 30.0
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.7))
+	curve.add_point(Vector2(0.25, 1.0))
+	curve.add_point(Vector2(1.0, 0.15))
+	p.scale_amount_curve = curve
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.25, 0.6, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.95, 0.7, 0.95), Color(1, 0.62, 0.16, 0.85), Color(0.9, 0.2, 0.05, 0.5), Color(0.35, 0.03, 0.02, 0)])
+	p.color_ramp = ramp
+	return p
+
+
+# 火星：少少幾顆亮點，飄得比較高、比較久
+func _make_embers() -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.emitting = false
+	p.amount = 14
+	p.lifetime = 1.1
+	p.local_coords = false
+	p.texture = _soft_dot()
+	p.material = _additive()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_POINTS
+	p.direction = Vector2(0, -1)
+	p.spread = 40.0
+	p.gravity = Vector2(0, -60)
+	p.initial_velocity_min = 30.0
+	p.initial_velocity_max = 80.0
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.95, 0.6, 1), Color(1, 0.55, 0.12, 0.9), Color(1, 0.3, 0.05, 0)])
+	p.color_ramp = ramp
+	return p
+
+
+# 劍身在角色節點座標裡的兩端（護手、劍尖）；這個姿勢沒有劍就回傳空的
+func _blade_points() -> Array:
+	if not blades.has(pose) or not _sprite or not _sprite.texture:
+		return []
+	var sz := _sprite.texture.get_size()
+	return [_sprite.position + blades[pose][0] * sz * _sprite.scale, _sprite.position + blades[pose][1] * sz * _sprite.scale]
+
+
+func _update_fire() -> void:
+	var on := flame > 0.01
+	var bp := _blade_points() if on else []
+	var burning := on and not bp.is_empty()
+	if burning:
+		var pts := PackedVector2Array()
+		for i in 10:
+			pts.append(bp[0].lerp(bp[1], 0.1 + 0.9 * i / 9.0))
+		_fire.emission_points = pts
+		_embers.emission_points = pts
+		var k := height / 200.0 * (0.55 + 0.45 * flame)
+		_fire.scale_amount_min = 0.17 * k
+		_fire.scale_amount_max = 0.36 * k
+		_fire.initial_velocity_max = 45.0 * k
+		_embers.scale_amount_min = 0.04 * k
+		_embers.scale_amount_max = 0.08 * k
+		_fire.modulate.a = clampf(flame * 1.3, 0.0, 1.0)
+	if _fire.emitting != burning:
+		_fire.emitting = burning
+	var sparks := burning and flame > 0.6
+	if _embers.emitting != sparks:
+		_embers.emitting = sparks
+	_blade_fx.visible = burning
+	if burning:
+		_blade_fx.queue_redraw()
+	var g := glow * (0.8 + 0.2 * sin(_t * 5.0)) + flare * 0.6
+	_halo.visible = g > 0.01 and _sprite.texture != null
+	if _halo.visible:
+		_halo.position = _sprite.position
+		_halo.scale = _sprite.scale
+		_halo_mat.set_shader_parameter("strength", g * fade)
+		_halo.queue_redraw()
+
+
+# 劍身的光：幾層越來越細、越來越亮的橘線，最裡面一條淡黃（疊加混色）
+func _draw_blade() -> void:
+	var bp := _blade_points()
+	if bp.is_empty():
+		return
+	var f := (flame * (0.85 + 0.15 * sin(_t * 23.0)) + flare) * fade
+	var w := height * 0.02
+	for k in 4:
+		_blade_fx.draw_line(bp[0], bp[1], Color(1.0, 0.42, 0.08, 0.1 * f), w * (5.0 - k) * 1.4, true)
+	_blade_fx.draw_line(bp[0].lerp(bp[1], 0.04), bp[1], Color(1.0, 0.82, 0.48, 0.55 * f), w * 0.8, true)
+
+
+# 火光：比圖大一圈的方塊畫同一張圖，shader 取周圍的不透明度暈開
+func _draw_halo() -> void:
+	var tex := _sprite.texture
+	var sz := tex.get_size()
+	var pad := sz.x * 0.06
+	_halo_mat.set_shader_parameter("pad", Vector2(pad / sz.x, pad / sz.y))
+	_halo_mat.set_shader_parameter("radius", 0.035)
+	_halo_mat.set_shader_parameter("aspect", sz.x / sz.y)
+	_halo.draw_texture_rect(tex, Rect2(-Vector2(pad, pad), sz + Vector2(pad, pad) * 2.0), false)

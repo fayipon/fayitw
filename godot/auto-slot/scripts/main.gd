@@ -1,6 +1,7 @@
 # 自走SLOT 主畫面（照設計稿，投注區照 PG Soft）：上方自走區（標題字、大野狼血條）、中間細木框 SLOT
 # （頂端是連鎖倍率條）、Feature Buy、Total Win（這一轉的總和）、餘額／押注／贏分（單次）三格、
-# 控制列（TURBO、減、轉動、加、AUTO、選單）；押注選項、自動旋轉次數、賠率表與設定都是從下面滑上來的面板；
+# 控制列（TURBO、減、轉動、加、AUTO、選單）；選單鈕打開 PG 風的選單列（Quit、Sound、Paytable、Rules、History、Close，在 menu_bar.gd）；
+# 押注選項、自動旋轉次數、賠率表、規則、轉動紀錄都是從下面滑上來的面板；
 # BIG WIN 演出在 big_win.gd；SCATTER（金鑰匙）→ Free Spins
 extends Control
 
@@ -10,6 +11,7 @@ const Field := preload("res://scripts/field.gd")
 const SlotView := preload("res://scripts/slot_view.gd")
 const IconButton := preload("res://scripts/icon_button.gd")
 const BigWin := preload("res://scripts/big_win.gd")
+const MenuStrip := preload("res://scripts/menu_bar.gd")
 const SAVE_PATH := "user://save.cfg"
 # 3：金額改成以「分」記、押注改成每線押注（0.01 起）
 const SAVE_VERSION := 3
@@ -17,6 +19,8 @@ const SAVE_VERSION := 3
 const DESIGN_W := 430.0
 # 自動旋轉的次數選項（跟 PG Soft 一樣）
 const AUTO_COUNTS := [10, 30, 50, 80, 1000]
+# History 留最近幾轉
+const HISTORY_MAX := 50
 # 沒派獎時 Total Win 那一條輪播的提示：[符號磚（沒有就空字串）, 文字]
 const TIPS := [
 	["key", "3 or more SCATTER trigger 8, 10 or 12 free spins"],
@@ -26,7 +30,7 @@ const TIPS := [
 ]
 
 # charge：還沒打出去的傷害（沒有狼可以打時存起來，下一隻站定就打出去）
-var state := {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "turbo": false, "sound": true}
+var state := {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "turbo": false, "sound": true, "history": []}
 var rng := RandomNumberGenerator.new()
 var started := false
 var busy := false
@@ -77,8 +81,12 @@ var _callout: Label
 var _callout_sub: Label
 var _toast: Label
 var _bigwin: Control
-var _menu: Control
-var _menu_body: VBoxContainer
+var _menu_layer: Control
+var _menubar: Control
+var _menu_tween: Tween
+var _paytable: Control
+var _rules: Control
+var _history: Control
 var _bet_sheet: Control
 var _auto_sheet: Control
 var _shown_coins := 0.0
@@ -131,7 +139,9 @@ func _ready() -> void:
 	# SCATTER 差一個：吊胃口時自走區壓暗；湊滿 3 個時畫面震一下
 	slot.tension.connect(func(on: bool):
 		create_tween().tween_property(field, "modulate", Color(0.42, 0.42, 0.5) if on else Color.WHITE, 0.3))
+	# SCATTER 落下時小紅帽的劍點火（Free Spins 中一直是最旺的烈焰）
 	slot.scatter_landed.connect(func(count: int):
+		field.scatter_fire(maxi(count, 3) if free else count)
 		if count >= 3:
 			_shake(10.0))
 	_ladder = _build_ladder()
@@ -152,6 +162,9 @@ func _ready() -> void:
 	hud = _build_hud()
 	hud.z_index = 30
 	add_child(hud)
+	_menu_layer = _build_menu_layer()
+	_menu_layer.z_index = 40
+	add_child(_menu_layer)
 	overlay = Control.new()
 	overlay.z_index = 50
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -159,6 +172,7 @@ func _ready() -> void:
 	_build_overlay()
 	slot.set_board(Rules.spin_board(rng))
 	Sfx.enabled = state.sound
+	Music.enabled = state.sound
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	_shown_coins = state.coins
@@ -186,6 +200,11 @@ func _layout() -> void:
 	betbar.size = Vector2(dw, 96)
 	betbar.position = Vector2(x0, bar_y)
 	_layout_betbar(dw)
+	_menubar.scale = Vector2(u, u)
+	_menubar.position = Vector2(x0, bar_y)
+	_menubar.layout(dw)
+	_menu_layer.size = vp
+	_menu_layer.get_node("Dim").size = vp
 	var info_y := bar_y - (46.0 + 4.0) * u
 	_info.scale = Vector2(u, u)
 	_info.size = Vector2(dw, 46)
@@ -657,6 +676,92 @@ func _layout_betbar(dw: float) -> void:
 	menu.position = Vector2(dw - 6 - md, cy - md / 2.0)
 
 
+# 選單列（照 PG Soft）：全畫面壓暗（點暗處也會收起來），控制列淡掉、同一個位置換成一排圖示
+func _build_menu_layer() -> Control:
+	var layer := Control.new()
+	layer.visible = false
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dim := ColorRect.new()
+	dim.name = "Dim"
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed:
+			_close_menu())
+	layer.add_child(dim)
+	_menubar = MenuStrip.new()
+	_menubar.picked.connect(_on_menu_pick)
+	layer.add_child(_menubar)
+	return layer
+
+
+func _open_menu() -> void:
+	Sfx.play("click")
+	_menubar.set_muted(not state.sound)
+	if _menu_tween:
+		_menu_tween.kill()
+	_menu_layer.visible = true
+	_menu_tween = create_tween().set_parallel()
+	_menu_tween.tween_property(_menu_layer, "modulate:a", 1.0, 0.15).from(0.0)
+	_menu_tween.tween_property(betbar, "modulate:a", 0.0, 0.12)
+	_menubar.pop_in()
+
+
+func _close_menu() -> void:
+	if not _menu_layer.visible:
+		return
+	if _menu_tween:
+		_menu_tween.kill()
+	_menu_tween = create_tween().set_parallel()
+	_menu_tween.tween_property(_menu_layer, "modulate:a", 0.0, 0.12)
+	_menu_tween.tween_property(betbar, "modulate:a", 1.0, 0.15)
+	_menu_tween.chain().tween_callback(func(): _menu_layer.visible = false)
+
+
+func _on_menu_pick(id: String) -> void:
+	if id != "sound":
+		Sfx.play("click")
+	match id:
+		"quit":
+			_quit()
+		"sound":
+			_set_sound(not state.sound)
+		"paytable":
+			_close_menu()
+			_open_sheet(_paytable)
+		"rules":
+			_close_menu()
+			_open_sheet(_rules)
+		"history":
+			_close_menu()
+			_open_sheet(_history)
+		"close":
+			_close_menu()
+
+
+# Quit：存檔後回網站首頁（遊戲嵌在 auto-slot.html 的 iframe 裡，要換掉整個分頁）；
+# 轉動中先不給離開，免得這一轉的贏分還沒入帳
+func _quit() -> void:
+	if busy:
+		toast("Wait for the spin to finish")
+		return
+	_save(true)
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.top.location.href = '/'")
+	else:
+		get_tree().quit()
+
+
+# 聲音總開關（照 PG Soft 只有一個）：音效與音樂一起開關
+func _set_sound(on: bool) -> void:
+	state.sound = on
+	Sfx.enabled = on
+	Music.enabled = on
+	_menubar.set_muted(not on)
+	Sfx.play("click")
+	toast("Sound on" if on else "Sound off")
+	_save()
+
+
 func _change_bet(d: int) -> void:
 	if busy:
 		return
@@ -698,9 +803,12 @@ func _build_overlay() -> void:
 	overlay.add_child(_bet_sheet)
 	_auto_sheet = _make_sheet("AUTO SPIN")
 	overlay.add_child(_auto_sheet)
-	_menu = _make_sheet("SYMBOLS & PAYTABLE", true)
-	_menu_body = _menu.get_meta("body")
-	overlay.add_child(_menu)
+	_paytable = _make_sheet("PAYTABLE", true)
+	overlay.add_child(_paytable)
+	_rules = _make_sheet("RULES", true)
+	overlay.add_child(_rules)
+	_history = _make_sheet("HISTORY", true)
+	overlay.add_child(_history)
 
 
 func _layout_overlay() -> void:
@@ -714,7 +822,7 @@ func _layout_overlay() -> void:
 	_toast.position = Vector2(0, slot.position.y + slot.size.y * 0.45)
 	_bigwin.position = Vector2.ZERO
 	_bigwin.size = vp
-	for sheet in [_bet_sheet, _auto_sheet, _menu]:
+	for sheet in [_bet_sheet, _auto_sheet, _paytable, _rules, _history]:
 		_layout_sheet(sheet)
 
 
@@ -836,6 +944,7 @@ func _spin() -> bool:
 		Sfx.play("coin")
 	if res.triggered:
 		await _free_spins(res.scatter, bet)
+	_log_spin(tb, total + (fs_total if res.triggered else 0), fs_done if res.triggered else 0)
 	while _working:
 		await get_tree().process_frame
 	_save(true)
@@ -844,9 +953,18 @@ func _spin() -> bool:
 	return true
 
 
+# 記進 History：[時間（unix 秒）, 總押注, 這一轉的總贏分（含觸發的 Free Spins）, 玩了幾次 Free Spins]，最新的在最前面
+func _log_spin(tb: int, won: int, free_spins: int) -> void:
+	state.history.push_front([int(Time.get_unix_time_from_system()), tb, won, free_spins])
+	if state.history.size() > HISTORY_MAX:
+		state.history.resize(HISTORY_MAX)
+
+
 # 一輪：轉輪停下 → 一段段連鎖（倍率、標記、跳分、打怪、消除）；回傳 Rules 的結果
 func _round(bet: int) -> Dictionary:
 	slot.clear_marks()
+	if not free:
+		field.scatter_fire(0)
 	_set_win(0, false)
 	_fly_id += 1
 	_set_total(fs_total if free else 0, false)
@@ -887,10 +1005,12 @@ func _free_spins(cells: Array, bet: int) -> void:
 	var tb := Rules.total_bet(bet)
 	slot.scatter_glow(cells)
 	Sfx.play("bonus")
+	Music.mode("free")
 	var spins := Rules.free_spins(cells.size())
 	var pay := Rules.scatter_pay(cells.size(), bet)
 	await callout("FREE SPINS!", "%d spins · cascades ×2 ×4 ×6 ×10" % spins, true, 1.4)
 	free = true
+	field.scatter_fire(3)
 	fs_left = spins
 	fs_done = 0
 	fs_total = pay
@@ -920,11 +1040,13 @@ func _free_spins(cells: Array, bet: int) -> void:
 			await callout("+%d FREE SPINS" % more, "", true, 1.1)
 		await get_tree().create_timer(0.25 if state.turbo else 0.45).timeout
 	free = false
+	field.scatter_fire(0)
 	_refresh_fs()
 	_set_ladder(0)
 	if BigWin.qualifies(fs_total, tb):
-		await _big_win(fs_total, tb)
+		await _big_win(fs_total, tb, "base")
 	else:
+		Music.mode("base")
 		Sfx.play("coin")
 		await callout("+%s" % Art.money(fs_total), "Free spins total", true, 1.3)
 	_refresh_fs()
@@ -1047,8 +1169,13 @@ func _coins_to(value: int) -> void:
 		_fit(_coins_label, Art.money(v)), _shown_coins, float(value), 0.5)
 
 
-func _big_win(total: int, tb: int) -> void:
+# BIG WIN 演出期間換成 BIG WIN 曲；after 是演完要回到的音樂（Free Spins 結束時回主遊戲），空字串就回原本那首
+func _big_win(total: int, tb: int, after := "") -> void:
+	Music.fanfare_start()
 	await _bigwin.play(total, tb, state.turbo)
+	if after != "":
+		Music.mode(after)
+	Music.fanfare_end()
 
 # ---------- 自走與打怪 ----------
 
@@ -1076,6 +1203,7 @@ func _meet() -> void:
 	_hp_bar.queue_redraw()
 	_refresh_all()
 	callout("WOLF KING!" if enemy.kind == "boss" else "WOLF AHEAD!", "Every coin you win hits him", false, 1.1)
+	Music.wolf(true, enemy.kind == "boss")
 	await field.spawn_enemy(enemy.kind)
 	enemy_ready = true
 	# 走路時存起來的傷害：狼一站定就先打出去
@@ -1119,6 +1247,7 @@ func _attack(damage: int, crit: bool, release := false, combo := 1) -> void:
 		field.combo(combo)
 		_store(damage)
 		return
+	Music.hit(4 if release else combo)
 	await field.strike(4 if release else combo, crit)
 	if not release:
 		field.combo(combo)
@@ -1166,6 +1295,7 @@ func _defeat() -> void:
 	_defeating = true
 	walk_left = rng.randf_range(2.4, 3.8)
 	state.kills += 1
+	Music.wolf(false)
 	field.defeat_enemy()
 	create_tween().tween_property(_enemy_box, "modulate:a", 0.0, 0.3)
 	await get_tree().create_timer(0.45).timeout
@@ -1324,8 +1454,12 @@ func _open_sheet(sheet: Control) -> void:
 		_fill_bet()
 	elif sheet == _auto_sheet:
 		_fill_auto()
+	elif sheet == _paytable:
+		_fill_paytable()
+	elif sheet == _rules:
+		_fill_rules()
 	else:
-		_fill_menu()
+		_fill_history()
 	sheet.visible = true
 	# 內容剛換過，等一格讓容器算出高度再排
 	await get_tree().process_frame
@@ -1338,11 +1472,6 @@ func _open_sheet(sheet: Control) -> void:
 
 func _close_sheet(sheet: Control) -> void:
 	sheet.visible = false
-
-
-func _open_menu() -> void:
-	Sfx.play("click")
-	_open_sheet(_menu)
 
 
 func _open_bet() -> void:
@@ -1415,7 +1544,7 @@ func _fill_auto() -> void:
 	body.add_child(grid)
 
 
-# ---------- 選單：賠率表（照美術給的 paytable 排）與設定 ----------
+# ---------- 選單裡的面板：賠率表（照美術給的 paytable 排）、規則、轉動紀錄 ----------
 
 func _body(text: String, size := 13) -> Label:
 	var l := Label.new()
@@ -1505,53 +1634,49 @@ func _ways_diagram() -> Control:
 	return d
 
 
-func _fill_menu() -> void:
-	for c in _menu_body.get_children():
-		c.queue_free()
+# 賠率表：一般符號（目前押注下 5／4／3 連的贏分）、WILD、SCATTER
+func _fill_paytable() -> void:
+	var body: VBoxContainer = _paytable.get_meta("body")
+	_clear(body)
 	var bet: int = Rules.BET_LEVELS[state.bet]
-	_menu_body.add_child(_body("Wins per way at your current bet (%s per line, TOTAL BET %s)." % [Art.money(bet), Art.money(Rules.total_bet(bet))], 12))
+	body.add_child(_body("Wins per way at your current bet (%s per line, TOTAL BET %s)." % [Art.money(bet), Art.money(Rules.total_bet(bet))], 12))
 	for ids in [["wolf", "raven", "lantern", "basket", "potion"], ["ace", "king", "queen", "jack", "ten"]]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 4)
 		for id in ids:
 			row.add_child(_pay_cell(id, bet))
-		_menu_body.add_child(row)
-	_menu_body.add_child(_divider("SPECIAL SYMBOLS"))
-	_menu_body.add_child(_special("hood", "WILD", ["Substitutes for all symbols except SCATTER.", "Appears on reels 2, 3 and 4 only.", "Gold-framed symbols (reels 2–4) don't burst when they win: they flip into WILD and stay for the next cascade."]))
+		body.add_child(row)
+	body.add_child(_divider("SPECIAL SYMBOLS"))
+	body.add_child(_special("hood", "WILD", ["Substitutes for all symbols except SCATTER.", "Appears on reels 2, 3 and 4 only.", "Gold-framed symbols (reels 2–4) don't burst when they win: they flip into WILD and stay for the next cascade."]))
 	var sc := []
 	for n in [5, 4, 3]:
 		sc.append("%d  ×  %s" % [n, Art.money(Rules.scatter_pay(n, bet))])
-	_menu_body.add_child(_special("key", "SCATTER", ["3 or more SCATTER anywhere trigger Free Spins: 3 = 8, 4 = 10, 5 = 12 spins."] + sc))
-	_menu_body.add_child(_divider("FREE SPINS"))
-	_menu_body.add_child(_body("Free spins cost nothing. Cascade multipliers are doubled: ×2, ×4, ×6, then ×10. 3 or more SCATTER during free spins add more spins."))
-	_menu_body.add_child(_divider("1024 WAYS & CASCADES"))
+	body.add_child(_special("key", "SCATTER", ["3 or more SCATTER anywhere trigger Free Spins: 3 = 8, 4 = 10, 5 = 12 spins."] + sc))
+
+
+# 規則：Free Spins、1024 路與連鎖、BIG WIN、自走打怪與目前進度；最下面是重設進度
+func _fill_rules() -> void:
+	var body: VBoxContainer = _rules.get_meta("body")
+	_clear(body)
+	body.add_child(_divider("FREE SPINS"))
+	body.add_child(_body("Free spins cost nothing. Cascade multipliers are doubled: ×2, ×4, ×6, then ×10. 3 or more SCATTER during free spins add more spins."))
+	body.add_child(_divider("1024 WAYS & CASCADES"))
 	var ways := HBoxContainer.new()
 	ways.add_theme_constant_override("separation", 12)
 	ways.add_child(_ways_diagram())
 	var wtxt := _body("Match a symbol on adjacent reels from the leftmost reel. Every matching cell on a reel multiplies the ways. Winning symbols burst, new ones fall in, and each cascade raises the multiplier: ×1, ×2, ×3, ×5.")
 	wtxt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ways.add_child(wtxt)
-	_menu_body.add_child(ways)
-	_menu_body.add_child(_divider("AUTO-RUN"))
-	_menu_body.add_child(_body("Red Hood walks to Grandma's house on her own. When a wolf blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while no wolf is around, and any overkill, is stored and unleashed on the next one. Defeat wolves for coins and XP; every 5th is the Wolf King."))
+	body.add_child(ways)
+	body.add_child(_divider("BIG WIN"))
+	var tiers := []
+	for t in BigWin.TIERS:
+		tiers.append("%s from %d× total bet" % [t[2], t[0]])
+	body.add_child(_body(", ".join(tiers) + "."))
+	body.add_child(_divider("AUTO-RUN"))
+	body.add_child(_body("Red Hood walks to Grandma's house on her own. When a wolf blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while no wolf is around, and any overkill, is stored and unleashed on the next one. Defeat wolves for coins and XP; every 5th is the Wolf King."))
 	var n: int = state.kills % Rules.BOSS_EVERY + 1
-	_menu_body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · Stage %d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), _stage(), n], 12))
-	_menu_body.add_child(_divider("SETTINGS"))
-	var check := CheckButton.new()
-	check.text = "Sound"
-	check.focus_mode = Control.FOCUS_NONE
-	check.button_pressed = state.sound
-	check.add_theme_font_override("font", Art.font("light"))
-	check.add_theme_font_size_override("font_size", 16)
-	check.add_theme_color_override("font_color", Art.CREAM)
-	check.add_theme_color_override("font_pressed_color", Art.CREAM)
-	check.add_theme_color_override("font_hover_color", Art.GOLD)
-	check.toggled.connect(func(on: bool):
-		state.sound = on
-		Sfx.enabled = on
-		Sfx.play("click")
-		_save())
-	_menu_body.add_child(check)
+	body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · Stage %d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), _stage(), n], 12))
 	var reset := Button.new()
 	reset.text = "Reset progress"
 	reset.focus_mode = Control.FOCUS_NONE
@@ -1567,19 +1692,87 @@ func _fill_menu() -> void:
 			return
 		if not armed[0]:
 			armed[0] = true
-			reset.text = "Tap again to reset coins, level and stage"
+			reset.text = "Tap again to reset coins, level, stage and history"
 			return
 		for k in ["coins", "bet", "level", "xp", "kills", "charge"]:
 			state[k] = {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0}[k]
+		state.history = []
 		_shown_coins = state.coins
 		field.set_stage(1)
 		field.set_charge(0, 0, 0.0)
 		_refresh_all()
 		_save()
-		_menu.visible = false
+		_close_sheet(_rules)
 		toast("Progress reset"))
-	_menu_body.add_child(reset)
-	_menu_body.add_child(_body("Coins are for demo play only.", 11))
+	body.add_child(reset)
+	body.add_child(_body("Coins are for demo play only.", 11))
+
+
+# 轉動紀錄（照 PG Soft 的 History）：最近 HISTORY_MAX 轉，一轉一行（觸發的 Free Spins 算在同一轉），最新的在最上面
+func _fill_history() -> void:
+	var body: VBoxContainer = _history.get_meta("body")
+	_clear(body)
+	var list: Array = state.history
+	if list.is_empty():
+		body.add_child(_body("No spins yet. Your last %d spins will show up here." % HISTORY_MAX))
+		return
+	var bet_sum := 0
+	var win_sum := 0
+	for h in list:
+		bet_sum += int(h[1])
+		win_sum += int(h[2])
+	var count := "Last spin" if list.size() == 1 else "Last %d spins" % list.size()
+	body.add_child(_body("%s · Bet %s · Win %s · Profit %s" % [count, Art.money(bet_sum), Art.money(win_sum), _signed(win_sum - bet_sum)], 12))
+	body.add_child(_hist_row(["TIME", "BET", "WIN", "PROFIT"], [Art.GOLD, Art.GOLD, Art.GOLD, Art.GOLD], "", true))
+	var bias: int = Time.get_time_zone_from_system().get("bias", 0)
+	for h in list:
+		var tb := int(h[1])
+		var won := int(h[2])
+		var d := Time.get_datetime_dict_from_unix_time(int(h[0]) + bias * 60)
+		var when := "%02d/%02d %02d:%02d" % [d.month, d.day, d.hour, d.minute]
+		var tags := []
+		if BigWin.qualifies(won, tb):
+			tags.append("BIG WIN")
+		if int(h[3]) > 0:
+			tags.append("FREE SPINS ×%d" % int(h[3]))
+		var profit := won - tb
+		var pc := Color("7fd36b") if profit > 0 else (Color("ff8a70") if profit < 0 else Art.MUTED)
+		body.add_child(_hist_row([when, Art.money(tb), Art.money(won), _signed(profit)], [Art.CREAM, Art.CREAM, Art.GOLD_LIGHT if won > 0 else Art.MUTED, pc], " · ".join(tags)))
+
+
+func _signed(v: int) -> String:
+	return "+" + Art.money(v) if v > 0 else Art.money(v)
+
+
+# History 的一行：時間靠左、金額靠右，有 Free Spins／BIG WIN 的在底下加一行金色小字，最下面一條細線
+func _hist_row(cells: Array, colors: Array, tag := "", header := false) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	for i in cells.size():
+		var l := Label.new()
+		l.text = cells[i]
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.size_flags_stretch_ratio = 1.35 if i == 0 else 1.0
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
+		l.add_theme_font_override("font", Art.font("num" if header else "light"))
+		l.add_theme_font_size_override("font_size", 12 if header else 14)
+		l.add_theme_color_override("font_color", colors[i])
+		row.add_child(l)
+	col.add_child(row)
+	if tag != "":
+		var t := Label.new()
+		t.text = tag
+		t.add_theme_font_override("font", Art.font("num"))
+		t.add_theme_font_size_override("font_size", 10)
+		t.add_theme_color_override("font_color", Art.GOLD)
+		col.add_child(t)
+	var line := ColorRect.new()
+	line.color = Color(Art.GOLD_DEEP, 0.35)
+	line.custom_minimum_size = Vector2(0, 1)
+	col.add_child(line)
+	return col
 
 
 # ---------- 開場：網頁的 loading 畫面一路蓋著，音效合成完直接進遊戲（不用點一下）----------
@@ -1589,6 +1782,7 @@ func _boot() -> void:
 	await get_tree().process_frame
 	await Sfx.build_all(func(p: float): _web("asProgress", p))
 	started = true
+	Music.mode("base")
 	_web("asReady", 1.0)
 	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN；
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；

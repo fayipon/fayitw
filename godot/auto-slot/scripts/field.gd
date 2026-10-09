@@ -105,6 +105,9 @@ func _ready() -> void:
 	_combo.z_index = 13
 	add_child(_combo)
 	hero.aura_color = Color(1.0, 0.72, 0.25)
+	# 劍的位置（量自三張立繪）：架式、跑步都是右下斜持劍，揮砍時劍舉到右上（劍尖超出圖外）
+	var low := [Vector2(0.743, 0.59), Vector2(0.993, 0.764)]
+	hero.blades = {"stance": low, "run": low, "slash": [Vector2(0.84, 0.3), Vector2(1.0, 0.205)]}
 	resized.connect(layout)
 
 
@@ -246,6 +249,20 @@ func set_charge(amount: int, gained: int, power: float) -> void:
 	_tag_tw.tween_property(_tag, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var top := hero.position + Vector2(0, -hero.height - 44.0)
 	float_text("+%s" % Art.money(gained), top, Art.GOLD_LIGHT, 20, Art.GOLD_INK)
+
+
+# SCATTER（金鑰匙）落下：小紅帽的劍點燃、全身泛出火光，張數越多燒越旺（1 張小火、2 張大火、3 張以上烈焰）；
+# 0 是熄掉。點燃（變旺）那一下閃一道火色殘影、光再亮一點
+func scatter_fire(count: int) -> void:
+	var to: float = [0.0, 0.45, 0.75, 1.0][clampi(count, 0, 3)]
+	if to > hero.flame + 0.01:
+		hero.flare = 1.0
+		create_tween().tween_property(hero, "flare", 0.0, 0.5)
+		hero.ghost(Color(1.0, 0.55, 0.15, 0.55), 0.35)
+	var dur := 0.25 if to > hero.flame else 0.8
+	var tw := create_tween().set_parallel()
+	tw.tween_property(hero, "flame", to, dur)
+	tw.tween_property(hero, "glow", to, dur)
 
 
 # 狼站定了：牌子放大淡掉、金光收回，接著小紅帽把存的傷害一刀打出去
