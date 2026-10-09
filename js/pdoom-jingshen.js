@@ -131,7 +131,8 @@
 
   /* ---------- 影片 ---------- */
   const video = document.createElement('video');
-  video.muted = true;
+  // 先試著有聲音自動播；瀏覽器不准的話 play() 會退回靜音，等第一次點擊再開聲音
+  video.muted = false;
   video.playsInline = true;
   video.setAttribute('playsinline', '');
   video.preload = 'auto';
@@ -662,7 +663,7 @@
   const unmute = $('.pd-unmute', root);
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  const P = { playing: false, userPaused: reduced, inView: false, wantPlay: false, wantSeek: null, lastDraw: -1 };
+  const P = { playing: false, userPaused: reduced, inView: false, wantPlay: false, wantSeek: null, lastDraw: -1, autoMuted: false };
   // 影片網址要等剪接表讀到才知道；在那之前的播放與跳轉先記著
   const hasSrc = () => !!video.getAttribute('src');
   const now = () => Math.min(END, P.wantSeek != null ? P.wantSeek : video.currentTime || 0);
@@ -681,10 +682,16 @@
     P.playing = true;
     setPlaying(true);
     const pr = video.play();
-    if (pr && pr.catch) pr.catch(() => {
-      // 瀏覽器不讓有聲音自動播：改成靜音再播一次
-      if (!video.muted) { video.muted = true; syncSoundUI(); video.play().catch(() => { P.playing = false; setPlaying(false); }); }
-      else { P.playing = false; setPlaying(false); }
+    if (pr && pr.catch) pr.catch(err => {
+      // 被 pause() 打斷的不算失敗
+      if (err && err.name === 'AbortError') return;
+      // 瀏覽器不讓有聲音自動播：改成靜音再播一次，記著等使用者第一次點擊時把聲音開回來
+      if (!video.muted) {
+        video.muted = true;
+        P.autoMuted = true;
+        syncSoundUI();
+        video.play().catch(() => { P.playing = false; setPlaying(false); });
+      } else { P.playing = false; setPlaying(false); }
     });
     loop();
   };
@@ -717,7 +724,24 @@
     soundBtn.setAttribute('aria-label', on ? '關閉聲音' : '開啟聲音');
     unmute.hidden = !(P.playing && !on);
   };
+  // 自動播被迫靜音時，使用者第一次點頁面任何地方（或按鍵）就開聲音；
+  // 點的是畫面本身的話只開聲音、不暫停；點聲音鈕或「開聲音」提示交給它們自己處理
+  const wake = e => {
+    if (!P.autoMuted) return;
+    // Esc、組合鍵這類不算使用者啟用；那時開聲音，瀏覽器會把影片停掉
+    if (navigator.userActivation && !navigator.userActivation.isActive) return;
+    P.autoMuted = false;
+    if (e.target.closest && e.target.closest('.pd-sound, .pd-unmute')) return;
+    video.muted = false;
+    syncSoundUI();
+    if (e.type === 'click' && P.playing && frame.contains(e.target) && !e.target.closest('.tr-big-play')) {
+      e.stopPropagation();
+    }
+  };
+  document.addEventListener('click', wake, true);
+  document.addEventListener('keydown', wake, true);
   soundBtn.addEventListener('click', () => {
+    P.autoMuted = false;
     video.muted = !video.muted;
     syncSoundUI();
     if (!video.muted && !P.playing) { P.userPaused = false; play(); }
