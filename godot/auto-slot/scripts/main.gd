@@ -84,6 +84,11 @@ var _auto_sheet: Control
 var _shown_coins := 0.0
 var _shown_win := 0.0
 var _shown_total := 0.0
+# 每轉加一：飛到一半的中獎跳字換轉了就不再更新 Total Win
+var _fly_id := 0
+# Total Win 的「TOTAL WIN」字樣和金額中間留多寬
+const TOTAL_GAP := 22.0
+var _glow: GradientTexture2D
 var _queue: Array = []
 var _working := false
 var _toast_tween: Tween
@@ -196,7 +201,7 @@ func _layout() -> void:
 	_buy.size = Vector2(196, 40)
 	_buy.position = Vector2((vp.x - 196.0 * u) / 2.0, buy_y)
 	# 木框外緣離畫面左右各 6；Feature Buy 壓在木框下緣上
-	var border := 13.0 * u
+	var border := 12.0 * u
 	var reel_w := w - 12.0 - border * 2.0
 	var slot_h: float = slot.layout(reel_w, border)
 	var wood_bottom := buy_y + 17.0 * u
@@ -409,7 +414,7 @@ func _build_total() -> Control:
 	var bar := _painter(func(c: Control): _three_slice(c, tex, Rect2(Vector2.ZERO, c.size), 60.0))
 	# 兩行小字：Cinzel 的行高很高，行距收緊才擠得進框裡
 	var cap_ls := Art.label_settings(11, Art.GOLD, "num", 3, Art.GOLD_INK)
-	cap_ls.line_spacing = -9.0
+	cap_ls.line_spacing = -5.0
 	var cap := Art.label("TOTAL
 WIN", cap_ls)
 	cap.name = "Cap"
@@ -424,21 +429,40 @@ WIN", cap_ls)
 	return bar
 
 
-# 「TOTAL WIN」與金額擺在正中間一組
 func _layout_total() -> void:
 	var w := _total.size.x
 	var cap: Label = _total.get_node("Cap")
-	cap.position = Vector2(w * 0.5 - 100, 0)
-	cap.size = Vector2(52, _total.size.y)
-	_total_label.position = Vector2(w * 0.5 - 40, 0)
-	_total_label.size = Vector2(w * 0.5 + 40 - 18, _total.size.y)
+	cap.size = Vector2(56, _total.size.y)
 	_total_label.pivot_offset = Vector2(0, _total.size.y / 2.0)
+	_place_total(roundi(_shown_total))
 	_ticker.position = Vector2(16, 5)
 	_ticker.size = Vector2(w - 32, _total.size.y - 10)
 
 
+# 「TOTAL WIN」與金額當成一組置中、中間留 TOTAL_GAP（照最後的金額算，跳數字時不會左右晃）；
+# 回傳（字樣中心 x、金額左邊 x、金額寬），都是 _total 的座標
+func _total_slots(value: int) -> Vector3:
+	var cap: Label = _total.get_node("Cap")
+	var cls := cap.label_settings
+	var cw := cls.font.get_string_size("TOTAL", HORIZONTAL_ALIGNMENT_LEFT, -1, cls.font_size).x
+	var ls := _total_label.label_settings
+	var aw := ls.font.get_string_size(Art.money(value), HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
+	var x0 := maxf(14.0, (_total.size.x - cw - TOTAL_GAP - aw) / 2.0)
+	return Vector3(x0 + cw / 2.0, x0 + cw + TOTAL_GAP, aw)
+
+
+func _place_total(value: int) -> void:
+	var x := _total_slots(value)
+	var cap: Label = _total.get_node("Cap")
+	cap.position = Vector2(x.x - cap.size.x / 2.0, 0)
+	_total_label.position = Vector2(x.y, 0)
+	_total_label.size = Vector2(_total.size.x - x.y - 14.0, _total.size.y)
+
+
 func _set_total(value: int, animate: bool) -> void:
 	var has_win := value > 0
+	if has_win:
+		_place_total(value)
 	_total.get_node("Cap").visible = has_win
 	_total_label.visible = has_win
 	_ticker.visible = not has_win
@@ -823,8 +847,8 @@ func _spin() -> bool:
 func _round(bet: int) -> Dictionary:
 	slot.clear_marks()
 	_set_win(0, false)
-	if not free:
-		_set_total(0, false)
+	_fly_id += 1
+	_set_total(fs_total if free else 0, false)
 	_set_ladder(0)
 	var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
 	var res := Rules.play(rng, bet, free)
@@ -840,8 +864,8 @@ func _round(bet: int) -> Dictionary:
 		Sfx.play("win", 1.0 + k * 0.12)
 		won += st.win
 		_set_win(st.win, true)
-		_set_total(won, true)
-		_step_popup(st)
+		# Total Win 等跳字飛到才更新
+		_step_popup(st, won)
 		# 第 k + 1 段連擊：小紅帽的招式跟著段數變多，第 2 段起自走區出現連擊計數
 		_queue_attack(st.win + (base if k == 0 else 0), st.win >= 5 * tb, k + 1)
 		await get_tree().create_timer(0.36 if state.turbo else 0.62).timeout
@@ -906,24 +930,112 @@ func _free_spins(cells: Array, bet: int) -> void:
 	_set_total(fs_total, false)
 
 
-# 每一段中獎上方跳出「+120」（倍率看外框頂端的倍率條）
-func _step_popup(st: Dictionary) -> void:
+# 每一段中獎：盤面上跳出「+120」（後面一團金光），停一下後拖著金色火花飛進 Total Win；
+# 到了 Total Win 才跳數字、整塊亮一下、噴一圈火花（total 是到這一段為止的總和）。換下一轉時還在飛的就不再更新
+func _step_popup(st: Dictionary, total: int) -> void:
+	var id := _fly_id
+	var sp := 0.6 if state.turbo else 1.0
 	var at := Vector2.ZERO
 	for i in st.cells:
 		at += slot.tile_center(i)
 	at = slot.position + at / st.cells.size()
-	var l := Art.label("+%s" % Art.money(st.win), Art.label_settings(24, Art.GOLD_LIGHT, "num", 7, Art.GOLD_INK, 3))
-	l.size = Vector2(260, 44)
+	var l := Art.label("+%s" % Art.money(st.win), Art.label_settings(30, Art.GOLD_LIGHT, "num", 8, Art.GOLD_INK, 3))
+	l.size = Vector2(260, 52)
 	l.position = at - l.size / 2.0
 	l.pivot_offset = l.size / 2.0
-	l.scale = Vector2(0.4, 0.4)
+	l.scale = Vector2(0.3, 0.3)
+	var glow := TextureRect.new()
+	glow.texture = _glow_tex()
+	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glow.size = Vector2(200, 96)
+	glow.position = (l.size - glow.size) / 2.0
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.show_behind_parent = true
+	l.add_child(glow)
 	overlay.add_child(l)
+	# 拖尾的火花另外放（世界座標），跳字到了就停，火花自己飄完
+	var trail := _sparks(40, 0.4, 30.0)
+	trail.local_coords = false
+	trail.emitting = false
+	trail.position = at
+	overlay.add_child(trail)
+	var start := at
+	var end := _total_target(total)
+	# 往旁邊彎出去再落進 Total Win
+	var ctrl := Vector2(lerpf(start.x, end.x, 0.5) + (90.0 if start.x < end.x + 40.0 else -90.0), start.y - 30.0)
 	var tw := create_tween()
-	tw.tween_property(l, "scale", Vector2(1.15, 1.15), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(l, "scale", Vector2.ONE, 0.1)
-	tw.tween_property(l, "position:y", l.position.y - 40, 0.6)
-	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.3).set_delay(0.3)
-	tw.tween_callback(l.queue_free)
+	tw.tween_property(l, "scale", Vector2(1.3, 1.3), 0.16 * sp).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "scale", Vector2.ONE, 0.1 * sp)
+	tw.tween_interval(0.22 * sp)
+	tw.tween_callback(func(): trail.emitting = true)
+	tw.tween_method(func(t: float):
+		var p := start.lerp(ctrl, t).lerp(ctrl.lerp(end, t), t)
+		l.position = p - l.size / 2.0
+		l.scale = Vector2.ONE * lerpf(1.0, 0.55, t)
+		trail.position = p, 0.0, 1.0, 0.42 * sp).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		l.queue_free()
+		trail.emitting = false
+		get_tree().create_timer(0.5).timeout.connect(trail.queue_free)
+		if id != _fly_id:
+			return
+		_set_total(total, true)
+		_total_flash()
+		var burst := _sparks(26, 0.5, 160.0)
+		burst.position = end
+		burst.one_shot = true
+		burst.explosiveness = 1.0
+		overlay.add_child(burst)
+		burst.emitting = true
+		burst.finished.connect(burst.queue_free)
+		Sfx.play("coin", 1.3, -6.0))
+
+
+# 跳字要飛去的位置：Total Win 收到 total 之後金額的中間（overlay 座標）
+func _total_target(total: int) -> Vector2:
+	var x := _total_slots(total)
+	return _total.get_global_transform() * Vector2(x.y + x.z / 2.0, _total.size.y / 2.0) - overlay.global_position
+
+
+# Total Win 收到金額：整塊亮一下
+func _total_flash() -> void:
+	var tw := create_tween()
+	_total.modulate = Color(1.7, 1.5, 1.1)
+	tw.tween_property(_total, "modulate", Color.WHITE, 0.35)
+
+
+# 金色火花（跳字拖尾、到達時炸開共用）
+func _sparks(amount: int, life: float, speed: float) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.amount = amount
+	p.lifetime = life
+	p.spread = 180.0
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = speed * 0.4
+	p.initial_velocity_max = speed
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 4.5
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.97, 0.75, 1), Color(1, 0.75, 0.25, 0.9), Color(1, 0.45, 0.1, 0)])
+	p.color_ramp = ramp
+	return p
+
+
+# 跳字後面那團金光（放射漸層，做一次就好）
+func _glow_tex() -> Texture2D:
+	if not _glow:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 0.78, 0.3, 0.55))
+		g.set_color(1, Color(1, 0.6, 0.1, 0.0))
+		_glow = GradientTexture2D.new()
+		_glow.gradient = g
+		_glow.fill = GradientTexture2D.FILL_RADIAL
+		_glow.fill_from = Vector2(0.5, 0.5)
+		_glow.fill_to = Vector2(1.0, 0.5)
+		_glow.width = 128
+		_glow.height = 64
+	return _glow
 
 
 func _coins_to(value: int) -> void:

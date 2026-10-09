@@ -2,7 +2,7 @@
 // node scripts/auto-slot-leonardo.mjs [只跑這些名稱...]（原檔存到 assets-src/auto-slot/）
 // 已經生成過的（index.json 裡有）會跳過；key 從環境變數 LEONARDO_API_KEY 讀，不會印出來
 // 風格照設計稿 r-ref.jpg（PG Soft 風的動漫小紅帽）：先上傳成參考圖，其他圖都帶它當風格參考
-// 生成完再跑 python scripts/auto-slot-gothic.py 與 node scripts/auto-slot-assets.mjs 轉成遊戲與網頁用的檔案
+// 生成完再跑 node scripts/auto-slot-symbols.mjs（符號去背）、python scripts/auto-slot-ui.py 與 node scripts/auto-slot-assets.mjs 轉成遊戲與網頁用的檔案
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
 const key = process.env.LEONARDO_API_KEY;
@@ -75,6 +75,24 @@ const JOBS = [
   {
     name: 'r-frame', w: 1152, h: 928, refs: [['r-ref', 'LOW']],
     prompt: `${STYLE} A front-facing rectangular slot machine reel frame matching the reel frame in the reference image, on a plain flat solid white background, filling almost the whole image. The border is thin, about one thirtieth of the image width: dark polished wood with a fine antique gold inner trim line, with ornate antique gold filigree ornaments only at the four corners. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
+  },
+  // 做舊外框的兩個方向（2026-10，原本的拋光紅木細金框太精緻）：A 粗木板＋黑鐵包角鉚釘，B 風化木頭＋磨損的古金雕花
+  {
+    name: 'r-frame-aged-a', w: 1152, h: 928, refs: [['r-frame', 'LOW'], ['r-ref', 'LOW']],
+    prompt: `${STYLE} A front-facing rectangular slot machine reel frame on a plain flat solid white background, filling almost the whole image, the same layout as the first reference image but heavily weathered and old. The border is about one twentieth of the image width: thick rough dark old timber planks with deep cracks, knots, splinters, scratches and worn chipped edges, darkened by age and soot, a little green moss in the cracks; heavy blackened wrought-iron corner brackets with big round rivets and nails at the four corners, and a few iron straps along the sides. No polish, no fine filigree. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
+  },
+  {
+    name: 'r-frame-aged-b', w: 1152, h: 928, refs: [['r-frame', 'LOW'], ['r-ref', 'LOW']],
+    prompt: `${STYLE} A front-facing rectangular slot machine reel frame on a plain flat solid white background, filling almost the whole image, the same layout as the first reference image but antique and weathered like a centuries-old storybook relic. The border is about one twentieth of the image width: old weathered dark brown wood with visible grain, cracks, dents and worn rounded edges, the dark varnish rubbed off in places; at the four corners bold chunky carved antique gold corner ornaments that are tarnished, chipped and darkened with grime, with a worn thin gold inner trim line. Rustic, heavy and aged, not delicate. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
+  },
+  // 使用者選 A 方向但要更破、更舊、框更細：再畫兩張（C 照 A 的樣子做得更破，D 參考原本細框的比例）
+  {
+    name: 'r-frame-aged-c', w: 1152, h: 928, refs: [['r-frame-aged-a', 'MID']],
+    prompt: `${STYLE} A front-facing rectangular slot machine reel frame on a plain flat solid white background, filling almost the whole image, in the same style as the reference image but much older, more broken and more decayed, with a much thinner border, only about one fortieth of the image width. Thin old rotten wooden planks, splintered and cracked, broken chipped edges with chunks missing, worm holes, peeling dark paint, scorch marks, dirt and soot; small rusty bent iron corner plates with crooked nails and missing rivets, flaking rust, a little moss and a few cobwebs in the corners. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
+  },
+  {
+    name: 'r-frame-aged-d', w: 1152, h: 928, refs: [['r-frame', 'MID'], ['r-frame-aged-a', 'LOW']],
+    prompt: `${STYLE} A front-facing rectangular slot machine reel frame on a plain flat solid white background, filling almost the whole image, with exactly the same thin border width and layout as the first reference image, but made of ancient weathered timber like the second reference image and heavily damaged: rough splintered grey-brown planks with deep cracks, knots, worm holes, broken chipped edges and missing chunks, scorch marks and grime; at the four corners small rusty broken iron brackets with crooked nails, flaking rust stains running down the wood, a little moss. No polish, no gold, no filigree. The large rectangular opening inside is flat solid pure black and completely empty: no symbols, no grid, no reels. Perfectly symmetric, straight-on view, no perspective, no text.`,
   },
   // 介面零件與圖示（灰底，程式挖空）、標題字、底部背景
   {

@@ -219,9 +219,9 @@ func _make_sparks() -> CPUParticles2D:
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.8
 	var fade := Gradient.new()
-	fade.set_color(0, Color(1, 1, 1, 0))
-	fade.add_point(0.3, Color(1, 1, 1, 1))
-	fade.set_color(1, Color(1, 1, 1, 0))
+	# 直接指定所有點（add_point 之後點會重新排序，再用 set_color(1) 會改到中間那點）
+	fade.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
+	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
 	p.color_ramp = fade
 	return p
 

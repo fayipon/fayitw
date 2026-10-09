@@ -1,7 +1,8 @@
-# 中間的 SLOT：5 軸 × 4 列，外面套一圈細木框（art/ui/frame.webp，開口位置與木框厚度記在 ui.json）。
+# 中間的 SLOT：5 軸 × 4 列，外面套一圈做舊的破木框（art/ui/frame.webp，開口位置與木框厚度記在 ui.json）。
 # 轉輪往下捲（轉得快時符號有動態模糊）、逐軸停輪回彈；中獎格子發光，其餘變暗；
 # 已經停了兩個 SCATTER 時（差一個）後面的軸一軸一軸輪流吊胃口：輪到的那軸繼續高速轉、套上竄火的光框（shader），
-# 最後才煞車；還在等的軸整條壓暗、已停的軸除了 SCATTER 都壓暗、SCATTER 一跳一跳發光，落定時閃光炸開；
+# 最後才煞車；還在等的軸整條壓暗（整軸的格子一起變暗，不蓋黑塊）、已停的軸除了 SCATTER 都壓暗、SCATTER 一跳一跳發光，落定時閃光炸開；
+# SCATTER 不管有沒有吊胃口，落定（或連鎖補位掉下來）時都放一圈光環和光芒，之後一直亮著（symbol_tile 的 lit）；
 # 連鎖時中獎格子爆開、金框翻成 WILD、上面的往下掉、空位從上方補新符號
 extends Control
 
@@ -16,8 +17,9 @@ const Tile := preload("res://scripts/symbol_tile.gd")
 
 const GAP := 4.0
 const PAD := 6.0
-# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的金飾才不會被拉長
-const CORNER := 70.0
+# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的鐵件整塊保留；四角放大這麼多倍才看得清楚
+const CORNER := 90.0
+const CORNER_SCALE := 1.5
 # 吊胃口：每一軸輪到後獨自轉的秒數（turbo 時短一點；音效 tease 也是這個長度）、這期間的轉速（格／秒）、
 # 最後煞車的秒數；停輪回彈的秒數
 const TEASE_SLOW := 1.8
@@ -27,8 +29,10 @@ const TEASE_BRAKE := 0.45
 const TEASE_BRAKE_TURBO := 0.3
 const BOUNCE := 0.16
 const TeaseShader := preload("res://scripts/tease.gdshader")
-# 光框比轉輪往外多大一圈（左右、上下）
-const TEASE_MARGIN := Vector2(28, 13)
+# 光框比轉輪往外多大一圈（左右、上下）：左右只溢出一點，不會蓋到隔壁軸的符號
+const TEASE_MARGIN := Vector2(16, 12)
+# 吊胃口時還在等的軸變多暗
+const WAIT_DIM := Color(0.34, 0.34, 0.42)
 
 var cell := Vector2(70, 73)
 var turbo := false
@@ -81,7 +85,6 @@ func _ready() -> void:
 	# 只比符號高一層：上面的倍數梯（main 裡 z 22）與 Feature Buy 會蓋住光框溢出去的部分
 	_tease_layer = Node2D.new()
 	_tease_layer.z_index = 1
-	_tease_layer.draw.connect(_draw_tease)
 	add_child(_tease_layer)
 
 
@@ -146,7 +149,9 @@ func tile_center(i: int) -> Vector2:
 
 # ---------- 外框 ----------
 
-# 外框用九宮格畫：四角（含金飾）照 _frame_scale 等比縮放，四邊的木頭拉長；中間開口畫深色底
+# 外框用九宮格畫：四邊的木頭照 _frame_scale 縮放後沿著邊重複貼（不拉長，裂紋、鐵條才不會變形），
+# 四角（含鐵件）放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋在四邊上；中間開口畫深色底。
+# 外框畫在轉輪底下，四角往內多出來的部分會被格子蓋住
 func _draw() -> void:
 	var tex := Art.ui("frame")
 	var meta: Dictionary = Art.ui_meta().frame
@@ -159,12 +164,33 @@ func _draw() -> void:
 	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
 	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05070c"))
-	for i in 3:
-		for j in 3:
-			if i == 1 and j == 1:
-				continue
-			draw_texture_rect_region(tex, Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j]),
-				Rect2(us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j]))
+	# 上下兩邊橫著貼、左右兩邊直著貼
+	for j in [0, 2]:
+		_tile(tex, Rect2(us[1], vs[j], us[2] - us[1], vs[j + 1] - vs[j]), Rect2(xs[1], ys[j], xs[2] - xs[1], ys[j + 1] - ys[j]), true)
+	for i in [0, 2]:
+		_tile(tex, Rect2(us[i], vs[1], us[i + 1] - us[i], vs[2] - vs[1]), Rect2(xs[i], ys[1], xs[i + 1] - xs[i], ys[2] - ys[1]), false)
+	var cs := s * CORNER_SCALE
+	for i in [0, 2]:
+		for j in [0, 2]:
+			var src := Rect2(us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j])
+			var sz := src.size * cs
+			var at := Vector2(o.position.x if i == 0 else o.end.x - sz.x, o.position.y if j == 0 else o.end.y - sz.y)
+			draw_texture_rect_region(tex, Rect2(at, sz), src)
+
+
+# 把原圖的 src 一段段重複貼滿 dst（horizontal 時沿 x 貼，否則沿 y）；最後一段只取需要的長度
+func _tile(tex: Texture2D, src: Rect2, dst: Rect2, horizontal: bool) -> void:
+	var s := _frame_scale
+	var step := (src.size.x if horizontal else src.size.y) * s
+	var length := dst.size.x if horizontal else dst.size.y
+	var t := 0.0
+	while t < length - 0.01:
+		var n := minf(step, length - t)
+		if horizontal:
+			draw_texture_rect_region(tex, Rect2(dst.position.x + t, dst.position.y, n, dst.size.y), Rect2(src.position, Vector2(n / s, src.size.y)))
+		else:
+			draw_texture_rect_region(tex, Rect2(dst.position.x, dst.position.y + t, dst.size.x, n), Rect2(src.position, Vector2(src.size.x, n / s)))
+		t += step
 
 
 # ---------- 轉輪 ----------
@@ -308,18 +334,17 @@ func _tease_on(c: int) -> void:
 	p.scale_amount_min = 1.5
 	p.scale_amount_max = 3.5
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1, 0.95, 0.6, 1))
-	ramp.add_point(0.5, Color(1, 0.6, 0.15, 0.9))
-	ramp.set_color(1, Color(0.9, 0.15, 0.05, 0))
+	ramp.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.95, 0.6, 1), Color(1, 0.6, 0.15, 0.9), Color(0.9, 0.15, 0.05, 0)])
 	p.color_ramp = ramp
 	_tease_layer.add_child(p)
 	_tease_sparks = p
-	_tease_layer.queue_redraw()
+	_dim_waiting()
 	# 嗡鳴往上拉、鼓點越打越密，長度剛好到停輪（turbo 兩倍速播）
 	Sfx.play("tease", 2.0 if turbo else 1.0)
 
 
-# 已經停好的軸：SCATTER 一跳一跳發光，其他壓暗，讓視線集中到還在轉的那一軸
+# 已經停好的軸：SCATTER 一跳一跳（石板底本來就透著金光，不加框），其他壓暗，讓視線集中到還在轉的那一軸
 func _spotlight(c: int) -> void:
 	for r in Rules.ROWS:
 		var t: Control = tiles[r * Rules.COLS + c]
@@ -327,15 +352,13 @@ func _spotlight(c: int) -> void:
 			t.dim = false
 			var tw := create_tween().set_loops()
 			_tease_tweens.append(tw)
-			tw.tween_property(t, "scale", Vector2(1.12, 1.12), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-			tw.parallel().tween_property(t, "glow", 1.0, 0.22)
+			tw.tween_property(t, "scale", Vector2(1.1, 1.1), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			tw.tween_property(t, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-			tw.parallel().tween_property(t, "glow", 0.45, 0.28)
 		else:
 			t.dim = true
 
 
-# 一軸停好：落定的 SCATTER 彈一下（吊胃口中落定的再加閃光、炸開）；吊胃口中的軸光框閃一下（中了閃得更亮）後淡掉、火花收掉
+# 一軸停好：落定的 SCATTER 彈一下、放光環、之後一直亮著（吊胃口中落定的再加閃光、炸開）；吊胃口中的軸光框閃一下（中了閃得更亮）後淡掉、火花收掉
 func _reel_landed(c: int, teased: bool) -> void:
 	_stopped[c] = true
 	var hit := false
@@ -350,9 +373,11 @@ func _reel_landed(c: int, teased: bool) -> void:
 		t.scale = Vector2(1.45, 1.45) if big else Vector2(1.2, 1.2)
 		create_tween().tween_property(t, "scale", Vector2.ONE, 0.35 if big else 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		Sfx.play("scatter", 1.0 + (_landed - 1) * 0.12, 0.0 if big else -5.0)
+		t.lit = true
+		_halo(tile_center(i))
+		_sparkle(tile_center(i))
 		if big:
 			_burst(tile_center(i), Art.GOLD)
-			_sparkle(tile_center(i))
 			_flash(i)
 		scatter_landed.emit(_landed)
 	if teased:
@@ -371,7 +396,32 @@ func _reel_landed(c: int, teased: bool) -> void:
 			_tease_sparks = null
 	if _tense:
 		_spotlight(c)
-	_tease_layer.queue_redraw()
+		_dim_waiting()
+
+
+# SCATTER 落定：從格子中心放一圈光環往外擴、八道光芒轉一點後淡掉（疊加混色）
+func _halo(at: Vector2) -> void:
+	var f := Node2D.new()
+	f.position = at
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	f.material = m
+	f.set_meta("p", 0.0)
+	var r := cell.x * 0.5
+	f.draw.connect(func():
+		var p: float = f.get_meta("p")
+		var a := 1.0 - p
+		for k in 8:
+			var dir := Vector2.from_angle(k * TAU / 8.0 + p * 0.6)
+			var side := dir.orthogonal() * r * 0.09
+			f.draw_colored_polygon(PackedVector2Array([side, dir * r * (1.0 + 0.9 * p), -side]), Color(1, 0.85, 0.4, 0.55 * a))
+		f.draw_arc(Vector2.ZERO, r * (0.7 + 0.9 * p), 0.0, TAU, 40, Color(1, 0.9, 0.55, a), maxf(1.0, 7.0 * a), true))
+	_fx.add_child(f)
+	var tw := f.create_tween()
+	tw.tween_method(func(v: float):
+		f.set_meta("p", v)
+		f.queue_redraw(), 0.0, 1.0, 0.5).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(f.queue_free)
 
 
 # 格子上閃一下白光
@@ -396,9 +446,9 @@ func _end_tension() -> void:
 			tw.kill()
 	_tease_tweens.clear()
 	_tease_c = -1
-	_tease_layer.queue_redraw()
 	if _tense:
 		_tense = false
+		_dim_waiting()
 		for t in tiles:
 			if t and is_instance_valid(t):
 				t.dim = false
@@ -432,14 +482,13 @@ func _update_blur(delta: float) -> void:
 			t.blur = b
 
 
-# 吊胃口時還在等的軸（還在轉、還沒輪到）整條壓暗；光框本身是 _tease_fx 的 shader
-func _draw_tease() -> void:
-	if not _tense:
-		return
+# 吊胃口時還在等的軸（還在轉、還沒輪到）整軸的格子一起變暗，輪到或停好了就亮回來；結束時全部亮回來
+func _dim_waiting() -> void:
 	for c in Rules.COLS:
-		if _stopped[c] or c == _tease_c:
-			continue
-		_tease_layer.draw_rect(Rect2(_reels[c].position, _reels[c].size).grow(2), Color(0.01, 0.01, 0.03, 0.62))
+		var waiting: bool = _tense and not _stopped[c] and c != _tease_c
+		var to := WAIT_DIM if waiting else Color.WHITE
+		if _reels[c].modulate != to:
+			create_tween().tween_property(_reels[c], "modulate", to, 0.2)
 
 
 # 轉動中再按一次：全部直接停
@@ -481,7 +530,8 @@ func mark(cells: Array) -> void:
 		on[i] = true
 	for i in Rules.CELLS:
 		var t: Control = tiles[i]
-		t.dim = not on.has(i)
+		# 亮著的 SCATTER 不壓暗
+		t.dim = not on.has(i) and not t.lit
 		if on.has(i):
 			var tw := create_tween().set_loops(2)
 			_mark_tweens.append(tw)
@@ -526,6 +576,7 @@ func cascade(step: Dictionary, k: int) -> void:
 		tiles[i].queue_free()
 	var next_tiles := []
 	next_tiles.resize(Rules.CELLS)
+	var new_scatters := []
 	var fall := 0.0
 	for c in Rules.COLS:
 		var keep := []
@@ -545,6 +596,8 @@ func cascade(step: Dictionary, k: int) -> void:
 			else:
 				var data: Dictionary = step.next[i]
 				t = _make(data)
+				if Rules.is_scatter(data.id):
+					new_scatters.append(i)
 				_strips[c].add_child(t)
 				from = r - added.size() - 0.6
 				_place(t, from)
@@ -562,6 +615,14 @@ func cascade(step: Dictionary, k: int) -> void:
 	if fall > 0.0:
 		get_tree().create_timer(fall * 0.55).timeout.connect(func(): Sfx.play("drop"))
 	await get_tree().create_timer(fall + 0.05).timeout
+	# 補位掉下來的 SCATTER 一樣放光環、亮起來
+	if not new_scatters.is_empty():
+		for i in new_scatters:
+			tiles[i].lit = true
+			_halo(tile_center(i))
+			_sparkle(tile_center(i))
+		Sfx.play("scatter", 1.1, -4.0)
+		scatter_landed.emit(tiles.filter(func(t): return t and Rules.is_scatter(t.id)).size())
 	# 掉落途中畫面縮放過的話，補間會把格子帶回舊的位置；結束時全部對齊一次
 	for i in Rules.CELLS:
 		if tiles[i]:
@@ -620,12 +681,13 @@ func _sparkle(at: Vector2) -> void:
 	p.finished.connect(p.queue_free)
 
 
+# 觸發 Free Spins：SCATTER 一起跳三下（亮著的石板底就是高亮，不加框）
 func scatter_glow(cells: Array) -> void:
 	for i in cells:
 		var t: Control = tiles[i]
 		t.dim = false
+		t.lit = true
 		var tw := create_tween().set_loops(3)
 		_mark_tweens.append(tw)
-		tw.tween_property(t, "glow", 1.0, 0.18)
-		tw.parallel().tween_property(t, "scale", Vector2(1.15, 1.15), 0.18)
+		tw.tween_property(t, "scale", Vector2(1.15, 1.15), 0.18)
 		tw.tween_property(t, "scale", Vector2.ONE, 0.18)

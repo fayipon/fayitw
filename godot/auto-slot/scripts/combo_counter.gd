@@ -39,9 +39,8 @@ func _ready() -> void:
 	_sparks.scale_amount_min = 2.0
 	_sparks.scale_amount_max = 4.0
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1, 0.97, 0.75, 1))
-	ramp.add_point(0.45, Color(1, 0.6, 0.15, 0.95))
-	ramp.set_color(1, Color(0.85, 0.1, 0.05, 0))
+	ramp.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.97, 0.75, 1), Color(1, 0.6, 0.15, 0.95), Color(0.85, 0.1, 0.05, 0)])
 	_sparks.color_ramp = ramp
 	_sparks.show_behind_parent = true
 	add_child(_sparks)

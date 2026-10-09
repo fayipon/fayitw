@@ -101,5 +101,25 @@
     "file": "r-title-super.jpg",
     "generationId": "1f1c371f-de5e-69a0-8788-99f7640c8893",
     "cut": "r-title-super-cut.png"
+  },
+  "r-frame-aged-b": {
+    "imageId": "24bc6fd1-101f-4266-ad9c-13dab4a8b56d",
+    "file": "r-frame-aged-b.jpg",
+    "generationId": "1f1c3828-597d-6100-a50a-42fff43cf238"
+  },
+  "r-frame-aged-a": {
+    "imageId": "8f521683-0faf-4711-a880-746b001b5740",
+    "file": "r-frame-aged-a.jpg",
+    "generationId": "1f1c3828-5dd8-6c90-af3e-bc5e0737e8e3"
+  },
+  "r-frame-aged-d": {
+    "imageId": "c9419f2c-ca25-4834-9bdd-821f6a658c79",
+    "file": "r-frame-aged-d.jpg",
+    "generationId": "1f1c3831-8d39-6e90-a8f6-5d0af30b9000"
+  },
+  "r-frame-aged-c": {
+    "imageId": "9154d980-9319-4f90-b7b6-3c29b5ae25e1",
+    "file": "r-frame-aged-c.jpg",
+    "generationId": "1f1c3831-81c0-6e60-a986-1109f77b494d"
   }
 }

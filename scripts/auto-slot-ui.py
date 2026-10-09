@@ -1,13 +1,17 @@
 # 自走SLOT 介面：把 Leonardo 原檔（assets-src/auto-slot/r-*.jpg）轉成 Godot 用的圖
 # python scripts/auto-slot-ui.py（需要 numpy、opencv-python）
-# - 符號磚：白底上的方形滿版磚，找出每一塊切下來、往內縮掉白邊，統一成 256 × 266（跟轉輪格子一樣 1 : 1.04）
-#   → godot/auto-slot/art/tiles/<id>.webp
+# - 符號：白底上的方形滿版磚，找出每一塊切下來、往內縮掉白邊 → assets-src/auto-slot/sym-<id>.png；
+#   每張磚的底和框都不一樣，所以只留符號本身：字母（10 J Q K A）在本機依飽和度切（石板底是灰的、字母很鮮豔），
+#   其他圖案先跑 node scripts/auto-slot-symbols.mjs 用 Leonardo 去背成 sym-<id>-cut.png；
+#   去背後縮成 256 × 266（跟轉輪格子一樣 1 : 1.04、位置不變）的透明圖 → godot/auto-slot/art/tiles/<id>.webp，
+#   格子的底統一用設計稿那塊空白石板磚（r-symbols 第 8 塊）：抹掉四角的綠葉與小釘子、裁掉邊框、
+#   稍微提亮加中間柔光、四邊對稱的內陰影、切圓角 → art/tiles/bg.webp；SCATTER 高亮用的「石板透金光」→ art/tiles/bg-lit.webp
 # - 介面零件（r-ui）：灰底挖空（只挖連到圖邊的灰，邊緣半透明並扣掉灰色），依位置命名：
 #   轉動鍵 spin（紅色圓盤，Godot 在中間畫旋轉箭頭）、小圓鈕 ring、Feature Buy 底板 buy、資訊面板 panel → art/ui/
 # - 圖示（r-icons）：2 × 2 排，左上錢包、右上金幣堆、左下 WIN 徽章、右下金幣 → art/ui/
 # - 標題字（r-logo，已去背）：切掉透明邊 → art/ui/logo.webp；BIG WIN 三級標題（r-title-*，已去背）→ art/ui/title-*.webp
-# - 轉輪外框（r-frame）：白底挖空，量出中間黑色開口與木框厚度，
-#   寫進 art/ui/ui.json 的 "frame"，Godot 依此用九宮格畫外框（四角金飾等比、木框邊拉長）
+# - 轉輪外框（r-frame-aged-c，做舊的破木框；原本的拋光細金框 r-frame 不用了）：白底挖空，量出中間黑色開口與木框厚度，
+#   寫進 art/ui/ui.json 的 "frame"，Godot 依此用九宮格畫外框（四角鐵件放大、四邊木頭重複貼，不拉長）
 # - 底部背景（r-floor）：縮成 768 寬 → art/ui/floor.webp
 import json
 import os
@@ -58,7 +62,11 @@ def rows_then_cols(boxes, row_gap=80):
     return [b for row in rows for b in sorted(row, key=lambda b: b[0])]
 
 
+LETTERS = ['ten', 'jack', 'queen', 'king', 'ace']
+
+
 def tiles(sheet, names, inset=4):
+    """切出每一塊符號磚的原圖 → assets-src/auto-slot/sym-<id>.png"""
     img = load(sheet)
     boxes = rows_then_cols(blobs(img, (255, 255, 255), 20000))
     if len(boxes) != len(names):
@@ -67,8 +75,81 @@ def tiles(sheet, names, inset=4):
         if not name:
             continue
         crop = img[y + inset:y + h - inset, x + inset:x + w - inset]
-        save(cv2.resize(crop, TILE, interpolation=cv2.INTER_AREA), 'tiles', f'{name}.webp', quality=90)
-        print('tile', name, w, h)
+        cv2.imwrite(os.path.join(SRC, f'sym-{name}.png'), crop)
+        if name in LETTERS:
+            letter_cut(name, crop)
+
+
+def letter_cut(name, img):
+    """字母：鮮豔的像素裡、碰到中間區域的連通塊（去掉四角的綠葉與邊框）；字上的小高光補回去，
+    字母本身的洞（0、Q、A 中間）留著；往外長 1 像素吃進深色描邊、邊緣羽化"""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    m = ((hsv[..., 1] > 110) & (hsv[..., 2] > 70)).astype(np.uint8)
+    h, w = m.shape
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m)
+    keep = np.zeros_like(m)
+    for i in range(1, n):
+        x, y, ww, hh, a = st[i]
+        if a > 300 and x < w * 0.75 and x + ww > w * 0.25 and y < h * 0.75 and y + hh > h * 0.25:
+            keep[lab == i] = 1
+    n, lab, st, _ = cv2.connectedComponentsWithStats((1 - keep).astype(np.uint8), connectivity=4)
+    for i in range(1, n):
+        x, y, ww, hh, a = st[i]
+        if a < 150 and x > 0 and y > 0 and x + ww < w and y + hh < h:
+            keep[lab == i] = 1
+    alpha = cv2.GaussianBlur(cv2.dilate(keep * 255, np.ones((3, 3), np.uint8)), (3, 3), 0)
+    rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+    rgba[..., 3] = alpha
+    cv2.imwrite(os.path.join(SRC, f'sym-{name}-cut.png'), rgba)
+
+
+def tile_bg(sheet='r-symbols.jpg', index=7):
+    img = load(sheet)
+    x, y, w, h = rows_then_cols(blobs(img, (255, 255, 255), 20000))[index]
+    t = img[y:y + h, x:x + w]
+    hsv = cv2.cvtColor(t, cv2.COLOR_BGR2HSV)
+    leaf = ((hsv[..., 0] > 30) & (hsv[..., 0] < 95) & (hsv[..., 1] > 60)) | ((hsv[..., 0] < 30) & (hsv[..., 1] > 90) & (hsv[..., 2] > 60))
+    t = cv2.inpaint(t, cv2.dilate(leaf.astype(np.uint8) * 255, np.ones((7, 7), np.uint8)), 9, cv2.INPAINT_TELEA)
+    t = cv2.resize(t[22:-22, 22:-22], TILE, interpolation=cv2.INTER_CUBIC).astype(np.float32) / 255
+    W, H = TILE
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    d = np.sqrt(((xx / W - 0.5) / 0.75) ** 2 + ((yy / H - 0.45) / 0.75) ** 2)
+    t = np.clip(t * 1.25 + np.clip(1 - d, 0, 1)[..., None] * np.array([0.16, 0.12, 0.10], np.float32), 0, 1)
+    # 四邊對稱的柔和內陰影（不做單邊亮邊，免得看起來像只剩一半的框）
+    edge = np.minimum.reduce([xx, yy, W - 1 - xx, H - 1 - yy])
+    shade = (1 - (np.clip(1 - edge / 22.0, 0, 1) ** 2 * 0.45))[..., None]
+    base = t
+    t = t * shade
+    rgba = cv2.cvtColor((np.clip(t, 0, 1) * 255).astype(np.uint8), cv2.COLOR_BGR2BGRA)
+    mask = np.zeros((H, W), np.uint8)
+    r = 14
+    cv2.rectangle(mask, (r, 0), (W - 1 - r, H - 1), 255, -1)
+    cv2.rectangle(mask, (0, r), (W - 1, H - 1 - r), 255, -1)
+    for cx, cy in [(r, r), (W - 1 - r, r), (r, H - 1 - r), (W - 1 - r, H - 1 - r)]:
+        cv2.circle(mask, (cx, cy), r, 255, -1, cv2.LINE_AA)
+    rgba[..., 3] = mask
+    save(rgba, 'tiles', 'bg.webp', quality=90)
+    # 石板透金光：整塊石板像被裡面的光照亮，紋理（亮度）還看得到，中間最亮、邊緣漸漸回到原本的暗石板
+    lum = base.mean(axis=2, keepdims=True)
+    dist = np.sqrt((xx - W * 0.5) ** 2 + (yy - H * 0.45) ** 2)
+    k = np.clip(1 - dist / 230, 0, 1)[..., None] ** 1.2
+    warm = np.array([0.25, 0.68, 1.0], np.float32) * (0.25 + lum * 2.4)
+    lit = base * (1 - k) + warm * k + (np.clip(1 - dist / 110, 0, 1) ** 2.2)[..., None] * np.array([0.5, 0.85, 1.0], np.float32) * 0.6
+    lit = np.clip(lit, 0, 1) * (1 - (np.clip(1 - edge / 22.0, 0, 1) ** 2 * 0.3))[..., None]
+    lit = cv2.cvtColor((np.clip(lit, 0, 1) * 255).astype(np.uint8), cv2.COLOR_BGR2BGRA)
+    lit[..., 3] = mask
+    save(lit, 'tiles', 'bg-lit.webp', quality=90)
+    print('tile bg')
+
+
+def symbols(names):
+    """去背好的符號縮成格子大小的透明圖"""
+    for name in names:
+        rgba = cv2.imread(os.path.join(SRC, f'sym-{name}-cut.png'), cv2.IMREAD_UNCHANGED)
+        if rgba is None or rgba.shape[2] != 4:
+            sys.exit(f'missing sym-{name}-cut.png (run node scripts/auto-slot-symbols.mjs)')
+        save(cv2.resize(rgba, TILE, interpolation=cv2.INTER_AREA), 'tiles', f'{name}.webp', quality=90)
+        print('symbol', name)
 
 
 def key_out(img, bg, lo=10.0, hi=42.0, holes=False):
@@ -159,11 +240,13 @@ def titles():
 
 
 
-def frame():
-    img = load('r-frame.jpg')
+def frame(src='r-frame-aged-c.jpg', out='frame.webp'):
+    img = load(src)
     keyed = key_out(img, (255, 255, 255), lo=8, hi=36, holes=True)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    n, labels, stats, _ = cv2.connectedComponentsWithStats((gray < 22).astype(np.uint8))
+    # 先做一次開運算，深色木頭跟黑色開口只隔著細縫時不會連成一塊
+    dark = cv2.morphologyEx((gray < 14).astype(np.uint8), cv2.MORPH_OPEN, np.ones((9, 9), np.uint8))
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(dark)
     h, w = gray.shape
     x, y, bw, bh = stats[labels[h // 2, w // 2]][:4]
     # 黑色開口要整片不透明（被 holes 挖掉的話補回來）
@@ -171,11 +254,13 @@ def frame():
     ys, xs = np.nonzero(keyed[..., 3] > 8)
     oy, ox = max(ys.min() - 2, 0), max(xs.min() - 2, 0)
     keyed = keyed[oy:ys.max() + 3, ox:xs.max() + 3]
-    # 木框厚度：從開口左緣沿中線往外，走到第一個透明的像素
-    row = keyed[y - oy + bh // 2, :x - ox, 3]
-    clear = np.nonzero(row < 40)[0]
-    wood = int(x - ox - (clear.max() + 1)) if len(clear) else 0
-    save(keyed, 'ui', 'frame.webp', quality=88)
+    # 木框厚度：從開口左緣往外走到第一個透明的像素；中間 40% 的每一行都量，取中位數（做舊的框邊緣有缺角）
+    walls = []
+    for yy in range(y - oy + bh * 3 // 10, y - oy + bh * 7 // 10, 4):
+        clear = np.nonzero(keyed[yy, :x - ox, 3] < 40)[0]
+        walls.append(x - ox - (clear.max() + 1) if len(clear) else x - ox)
+    wood = int(np.median(walls))
+    save(keyed, 'ui', out, quality=88)
     inner = [int(x - ox), int(y - oy), int(x + bw - ox), int(y + bh - oy)]
     print('frame', keyed.shape[1], keyed.shape[0], 'inner', inner, 'wood', wood)
     return {'size': [int(keyed.shape[1]), int(keyed.shape[0])], 'inner': inner, 'wood': wood}
@@ -188,7 +273,9 @@ def floor():
 
 if __name__ == '__main__':
     tiles('r-symbols.jpg', ['wolf', 'raven', 'lantern', 'potion', 'basket', 'key', 'hood', None])
-    tiles('r-royals.jpg', ['ten', 'jack', 'queen', 'king', 'ace'])
+    tiles('r-royals.jpg', LETTERS)
+    symbols(['wolf', 'raven', 'lantern', 'potion', 'basket', 'key', 'hood'] + LETTERS)
+    tile_bg()
     meta = ui_parts()
     meta.update(icons())
     meta['logo'] = logo()
