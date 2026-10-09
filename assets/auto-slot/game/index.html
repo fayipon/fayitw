@@ -157,7 +157,8 @@ body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none
 		const L = meta.layers[name];
 		const ax = L.anchor[0], ay = L.anchor[1];
 		ctx.save();
-		const sway = p >= 1 ? Math.sin(t * 1.3 + (name === 'right' ? 1.7 : 0)) * 0.012 : 0;
+		// 隨風輕擺：幅度跟著生長從 0 慢慢加大，長完時剛好是正常幅度（長完那一格才突然開始擺的話，會看到一格明顯的位移）
+		const sway = Math.sin(t * 1.3 + (name === 'right' ? 1.7 : 0)) * 0.012 * easeOut(p) * easeOut(p);
 		const s = 0.82 + 0.18 * easeOut(p);
 		ctx.translate(ax, ay);
 		ctx.rotate(sway);
