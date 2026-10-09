@@ -1,4 +1,4 @@
-# 自走SLOT 背景音樂：python scripts/auto-slot-music.py（需要 numpy 與 ffmpeg：PATH 上的、環境變數 FFMPEG，或 pip install imageio-ffmpeg）
+# HG-Fable01 -小紅帽 背景音樂：python scripts/auto-slot-music.py（需要 numpy 與 ffmpeg：PATH 上的、環境變數 FFMPEG，或 pip install imageio-ffmpeg）
 # 原曲是 Suno 生成的三首（assets-src/auto-slot/music/*.mp3），這裡做成 Godot 用的檔案 → godot/auto-slot/music/
 # - base.wav：主遊戲迴圈（Box of Shadows）。拍子是八分音符 184.17 BPM（四分 92.085），從 19.764 秒起剛好 204 個八分音符（66.46 秒）
 #   跟後面那段最像（逐格比對和聲與頻譜，找出最像的頭尾），切成一段無縫迴圈

@@ -1,4 +1,4 @@
-// 自走SLOT：把 assets-src/auto-slot/ 的 Leonardo 原檔轉成 Godot 專案與網頁用的圖
+// HG-Fable01 -小紅帽：把 assets-src/auto-slot/ 的 Leonardo 原檔轉成 Godot 專案與網頁用的圖
 // node scripts/auto-slot-assets.mjs（需要先 npm install，用到 sharp；轉輪符號與介面零件由 python scripts/auto-slot-gothic.py 產生）
 // - 自走區（照設計稿的月夜森林）：
 //   遠景 r-far（月亮、松林、亮著燈的村莊、林間小路）不捲動 → godot/auto-slot/art/field/far.webp

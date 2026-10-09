@@ -1,4 +1,4 @@
-// 自走SLOT：用 Leonardo 生成小紅帽美術（Nano Banana Pro），需要去背的再走 remove-bg
+// HG-Fable01 -小紅帽：用 Leonardo 生成小紅帽美術（Nano Banana Pro），需要去背的再走 remove-bg
 // node scripts/auto-slot-leonardo.mjs [只跑這些名稱...]（原檔存到 assets-src/auto-slot/）
 // 已經生成過的（index.json 裡有）會跳過；key 從環境變數 LEONARDO_API_KEY 讀，不會印出來
 // 風格照設計稿 r-ref.jpg（PG Soft 風的動漫小紅帽）：先上傳成參考圖，其他圖都帶它當風格參考

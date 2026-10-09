@@ -1,4 +1,4 @@
-// 自走SLOT 符號去背：node scripts/auto-slot-symbols.mjs [id...]
+// HG-Fable01 -小紅帽 符號去背：node scripts/auto-slot-symbols.mjs [id...]
 // 把 assets-src/auto-slot/sym-<id>.png（auto-slot-ui.py 從符號磚原圖切出來的）上傳到 Leonardo，走 remove-bg，
 // 存成 sym-<id>-cut.png（只留符號本身，背景透明）；遊戲裡所有符號再統一畫同一種底。已經去過背的會跳過
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';

@@ -1,4 +1,4 @@
-# 自走SLOT 介面：把 Leonardo 原檔（assets-src/auto-slot/r-*.jpg）轉成 Godot 用的圖
+# HG-Fable01 -小紅帽 介面：把 Leonardo 原檔（assets-src/auto-slot/r-*.jpg）轉成 Godot 用的圖
 # python scripts/auto-slot-ui.py（需要 numpy、opencv-python）
 # - 符號：白底上的方形滿版磚，找出每一塊切下來、往內縮掉白邊 → assets-src/auto-slot/sym-<id>.png；
 #   每張磚的底和框都不一樣，所以只留符號本身：字母（10 J Q K A）在本機依飽和度切（石板底是灰的、字母很鮮豔），

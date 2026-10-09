@@ -1,4 +1,4 @@
-# 自走SLOT 主畫面（照設計稿，投注區照 PG Soft）：上方自走區（標題字、大野狼血條）、中間細木框 SLOT
+# HG-Fable01 -小紅帽 主畫面（照設計稿，投注區照 PG Soft）：上方自走區（標題字、大野狼血條）、中間細木框 SLOT
 # （頂端是連鎖倍率條）、Feature Buy、Total Win（這一轉的總和）、餘額／押注／贏分（單次）三格、
 # 控制列（TURBO、減、轉動、加、AUTO、選單）；選單鈕打開 PG 風的選單列（Quit、Sound、Paytable、Rules、History、Close，在 menu_bar.gd）；
 # 押注選項、自動旋轉次數、賠率表、規則、轉動紀錄都是從下面滑上來的面板；
@@ -13,6 +13,8 @@ const IconButton := preload("res://scripts/icon_button.gd")
 const BigWin := preload("res://scripts/big_win.gd")
 const MenuStrip := preload("res://scripts/menu_bar.gd")
 const SAVE_PATH := "user://save.cfg"
+# 遊戲改名前（自走SLOT）的存檔資料夾：user:// 跟著專案名稱走，改名後換了資料夾，舊存檔在同一層的這個資料夾
+const LEGACY_USER_DIR := "自走SLOT"
 # 3：金額改成以「分」記、押注改成每線押注（0.01 起）
 const SAVE_VERSION := 3
 # 介面以 430 寬設計，畫面窄或寬時整組等比縮放
@@ -1337,8 +1339,12 @@ func _on_refill() -> void:
 # 舊版存檔（金額單位、押注級距不同）只保留等級與關卡，金幣與押注重新發
 func _load() -> void:
 	var cf := ConfigFile.new()
+	var migrated := false
 	if cf.load(SAVE_PATH) != OK:
-		return
+		var legacy := OS.get_user_data_dir().get_base_dir().path_join(LEGACY_USER_DIR).path_join("save.cfg")
+		if cf.load(legacy) != OK:
+			return
+		migrated = true
 	for k in state:
 		var v = cf.get_value("game", k, state[k])
 		if typeof(v) == typeof(state[k]):
@@ -1348,6 +1354,9 @@ func _load() -> void:
 		state.bet = Rules.DEFAULT_BET
 		state.charge = 0
 	state.bet = clampi(state.bet, 0, Rules.BET_LEVELS.size() - 1)
+	# 從舊資料夾讀到的，馬上存一份到新位置
+	if migrated:
+		_save(true)
 
 
 # 轉動中（含 Free Spins）不存：這一轉的輸贏還沒入帳，存了會跟扣掉的押注對不上；這一轉結束時一起存
