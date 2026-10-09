@@ -11,7 +11,9 @@
 # - 圖示（r-icons）：2 × 2 排，左上錢包、右上金幣堆、左下 WIN 徽章、右下金幣 → art/ui/
 # - 標題字（r-logo，已去背）：切掉透明邊 → art/ui/logo.webp；BIG WIN 三級標題（r-title-*，已去背）→ art/ui/title-*.webp
 # - 轉輪外框（r-frame-aged-c，做舊的破木框；原本的拋光細金框 r-frame 不用了）：白底挖空，量出中間黑色開口與木框厚度，
-#   寫進 art/ui/ui.json 的 "frame"，Godot 依此用九宮格畫外框（四角鐵件放大、四邊木頭重複貼，不拉長）
+#   寫進 art/ui/ui.json 的 "frame"，Godot 依此畫外框的四個角（鐵件放大）；
+#   四邊另外用上邊中段最完整的那段木板（EDGE），兩端交叉淡入做成可以無縫接續的長條 → art/ui/frame-edge.webp，
+#   Godot 把它轉向貼滿四邊（左右兩邊原圖破洞缺角太多，重複貼很難看）
 # - 底部背景（r-floor）：縮成 768 寬 → art/ui/floor.webp
 import json
 import os
@@ -240,6 +242,22 @@ def titles():
 
 
 
+# 四邊用的木板：上邊中段 x 從 EDGE[0] 到 EDGE[1]（裁好的外框圖座標），厚度從外緣到開口往內 EDGE_IN 像素
+EDGE = (290, 680)
+EDGE_IN = 90
+
+
+def frame_edge(keyed, inner_top):
+    """上邊那段木板做成無縫長條：右端最後 30% 疊回左端交叉淡入，接起來就看不出接縫"""
+    strip = keyed[:inner_top + EDGE_IN, EDGE[0]:EDGE[1]].astype(np.float32)
+    w = strip.shape[1]
+    o = int(w * 0.3)
+    out = strip[:, :w - o].copy()
+    t = np.linspace(0, 1, o, dtype=np.float32)[None, :, None]
+    out[:, :o] = strip[:, :o] * t + strip[:, w - o:] * (1 - t)
+    save(np.clip(out, 0, 255).astype(np.uint8), 'ui', 'frame-edge.webp', quality=88)
+
+
 def frame(src='r-frame-aged-c.jpg', out='frame.webp'):
     img = load(src)
     keyed = key_out(img, (255, 255, 255), lo=8, hi=36, holes=True)
@@ -262,6 +280,8 @@ def frame(src='r-frame-aged-c.jpg', out='frame.webp'):
     wood = int(np.median(walls))
     save(keyed, 'ui', out, quality=88)
     inner = [int(x - ox), int(y - oy), int(x + bw - ox), int(y + bh - oy)]
+    if out == 'frame.webp':
+        frame_edge(keyed, inner[1])
     print('frame', keyed.shape[1], keyed.shape[0], 'inner', inner, 'wood', wood)
     return {'size': [int(keyed.shape[1]), int(keyed.shape[0])], 'inner': inner, 'wood': wood}
 

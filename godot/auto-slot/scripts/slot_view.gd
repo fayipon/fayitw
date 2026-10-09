@@ -20,6 +20,8 @@ const PAD := 6.0
 # 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的鐵件整塊保留；四角放大這麼多倍才看得清楚
 const CORNER := 90.0
 const CORNER_SCALE := 1.5
+# 四邊的木板沿木紋拉長幾倍（段數少一點，重複的節瘤才不會太密）
+const EDGE_STRETCH := 1.6
 # 吊胃口：每一軸輪到後獨自轉的秒數（turbo 時短一點；音效 tease 也是這個長度）、這期間的轉速（格／秒）、
 # 最後煞車的秒數；停輪回彈的秒數
 const TEASE_SLOW := 1.8
@@ -149,8 +151,8 @@ func tile_center(i: int) -> Vector2:
 
 # ---------- 外框 ----------
 
-# 外框用九宮格畫：四邊的木頭照 _frame_scale 縮放後沿著邊重複貼（不拉長，裂紋、鐵條才不會變形），
-# 四角（含鐵件）放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋在四邊上；中間開口畫深色底。
+# 外框：四邊用無縫木板長條（art/ui/frame-edge.webp，外緣在上）轉向貼滿，每邊重複幾段、沿木紋稍微拉長；
+# 四角（含鐵件）從 frame.webp 切下來放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋住木板的頭尾；中間開口畫深色底。
 # 外框畫在轉輪底下，四角往內多出來的部分會被格子蓋住
 func _draw() -> void:
 	var tex := Art.ui("frame")
@@ -164,11 +166,11 @@ func _draw() -> void:
 	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
 	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05070c"))
-	# 上下兩邊橫著貼、左右兩邊直著貼
-	for j in [0, 2]:
-		_tile(tex, Rect2(us[1], vs[j], us[2] - us[1], vs[j + 1] - vs[j]), Rect2(xs[1], ys[j], xs[2] - xs[1], ys[j + 1] - ys[j]), true)
-	for i in [0, 2]:
-		_tile(tex, Rect2(us[i], vs[1], us[i + 1] - us[i], vs[2] - vs[1]), Rect2(xs[i], ys[1], xs[i + 1] - xs[i], ys[2] - ys[1]), false)
+	# 上（外緣朝上）、下（轉 180 度）、左（轉 -90 度，外緣朝左）、右（轉 90 度）
+	_edge(Vector2(xs[1], ys[0]), xs[2] - xs[1], 0.0)
+	_edge(Vector2(xs[2], ys[3]), xs[2] - xs[1], PI)
+	_edge(Vector2(xs[0], ys[2]), ys[2] - ys[1], -PI / 2.0)
+	_edge(Vector2(xs[3], ys[1]), ys[2] - ys[1], PI / 2.0)
 	var cs := s * CORNER_SCALE
 	for i in [0, 2]:
 		for j in [0, 2]:
@@ -178,19 +180,17 @@ func _draw() -> void:
 			draw_texture_rect_region(tex, Rect2(at, sz), src)
 
 
-# 把原圖的 src 一段段重複貼滿 dst（horizontal 時沿 x 貼，否則沿 y）；最後一段只取需要的長度
-func _tile(tex: Texture2D, src: Rect2, dst: Rect2, horizontal: bool) -> void:
+# 一邊的木板：從 origin 沿著轉 rot 之後的 x 方向貼 length 長；段數取整數、每段平均分（接縫剛好落在長條的頭尾，看不出來）
+func _edge(origin: Vector2, length: float, rot: float) -> void:
+	var edge := Art.ui("frame-edge")
 	var s := _frame_scale
-	var step := (src.size.x if horizontal else src.size.y) * s
-	var length := dst.size.x if horizontal else dst.size.y
-	var t := 0.0
-	while t < length - 0.01:
-		var n := minf(step, length - t)
-		if horizontal:
-			draw_texture_rect_region(tex, Rect2(dst.position.x + t, dst.position.y, n, dst.size.y), Rect2(src.position, Vector2(n / s, src.size.y)))
-		else:
-			draw_texture_rect_region(tex, Rect2(dst.position.x, dst.position.y + t, dst.size.x, n), Rect2(src.position, Vector2(src.size.x, n / s)))
-		t += step
+	var thick := edge.get_height() * s
+	var n := maxi(1, roundi(length / (edge.get_width() * s * EDGE_STRETCH)))
+	var seg := length / n
+	draw_set_transform(origin, rot, Vector2.ONE)
+	for k in n:
+		draw_texture_rect(edge, Rect2(k * seg, 0, seg, thick), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 # ---------- 轉輪 ----------
