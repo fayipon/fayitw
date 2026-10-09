@@ -1,10 +1,15 @@
 # 上方自走區（照設計稿的月夜森林）：遠景（月亮、亮著燈的村莊、林間小路）固定、霧氣慢慢飄、
 # 近景（左右的大樹、前景地面）一直往左捲；紅葉從上面飄下來。
-# 小紅帽自己往前跑，遇到大野狼就停下來擺架式；每一段連鎖的中獎變成一次衝上去的揮砍，狼倒下時從邊緣燒成灰
+# 小紅帽自己往前跑，遇到大野狼就停下來擺架式；每一段連鎖的中獎變成一次出招（連擊段數越多招式越多），狼倒下時從邊緣燒成灰；
+# 第 2 段連擊起上方出現格鬥遊戲式的連擊計數
 extends Control
+
+# 重斬、落地重劈時要畫面震動（main 接到 _shake）
+signal quake(amount: float)
 
 const Art := preload("res://scripts/art.gd")
 const Fighter := preload("res://scripts/fighter.gd")
+const ComboCounter := preload("res://scripts/combo_counter.gd")
 
 # 每關的月光顏色：藍、紫、血月
 const TINTS := [Color.WHITE, Color(0.92, 0.84, 1.0), Color(1.0, 0.78, 0.76)]
@@ -20,9 +25,12 @@ const HERO_X := 0.22
 const WOLF_X := 0.78
 const HERO_MAX_W := 0.46
 const WOLF_MAX_W := 0.42
+# 出招時的殘影顏色（疊加混色）
+const GHOST := Color(1.0, 0.32, 0.22, 0.5)
 
 var scroll := 0.0
 var walking := true
+var turbo := false
 var tint := Color.WHITE
 var hero: Node2D
 var enemy: Node2D = null
@@ -47,6 +55,10 @@ var _t := 0.0
 # 小紅帽衝出去／退回來、狼人走進場：畫面縮放時要能停掉並放回原位
 var _lunge: Tween
 var _enter: Tween
+# 這一招的速度倍率（turbo 0.6）、是不是大獎
+var _sp := 1.0
+var _crit := false
+var _combo: Node2D
 
 
 func _ready() -> void:
@@ -89,6 +101,9 @@ func _ready() -> void:
 	_tag = _make_tag()
 	_tag.z_index = 12
 	add_child(_tag)
+	_combo = ComboCounter.new()
+	_combo.z_index = 13
+	add_child(_combo)
 	hero.aura_color = Color(1.0, 0.72, 0.25)
 	resized.connect(layout)
 
@@ -291,38 +306,181 @@ func enemy_center() -> Vector2:
 	return enemy.position + Vector2(0, -enemy.height * 0.5)
 
 
-# 小紅帽衝上去揮砍：中獎越多砍越多刀
-func strike(count: int) -> void:
+# 小紅帽出招：連擊段數（level）越多招式越多——
+# 1 衝上去一刀；2 交叉兩刀；3 再接升龍斬（跳起往上砍）；4 亂舞五刀拖殘影、收一記重斬；
+# 5 以上亂舞後穿過狼身來回各兩刀，再跳起轉身落地重劈。每一刀狼都會閃一下、噴火花；
+# crit（大獎）刀光更大、震得更兇；turbo 時整套快一點
+func strike(level: int, crit := false) -> void:
 	if not enemy:
 		return
+	_sp = 0.6 if turbo else 1.0
+	_crit = crit
 	var home := size.x * HERO_X
-	var reach := lerpf(home, enemy.position.x - enemy.height * 0.3, 0.62)
-	# 上一刀還在退回來的話直接接著衝
+	# 上一招還在退回來的話直接接著衝
 	if _lunge:
 		_lunge.kill()
 	hero.set_pose("slash")
-	_lunge = create_tween()
-	_lunge.tween_property(hero, "position:x", reach, 0.11).set_ease(Tween.EASE_OUT)
-	await _lunge.finished
+	await _dash(_reach(), 0.11, level >= 3)
 	Sfx.play("throw")
-	for k in count:
-		_slash(enemy_center() + Vector2(_rng.randf_range(-14, 14), _rng.randf_range(-30, 24)), k)
-		if k < count - 1:
-			await get_tree().create_timer(0.07).timeout
-	await get_tree().create_timer(0.1).timeout
+	if level <= 1:
+		await _cut(0)
+	elif level == 2:
+		await _cut(0, -0.7)
+		await _cut(1, 0.7)
+	elif level == 3:
+		await _cut(0, -0.7)
+		await _cut(1, 0.7)
+		await _rising()
+	elif level == 4:
+		await _flurry(5)
+		await _heavy()
+	else:
+		await _flurry(3)
+		await _phantom()
+		await _plunge()
+	await _wait(0.08)
+	# 退回原位
+	hero.tilt = 0.0
+	hero.face(1.0)
 	_lunge = create_tween()
-	_lunge.tween_property(hero, "position:x", home, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_lunge.tween_property(hero, "position:x", home, 0.24 * _sp).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_lunge.tween_callback(func():
 		if hero.pose == "slash":
 			hero.set_pose("run" if walking else "stance"))
 
 
-# 一道刀光：白芯紅邊的新月形，張開後淡掉
-func _slash(at: Vector2, k: int) -> void:
+# 衝刺停下來砍的位置：狼前面一點
+func _reach() -> float:
+	return lerpf(size.x * HERO_X, enemy.position.x - enemy.height * 0.3, 0.62)
+
+
+func _wait(t: float) -> void:
+	await get_tree().create_timer(t * _sp).timeout
+
+
+# 衝到 x（往前傾）；trail 時一路留殘影
+func _dash(x: float, t: float, trail: bool) -> void:
+	hero.tilt = 0.12 * signf(x - hero.position.x)
+	_lunge = create_tween()
+	_lunge.tween_property(hero, "position:x", x, t * _sp).set_ease(Tween.EASE_OUT)
+	if trail:
+		var n := 4
+		for i in n:
+			_lunge.parallel().tween_callback(func(): hero.ghost(GHOST, 0.28)).set_delay(t * _sp * i / n)
+	await _lunge.finished
+	hero.tilt = 0.0
+
+
+# 一刀：在狼身上畫刀光，狼閃一下、噴火花；k 決定刀光方向（沒給 angle 時隨機）
+func _cut(k: int, angle := INF, big := 1.0) -> void:
+	if not enemy:
+		return
+	# 揮刀的手感：先收一下刀（換站姿）再砍出去，往前踏一小步
+	hero.set_pose("stance")
+	await get_tree().create_timer(0.03 * _sp).timeout
+	hero.set_pose("slash")
+	hero.position.x += 5.0
+	var a := angle if angle != INF else _rng.randf_range(-1.0, 1.0) + (k % 2) * 0.9
+	var at := enemy_center() + Vector2(_rng.randf_range(-14, 14), _rng.randf_range(-30, 24))
+	_slash(at, a, big * (1.25 if _crit else 1.0))
+	_burst(at, Color("ffb070"), 8)
+	enemy.hurt(0.45)
+	Sfx.play("hit", 1.1 + k * 0.06, -7.0)
+	await get_tree().create_timer(0.09 * _sp).timeout
+
+
+# 亂舞：n 刀連砍，身體前後抖、每刀留殘影
+func _flurry(n: int) -> void:
+	for k in n:
+		hero.ghost(GHOST, 0.22)
+		hero.position.x += -10.0 if k % 2 else 6.0
+		await _cut(k)
+
+
+# 升龍斬：跳起來往上砍一刀（刀光直的），再落地
+func _rising() -> void:
+	var up := create_tween()
+	up.tween_property(hero, "hop_y", hero.height * 0.45, 0.16 * _sp).set_ease(Tween.EASE_OUT)
+	for i in 3:
+		up.parallel().tween_callback(func(): hero.ghost(GHOST, 0.25)).set_delay(0.05 * _sp * i)
+	await get_tree().create_timer(0.06 * _sp).timeout
+	await _cut(2, -PI * 0.5, 1.3)
+	# 砍完時往上跳的補間可能已經結束了（finished 已經發過），還在跑才等
+	if up.is_running():
+		await up.finished
+	var down := create_tween()
+	down.tween_property(hero, "hop_y", 0.0, 0.18 * _sp).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	await down.finished
+
+
+# 重斬：往後收一下，再一記橫的大刀光，畫面震
+func _heavy() -> void:
+	var back := create_tween()
+	back.tween_property(hero, "position:x", hero.position.x - 16.0, 0.08 * _sp)
+	await back.finished
+	hero.ghost(GHOST, 0.3)
+	hero.position.x += 22.0
+	await _cut(0, 0.0, 1.7)
+	_burst(enemy_center(), Art.GOLD, 22)
+	quake.emit(8.0 if _crit else 5.0)
+
+
+# 穿身斬：拖著殘影穿過狼到另一邊（途中兩刀），轉身再穿回來（再兩刀）
+func _phantom() -> void:
+	var far := minf(enemy.position.x + enemy.height * 0.45, size.x * 0.95)
+	await _pass(far, 1.0)
+	hero.face(-1.0)
+	await _wait(0.06)
+	await _pass(_reach(), -1.0)
+	hero.face(1.0)
+
+
+func _pass(x: float, dir: float) -> void:
+	hero.tilt = 0.14 * dir
+	var tw := create_tween()
+	tw.tween_property(hero, "position:x", x, 0.16 * _sp).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	for i in 5:
+		tw.parallel().tween_callback(func(): hero.ghost(GHOST, 0.3)).set_delay(0.032 * _sp * i)
+	await get_tree().create_timer(0.07 * _sp).timeout
+	if enemy:
+		var at := enemy_center()
+		_slash(at, -0.6 * dir, 1.2)
+		_slash(at + Vector2(0, 10), 0.6 * dir, 1.2)
+		_burst(at, Color("ffb070"), 12)
+		enemy.hurt(0.7)
+		Sfx.play("hit", 1.25, -5.0)
+	await tw.finished
+	hero.tilt = 0.0
+
+
+# 落地重劈：跳很高、空中轉一圈，從上往下劈，落地時畫面大震、噴一圈金火花
+func _plunge() -> void:
+	var tw := create_tween()
+	tw.tween_property(hero, "hop_y", hero.height * 0.5, 0.2 * _sp).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(hero, "position:x", _reach() - 10.0, 0.2 * _sp)
+	tw.tween_property(hero, "turn", -1.0, 0.07 * _sp)
+	tw.tween_property(hero, "turn", 1.0, 0.07 * _sp)
+	tw.tween_callback(func(): hero.ghost(GHOST, 0.3))
+	tw.tween_property(hero, "hop_y", 0.0, 0.09 * _sp).set_ease(Tween.EASE_IN)
+	await tw.finished
+	hero.turn = 1.0
+	if not enemy:
+		return
+	var at := enemy_center()
+	_slash(at, PI * 0.5, 1.9)
+	_burst(at, Art.GOLD, 30)
+	_burst(Vector2(at.x, ground), Color("ffb070"), 20)
+	enemy.hurt(1.2)
+	Sfx.play("hit", 0.8, 0.0)
+	quake.emit(12.0 if _crit else 8.0)
+
+
+# 一道刀光：白芯紅邊的新月形，張開後淡掉；angle 是刀光的方向、big 是大小
+func _slash(at: Vector2, angle: float, big := 1.0) -> void:
 	var arc := Node2D.new()
 	arc.position = at
-	arc.rotation = -0.5 + _rng.randf_range(-0.35, 0.35) + (k % 2) * 0.9
-	var r := size.y * 0.24
+	arc.rotation = angle
+	var r := size.y * 0.24 * big
 	arc.set_meta("p", 0.0)
 	arc.draw.connect(func():
 		var p: float = arc.get_meta("p")
@@ -337,6 +495,21 @@ func _slash(at: Vector2, k: int) -> void:
 		arc.set_meta("p", v)
 		arc.queue_redraw(), 0.0, 1.0, 0.28)
 	tw.tween_callback(arc.queue_free)
+
+
+# 連擊計數：第 n 段打中（或沒有狼可打、傷害存起來時）；一輪打完收起來
+func combo(n: int) -> void:
+	_combo.home = _combo_home()
+	_combo.hit(n)
+
+
+func end_combo() -> void:
+	_combo.finish()
+
+
+# 計數放在 logo 右邊、兩個角色頭上的夜空
+func _combo_home() -> Vector2:
+	return Vector2(maxf(avoid.end.x + 26.0, size.x * 0.22), size.y * 0.08 + ComboCounter.NUM_SIZE * 0.78)
 
 
 func impact(damage: String, crit: bool) -> void:

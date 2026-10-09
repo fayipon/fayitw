@@ -16,6 +16,7 @@ var recipes := {
 	"click": _click, "spin": _spin, "stop": _stop, "tease": _tease, "win": _win, "pop": _pop, "drop": _drop,
 	"wild": _wild, "mult": _mult, "throw": _throw, "hit": _hit, "defeat": _defeat, "coin": _coin,
 	"big": _big, "bonus": _bonus, "level": _level, "step": _step, "start": _start,
+	"scatter": _scatter,
 }
 
 
@@ -137,10 +138,32 @@ func _stop() -> PackedFloat32Array:
 	return b
 
 
+# SCATTER 差一個時吊胃口：越拉越高、越來越大聲的嗡鳴，加上越打越密的鼓點；
+# 長度剛好是 slot_view 的 TEASE_SLOW（1.8 秒，turbo 時兩倍速播），停輪那一刻剛好結束
 func _tease() -> PackedFloat32Array:
-	var b := _buf(1.0)
-	for k in 10:
-		_tone(b, k * 0.09, 0.12, 600 + k * 70, 640 + k * 70, 0.18, "tri", 0.005, 0.06)
+	var dur := 1.8
+	var b := _buf(dur + 0.05)
+	_tone(b, 0, dur, 110, 330, 0.2, "tri", dur * 0.9, 0.04)
+	_tone(b, 0, dur, 165, 495, 0.08, "square", dur * 0.9, 0.04)
+	_noise(b, 0, dur, 0.18, 0.2, dur * 0.95, 0.04)
+	var at := 0.0
+	var gap := 0.17
+	while at < dur - 0.04:
+		var loud := 0.35 + 0.45 * at / dur
+		_tone(b, at, 0.07, 170, 70, loud, "sine", 0.001, 0.06)
+		_noise(b, at, 0.03, loud * 0.5, 0.45, 0.001, 0.025)
+		at += gap
+		gap = maxf(0.05, gap * 0.88)
+	return b
+
+
+# SCATTER 落定：亮晶晶的上行和弦加一點撞擊聲
+func _scatter() -> PackedFloat32Array:
+	var b := _buf(0.9)
+	_tone(b, 0, 0.18, 160, 60, 0.6, "sine", 0.001, 0.14)
+	for k in 4:
+		var f: float = [784.0, 988.0, 1175.0, 1568.0][k]
+		_tone(b, 0.02 + k * 0.05, 0.6, f, f, 0.16, "tri", 0.003, 0.45)
 	return b
 
 

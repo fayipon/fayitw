@@ -1,5 +1,6 @@
 # 冒煙測試：載入主畫面 → 等音效合成完自動開始 → 轉幾次 → 直接跑一輪 Free Spins，確認不會卡住或報錯；
-# 最後檢查傷害不會浪費：打倒時多出來的、走路時打的都存起來，下一隻狼站定時一次打出去
+# 再檢查傷害不會浪費：打倒時多出來的、走路時打的都存起來，下一隻狼站定時一次打出去；
+# 最後連出第 1～6 段連擊的招式，確認每一招都會打完、連擊計數會收起來
 # godot --headless --path godot/auto-slot --script res://tests/smoke.gd
 extends SceneTree
 
@@ -57,8 +58,19 @@ func _process(_delta: float) -> bool:
 			# 下一隻站定：80 點一次打出去
 			if _settled():
 				expect(main.state.charge == 0 and main.enemy.max_hp - main.enemy.hp == 80, "stored damage hits the next wolf")
+				for n in range(1, 7):
+					main._queue_attack(1, n >= 5, n)
+				# 第一個 _queue_attack 已經把佇列跑起來了，收尾記號排在最後就好
+				main._queue.append([0, false, false, -1])
+				phase = 9
+				end_at = frames + 3000
+		9:
+			if not main._working:
+				expect(main.enemy.max_hp - main.enemy.hp == 86, "combo moves 1-6 all finish (damage %d)" % (main.enemy.max_hp - main.enemy.hp))
 				phase = 8
 				end_at = frames + 120
+			elif frames >= end_at:
+				expect(false, "combo moves 1-6 all finish (stuck)")
 		8:
 			# 等刀光、跳字這些動畫跑完再結束
 			if frames >= end_at:

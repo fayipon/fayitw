@@ -1,5 +1,6 @@
 # 盤面上的一格：滿版的符號磚圖（WILD、金鑰匙、大野狼的框已經畫在圖上）；金框符號加一圈古金框與四角紅寶石；
 # WILD、SCATTER（金鑰匙）底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
+# 轉動中有動態模糊：同一張圖往下錯開疊幾層（越下面越新、越清楚），模糊時字樣、金框、光框先不畫
 extends Control
 
 const Rules := preload("res://scripts/rules.gd")
@@ -15,6 +16,11 @@ var dim := false:
 	set(v):
 		dim = v
 		modulate = Color(0.38, 0.36, 0.4) if v else Color.WHITE
+# 動態模糊拉長的像素（slot_view 依轉速設定，停下來是 0）
+var blur := 0.0:
+	set(v):
+		blur = v
+		queue_redraw()
 
 static var _glow_box: StyleBoxFlat
 
@@ -32,6 +38,12 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
+	if blur > 6.0:
+		var tex := Art.symbol(id)
+		draw_texture_rect(tex, Rect2(r.position - Vector2(0, blur * 0.5), r.size), false)
+		for k in 6:
+			draw_texture_rect(tex, Rect2(r.position + Vector2(0, lerpf(-0.5, 0.5, (k + 1) / 6.0) * blur), r.size), false, Color(1, 1, 1, 0.34))
+		return
 	draw_texture_rect(Art.symbol(id), r, false)
 	if gold:
 		_gold_frame(r)

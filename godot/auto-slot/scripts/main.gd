@@ -121,6 +121,14 @@ func _ready() -> void:
 	slot.z_index = 20
 	add_child(slot)
 	slot.turbo = state.turbo
+	field.turbo = state.turbo
+	field.quake.connect(_shake)
+	# SCATTER 差一個：吊胃口時自走區壓暗；湊滿 3 個時畫面震一下
+	slot.tension.connect(func(on: bool):
+		create_tween().tween_property(field, "modulate", Color(0.42, 0.42, 0.5) if on else Color.WHITE, 0.3))
+	slot.scatter_landed.connect(func(count: int):
+		if count >= 3:
+			_shake(10.0))
 	_ladder = _build_ladder()
 	_ladder.z_index = 22
 	add_child(_ladder)
@@ -399,8 +407,11 @@ func _build_buy() -> Button:
 func _build_total() -> Control:
 	var tex := Art.ui("panel")
 	var bar := _painter(func(c: Control): _three_slice(c, tex, Rect2(Vector2.ZERO, c.size), 60.0))
+	# 兩行小字：Cinzel 的行高很高，行距收緊才擠得進框裡
+	var cap_ls := Art.label_settings(11, Art.GOLD, "num", 3, Art.GOLD_INK)
+	cap_ls.line_spacing = -9.0
 	var cap := Art.label("TOTAL
-WIN", Art.label_settings(11, Art.GOLD, "num", 3, Art.GOLD_INK))
+WIN", cap_ls)
 	cap.name = "Cap"
 	bar.add_child(cap)
 	_total_label = Art.label("0", Art.label_settings(24, Art.GOLD_LIGHT, "num", 6, Art.GOLD_INK, 3), HORIZONTAL_ALIGNMENT_LEFT)
@@ -637,6 +648,7 @@ func _set_bet(k: int) -> void:
 func _on_turbo(on: bool) -> void:
 	state.turbo = on
 	slot.turbo = on
+	field.turbo = on
 	Sfx.play("click")
 	toast("Turbo spin on" if on else "Turbo spin off")
 	_save()
@@ -830,11 +842,16 @@ func _round(bet: int) -> Dictionary:
 		_set_win(st.win, true)
 		_set_total(won, true)
 		_step_popup(st)
-		_queue_attack(st.win + (base if k == 0 else 0), st.win >= 5 * tb)
+		# 第 k + 1 段連擊：小紅帽的招式跟著段數變多，第 2 段起自走區出現連擊計數
+		_queue_attack(st.win + (base if k == 0 else 0), st.win >= 5 * tb, k + 1)
 		await get_tree().create_timer(0.36 if state.turbo else 0.62).timeout
 		await slot.cascade(st, k)
 	if res.steps.is_empty():
 		_queue_attack(base, false)
+	# 這一輪的招式都打完才收起連擊計數（排在佇列最後）
+	_queue.append([0, false, false, -1])
+	if not _working:
+		_work()
 	return res
 
 
@@ -889,14 +906,13 @@ func _free_spins(cells: Array, bet: int) -> void:
 	_set_total(fs_total, false)
 
 
-# 每一段中獎上方跳出「+120 ×2」
+# 每一段中獎上方跳出「+120」（倍率看外框頂端的倍率條）
 func _step_popup(st: Dictionary) -> void:
 	var at := Vector2.ZERO
 	for i in st.cells:
 		at += slot.tile_center(i)
 	at = slot.position + at / st.cells.size()
-	var text := "+%s" % Art.money(st.win) + ("  ×%d" % st.mult if st.mult > 1 else "")
-	var l := Art.label(text, Art.label_settings(26 if st.mult > 1 else 22, Art.GOLD_LIGHT, "num", 7, Art.GOLD_INK, 3))
+	var l := Art.label("+%s" % Art.money(st.win), Art.label_settings(24, Art.GOLD_LIGHT, "num", 7, Art.GOLD_INK, 3))
 	l.size = Vector2(260, 44)
 	l.position = at - l.size / 2.0
 	l.pivot_offset = l.size / 2.0
@@ -951,13 +967,14 @@ func _meet() -> void:
 	enemy_ready = true
 	# 走路時存起來的傷害：狼一站定就先打出去
 	if state.charge > 0 and not enemy.is_empty():
-		_queue.push_front([0, false, true])
+		_queue.push_front([0, false, true, 0])
 		if not _working:
 			_work()
 
 
-func _queue_attack(damage: int, crit: bool) -> void:
-	_queue.append([damage, crit, false])
+# combo 是這一輪的第幾段連擊（決定出什麼招）；佇列裡 combo = -1 是「這一輪打完了」
+func _queue_attack(damage: int, crit: bool, combo := 1) -> void:
+	_queue.append([damage, crit, false, combo])
 	if not _working:
 		_work()
 
@@ -966,13 +983,17 @@ func _work() -> void:
 	_working = true
 	while not _queue.is_empty():
 		var a: Array = _queue.pop_front()
-		await _attack(a[0], a[1], a[2])
+		if a[3] < 0:
+			field.end_combo()
+			continue
+		await _attack(a[0], a[1], a[2], a[3])
 	_working = false
 
 
 # 打一下。沒有狼可以打（走路中、狼還在走進場、前一刀剛打倒）時傷害不浪費，先存進 state.charge；
-# release 是狼站定時把存的傷害一刀打出去。打倒時多出來的傷害也存起來，大獎可以一路連殺好幾隻
-func _attack(damage: int, crit: bool, release := false) -> void:
+# release 是狼站定時把存的傷害一口氣打出去（出 4 段的招）。打倒時多出來的傷害也存起來，大獎可以一路連殺好幾隻；
+# combo 是第幾段連擊：段數越多招式越多，打中（或存起來）時更新連擊計數
+func _attack(damage: int, crit: bool, release := false, combo := 1) -> void:
 	var tb := Rules.total_bet(Rules.BET_LEVELS[state.bet])
 	if release:
 		if enemy.is_empty() or not enemy_ready or state.charge <= 0:
@@ -982,9 +1003,12 @@ func _attack(damage: int, crit: bool, release := false) -> void:
 		state.charge = 0
 		field.release_charge()
 	elif enemy.is_empty() or not enemy_ready:
+		field.combo(combo)
 		_store(damage)
 		return
-	await field.strike(3 if release else clampi(1 + damage / maxi(tb, 1), 1, 3))
+	await field.strike(4 if release else combo, crit)
+	if not release:
+		field.combo(combo)
 	if enemy.is_empty():
 		_store(damage)
 		return
@@ -1453,12 +1477,36 @@ func _boot() -> void:
 	await Sfx.build_all(func(p: float): _web("asProgress", p))
 	started = true
 	_web("asReady", 1.0)
-	# 預覽 BIG WIN 演出：網址帶 ?bigwin 時一進遊戲就演一次總押注 60 倍（只是演出，不動餘額）
-	if OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("bigwin"):
+	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN；
+	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
+	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）
+	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
+	if search.contains("bigwin"):
 		var tb := Rules.total_bet(Rules.BET_LEVELS[state.bet])
 		busy = true
 		await _big_win(60 * tb, tb)
 		busy = false
+	if search.contains("tease"):
+		var board := Rules.spin_board(rng)
+		for c in Rules.COLS:
+			for r in Rules.ROWS:
+				if Rules.is_scatter(board[r * Rules.COLS + c].id):
+					board[r * Rules.COLS + c] = {"id": "ten", "gold": false}
+		for at in [[1, 0], [2, 1], [0, 3]]:
+			board[at[0] * Rules.COLS + at[1]] = {"id": "key", "gold": false}
+		busy = true
+		Sfx.play("spin")
+		await slot.spin(board)
+		busy = false
+	if search.contains("combo"):
+		while enemy.is_empty() or not enemy_ready:
+			await get_tree().process_frame
+		var from := maxi(1, search.get_slice("combo=", 1).get_slice("&", 0).to_int()) if search.contains("combo=") else 1
+		for n in range(from, 7):
+			_queue_attack(1, n >= 5, n)
+		_queue.append([0, false, false, -1])
+		if not _working:
+			_work()
 
 
 # 通知網頁外殼（web/shell.html）的 loading 畫面：進度、可以收起來了

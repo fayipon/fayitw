@@ -1,5 +1,6 @@
 # 自走區的角色（設計稿的動漫風立繪）：一張圖一個姿勢，動作用程式做——
-# 跑步上下彈、站著呼吸、揮砍時往前衝、被打時閃紅後退、倒下時從邊緣燒成灰（溶解 shader）
+# 跑步上下彈、站著呼吸、揮砍時往前衝、被打時閃紅後退、倒下時從邊緣燒成灰（溶解 shader）；
+# 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）
 extends Node2D
 
 const SHADER := preload("res://scripts/fighter.gdshader")
@@ -17,6 +18,8 @@ var aura_color := Color(0.8, 0.05, 0.05)
 var kick_x := 0.0           # 被打往後退
 var hop_y := 0.0            # 跳一下
 var fade := 1.0             # 燒成灰時影子與光暈一起淡掉
+var turn := 1.0             # 水平縮放：1 → -1 → 1 看起來像原地轉一圈
+var tilt := 0.0             # 以腳底為軸前傾（衝刺時）
 
 var _sprite: Sprite2D
 var _mat: ShaderMaterial
@@ -26,6 +29,7 @@ var _base_x := 0.0
 var _move: Tween
 var _lift := 0.0
 var _breath := 0.0
+var _rot := 0.0
 
 
 func _init(textures: Dictionary, first: String) -> void:
@@ -85,12 +89,13 @@ func _process(delta: float) -> void:
 		# 跑步：一步一彈、身體微微前傾
 		var step := absf(sin(_t * 9.0))
 		_lift = step * height * 0.035
-		rotation = sin(_t * 9.0) * 0.025
+		_rot = sin(_t * 9.0) * 0.025
 		_breath = 0.0
 	else:
 		_lift = move_toward(_lift, 0.0, delta * 60.0)
-		rotation = move_toward(rotation, 0.0, delta)
+		_rot = move_toward(_rot, 0.0, delta)
 		_breath = sin(_t * 2.4) * 0.012
+	rotation = _rot + tilt
 	_apply()
 	queue_redraw()
 
@@ -98,8 +103,9 @@ func _process(delta: float) -> void:
 func _apply() -> void:
 	if _sprite and _sprite.texture:
 		var sy := _s * (1.0 + _breath)
-		_sprite.scale.y = sy
-		_sprite.position = Vector2(_base_x + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
+		var flip := (facing < 0.0) != flip_source
+		_sprite.scale = Vector2((-_s if flip else _s) * turn, sy)
+		_sprite.position = Vector2(_base_x * turn + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
 
 
 # 腳下的影子（有光暈的話身後再加一圈光）
@@ -115,11 +121,37 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-# 被打：閃紅、往後退一點再回來
+# 換面向（1 向右、-1 向左）
+func face(dir: float) -> void:
+	facing = dir
+	_fit()
+
+
+# 殘影：照現在的樣子複製一張圖（疊加混色、染色），留在原地淡掉；衝刺、連段時用
+func ghost(color: Color, life := 0.3) -> void:
+	if not _sprite or not _sprite.texture or not get_parent():
+		return
+	var g := Sprite2D.new()
+	g.texture = _sprite.texture
+	g.centered = false
+	g.transform = transform * _sprite.transform
+	g.modulate = color
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	g.material = m
+	get_parent().add_child(g)
+	get_parent().move_child(g, get_index())
+	var tw := g.create_tween()
+	tw.tween_property(g, "modulate:a", 0.0, life)
+	tw.tween_callback(g.queue_free)
+
+
+# 被打：閃紅（越重閃越紅，連段的小刀只閃一點）、往後退一點再回來
 func hurt(strength := 1.0) -> void:
-	_mat.set_shader_parameter("flash", 1.0)
+	var f := clampf(strength * 0.7, 0.25, 1.0)
+	_mat.set_shader_parameter("flash", f)
 	var tw := create_tween()
-	tw.tween_method(func(v: float): _mat.set_shader_parameter("flash", v), 1.0, 0.0, 0.3)
+	tw.tween_method(func(v: float): _mat.set_shader_parameter("flash", v), f, 0.0, 0.3)
 	_restart_move()
 	_move.tween_property(self, "kick_x", facing * -height * 0.08 * strength, 0.06)
 	_move.tween_property(self, "kick_x", 0.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
