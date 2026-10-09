@@ -121,7 +121,7 @@ func _ready() -> void:
 	_floor.texture = Art.ui("floor")
 	_floor.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_floor.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_floor.modulate = Color(0.85, 0.85, 0.9)
+	_floor.modulate = Color(0.9, 0.88, 0.84)
 	_floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_floor)
 	var fade := _painter(func(c: Control):
@@ -141,7 +141,7 @@ func _ready() -> void:
 	field.quake.connect(_shake)
 	# SCATTER 差一個：吊胃口時自走區壓暗；湊滿 3 個時畫面震一下
 	slot.tension.connect(func(on: bool):
-		create_tween().tween_property(field, "modulate", Color(0.42, 0.42, 0.5) if on else Color.WHITE, 0.3))
+		create_tween().tween_property(field, "modulate", Color(0.46, 0.42, 0.38) if on else Color.WHITE, 0.3))
 	# SCATTER 落下時小紅帽的劍點火（Free Spins 中一直是最旺的烈焰）
 	slot.scatter_landed.connect(func(count: int):
 		field.scatter_fire(maxi(count, 3) if free else count)
@@ -357,7 +357,7 @@ func _build_ladder() -> Control:
 	var l := _painter(func(c: Control):
 		var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
 		var r := Rect2(Vector2.ZERO, c.size)
-		var sb := Art.box(Color(0.03, 0.04, 0.08, 0.94), int(c.size.y / 2.0), 1, Art.GOLD_DEEP)
+		var sb := Art.box(Color(0.16, 0.09, 0.04, 0.94), int(c.size.y / 2.0), 1, Art.GOLD_DEEP)
 		sb.shadow_color = Color(0, 0, 0, 0.6)
 		sb.shadow_size = 5
 		c.draw_style_box(sb, r)
@@ -1404,7 +1404,7 @@ func _make_sheet(title: String, scroll := false) -> Control:
 	sheet.add_child(dim)
 	var panel := PanelContainer.new()
 	panel.name = "Panel"
-	var sb := Art.box(Color("0b1019"), 16, 1, Art.PANEL_EDGE)
+	var sb := Art.box(Color("24150b"), 16, 1, Art.PANEL_EDGE)
 	sb.corner_radius_bottom_left = 0
 	sb.corner_radius_bottom_right = 0
 	sb.border_width_top = 2
@@ -1508,9 +1508,9 @@ func _choice(big: String, small: String, selected: bool, on_press: Callable) -> 
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.add_theme_font_override("font", Art.font())
 	b.add_theme_font_size_override("font_size", 17)
-	var normal := Art.box(Color("131b2b"), 10, 1, Art.PANEL_EDGE)
+	var normal := Art.box(Color("33200f"), 10, 1, Art.PANEL_EDGE)
 	var on := Art.box(Color("7a0c12"), 10, 2, Art.GOLD)
-	var hover := Art.box(Color("1b2638"), 10, 1, Art.GOLD)
+	var hover := Art.box(Color("452c16"), 10, 1, Art.GOLD)
 	var base := on if selected else normal
 	for st in ["normal", "focus"]:
 		b.add_theme_stylebox_override(st, base)

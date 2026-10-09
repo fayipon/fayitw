@@ -1,12 +1,13 @@
 // HG-Fable01 -小紅帽 符號去背：node scripts/auto-slot-symbols.mjs [id...]
-// 把 assets-src/auto-slot/sym-<id>.png（auto-slot-ui.py 從符號磚原圖切出來的）上傳到 Leonardo，走 remove-bg，
-// 存成 sym-<id>-cut.png（只留符號本身，背景透明）；遊戲裡所有符號再統一畫同一種底。已經去過背的會跳過
+// 把 assets-src/auto-slot/s-sym-<id>.png（auto-slot-ui.py 從符號磚原圖切出來的）上傳到 Leonardo，走 remove-bg，
+// 存成 s-sym-<id>-cut.png（只留符號本身，背景透明）；遊戲裡再畫在羊皮紙底上。已經去過背的會跳過
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const key = process.env.LEONARDO_API_KEY;
 if (!key) { console.log('no key'); process.exit(1); }
 const dir = 'assets-src/auto-slot';
-const ALL = ['wolf', 'raven', 'lantern', 'potion', 'basket', 'key', 'hood', 'ten', 'jack', 'queen', 'king', 'ace'];
+// 繪本奇幻版只有金鑰匙要去背（圖案符號是整塊木框圖塊、WILD 是整塊金框肖像、字母在本機切）
+const ALL = ['key'];
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 const H = { authorization: `Bearer ${key}`, accept: 'application/json', 'content-type': 'application/json' };
 const balance = async () => (await (await fetch('https://cloud.leonardo.ai/api/rest/v1/me', { headers: H })).json())?.user_details?.[0]?.apiPaidTokens;
@@ -24,9 +25,9 @@ async function upload(file) {
 
 const start = await balance();
 for (const id of ids) {
-  const out = `${dir}/sym-${id}-cut.png`;
+  const out = `${dir}/s-sym-${id}-cut.png`;
   if (existsSync(out)) { console.log('skip', id); continue; }
-  const imageId = await upload(`${dir}/sym-${id}.png`);
+  const imageId = await upload(`${dir}/s-sym-${id}.png`);
   if (!imageId) { console.log(id, 'upload failed'); continue; }
   const body = { model: 'remove-bg', public: false, parameters: { format: 'png', guidances: { image_reference: [{ image: { id: imageId, type: 'UPLOADED' } }] } } };
   const r = await fetch('https://cloud.leonardo.ai/api/rest/v2/generationssync', { method: 'POST', headers: H, body: JSON.stringify(body) });

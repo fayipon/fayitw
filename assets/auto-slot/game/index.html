@@ -8,10 +8,10 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&display=swap">
 	<style>
-/* HG-Fable01 -小紅帽 的網頁外殼：引擎下載與遊戲準備音效時，一路蓋著 loading 畫面（月夜森林、標題字、小紅帽與大野狼對峙、金色進度條），
+/* HG-Fable01 -小紅帽 的網頁外殼：引擎下載與遊戲準備音效時，一路蓋著 loading 畫面（白天的森林、標題字、小紅帽與大野狼對峙、金色進度條），
    遊戲準備好呼叫 window.asReady() 後淡出，直接進遊戲 */
 html, body, #canvas { margin: 0; padding: 0; border: 0; }
-body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none; font-family: "Cinzel", "Times New Roman", serif; }
+body { color: #f1e4c6; background: #2a1608; overflow: hidden; touch-action: none; font-family: "Cinzel", "Times New Roman", serif; }
 #canvas { display: block; }
 #canvas:focus { outline: none; }
 
@@ -24,7 +24,7 @@ body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none
 	justify-items: center;
 	overflow: hidden;
 	padding: 8vh 24px 7vh;
-	background: #070a12;
+	background: #2a1608;
 	transition: opacity .6s;
 }
 #status::before {
@@ -32,31 +32,31 @@ body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none
 	position: absolute;
 	inset: -24px;
 	z-index: -2;
-	background: url("../loading-bg.webp?v=3") center 30% / cover;
-	filter: brightness(.62) saturate(1.05);
+	background: url("../loading-bg.webp?v=4") center 30% / cover;
+	filter: brightness(.92) saturate(1.05);
 	animation: as-drift 26s ease-in-out infinite alternate;
 }
-#status::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 35%, transparent 30%, rgba(7, 10, 18, .55) 70%), linear-gradient(transparent 45%, #070a12 94%); }
+#status::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 35%, transparent 35%, rgba(42, 22, 8, .4) 75%), linear-gradient(transparent 55%, rgba(42, 22, 8, .92) 94%); }
 @keyframes as-drift { from { transform: scale(1.04) translateX(-1.5%); } to { transform: scale(1.1) translateX(1.5%); } }
 #status.is-done { opacity: 0; pointer-events: none; }
 
 .as-logo { text-align: center; }
-.as-logo img { display: block; width: min(62vw, 280px); height: auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .8)) drop-shadow(0 0 26px rgba(196, 22, 28, .35)); }
+.as-logo img { display: block; width: min(62vw, 280px); height: auto; filter: drop-shadow(0 6px 14px rgba(42, 22, 8, .55)) drop-shadow(0 0 22px rgba(255, 236, 170, .45)); }
 
 /* 小紅帽與大野狼對峙，輕輕呼吸 */
 .as-stands { position: relative; display: flex; align-items: flex-end; justify-content: space-between; width: min(100%, 460px); height: 100%; min-height: 180px; }
-.as-stands img { width: 47%; height: min(42vh, 360px); object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .75)); transform-origin: 50% 100%; }
+.as-stands img { width: 47%; height: min(42vh, 360px); object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 12px 14px rgba(42, 22, 8, .45)); transform-origin: 50% 100%; }
 .as-hero { animation: as-breathe 2.4s ease-in-out infinite alternate; }
 .as-wolf { animation: as-breathe 2s ease-in-out infinite alternate-reverse; }
 @keyframes as-breathe { from { transform: scaleY(1); } to { transform: scaleY(1.025); } }
 
 .as-load { width: min(78vw, 320px); text-align: center; }
-.as-bar { position: relative; height: 14px; padding: 3px; border: 1px solid #a8761f; border-radius: 9px; background: rgba(5, 3, 4, .8); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 6px 18px rgba(0, 0, 0, .6); }
+.as-bar { position: relative; height: 14px; padding: 3px; border: 1px solid #a8761f; border-radius: 9px; background: rgba(42, 22, 8, .82); box-shadow: 0 0 0 1px rgba(30, 14, 4, .6), 0 6px 18px rgba(30, 14, 4, .5); }
 .as-bar i { display: block; width: 0; height: 100%; border-radius: 6px; background: linear-gradient(#ffe9a8, #f2c96b 45%, #a8761f); box-shadow: 0 0 10px rgba(242, 201, 107, .6); transition: width .3s; }
 .as-bar.is-busy i { width: 100%; background-size: 36px 100%; background-image: repeating-linear-gradient(115deg, #a8761f 0 12px, #f2c96b 12px 24px); animation: as-stripes .8s linear infinite; }
 @keyframes as-stripes { to { background-position: 36px 0; } }
-.as-pct { margin-top: 10px; font-size: 14px; font-weight: 600; letter-spacing: .14em; text-shadow: 0 2px 6px #000; }
-.as-tip { min-height: 1.4em; margin-top: 4px; color: #b9a98c; font-family: Georgia, "Times New Roman", serif; font-size: 13px; font-style: italic; }
+.as-pct { margin-top: 10px; font-size: 14px; font-weight: 600; letter-spacing: .14em; text-shadow: 0 2px 6px #1e1009; }
+.as-tip { min-height: 1.4em; margin-top: 4px; color: #e6d3ac; font-family: Georgia, "Times New Roman", serif; font-size: 13px; font-style: italic; }
 #status-notice { display: none; max-width: 22em; margin-top: 12px; padding: 12px 16px; border: 1px solid #c4161c; border-radius: 10px; background: rgba(60, 6, 10, .9); color: #ffe6dc; font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { #status::before, .as-stands img, .as-bar.is-busy i { animation: none; } }
 
@@ -334,10 +334,10 @@ body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none
 	</script>
 
 	<div id="status">
-		<div class="as-logo"><img src="../loading-logo.webp?v=3" alt="Red Riding Hood"></div>
+		<div class="as-logo"><img src="../loading-logo.webp?v=4" alt="Red Riding Hood"></div>
 		<div class="as-stands" aria-hidden="true">
-			<img class="as-hero" src="../loading-hero.webp?v=3" alt="">
-			<img class="as-wolf" src="../loading-wolf.webp?v=3" alt="">
+			<img class="as-hero" src="../loading-hero.webp?v=4" alt="">
+			<img class="as-wolf" src="../loading-wolf.webp?v=4" alt="">
 		</div>
 		<div class="as-load">
 			<div class="as-bar is-busy" role="progressbar" aria-label="Loading"><i></i></div>
@@ -349,7 +349,7 @@ body { color: #f1e4c6; background: #070a12; overflow: hidden; touch-action: none
 
 	<script src="index.js"></script>
 	<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":12789148,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":13919916,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -360,7 +360,7 @@ const engine = new Engine(GODOT_CONFIG);
 	const pct = overlay.querySelector('.as-pct');
 	const tip = overlay.querySelector('.as-tip');
 	const notice = document.getElementById('status-notice');
-	const tips = ['The moon is high over the forest…', 'Red Hood sharpens her blade…', 'Something howls beyond the trees…', 'Grandma\'s window still glows…', 'Polishing the golden key…'];
+	const tips = ['Sunlight dances through the trees…', 'Red Hood sharpens her blade…', 'Something rustles behind the ferns…', 'Grandma’s cottage is just ahead…', 'Polishing the golden key…'];
 	let k = 0;
 	tip.textContent = tips[0];
 	const tipTimer = setInterval(() => { k = (k + 1) % tips.length; tip.textContent = tips[k]; }, 1800);

@@ -1,4 +1,4 @@
-# 中間的 SLOT：5 軸 × 4 列，外面套一圈做舊的破木框（art/ui/frame.webp，開口位置與木框厚度記在 ui.json）。
+# 中間的 SLOT：5 軸 × 4 列，外面套一圈纏藤蔓的蜂蜜色木框（art/ui/frame.webp，開口位置與木框厚度記在 ui.json）。
 # 轉輪往下捲（轉得快時符號有動態模糊）、逐軸停輪回彈；中獎格子發光，其餘變暗；
 # 已經停了兩個 SCATTER 時（差一個）後面的軸一軸一軸輪流吊胃口：輪到的那軸繼續高速轉、套上竄火的光框（shader），
 # 最後才煞車；還在等的軸整條壓暗（整軸的格子一起變暗，不蓋黑塊）、已停的軸除了 SCATTER 都壓暗、SCATTER 一跳一跳發光，落定時閃光炸開；
@@ -17,10 +17,10 @@ const Tile := preload("res://scripts/symbol_tile.gd")
 
 const GAP := 4.0
 const PAD := 6.0
-# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的鐵件整塊保留；四角放大這麼多倍才看得清楚
+# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的雕花角塊（葉子、小花、紅莓）整塊保留；四角稍微放大一點
 const CORNER := 90.0
-const CORNER_SCALE := 1.5
-# 四邊的木板沿木紋拉長幾倍（段數少一點，重複的節瘤才不會太密）
+const CORNER_SCALE := 1.2
+# 四邊的木板沿木紋拉長幾倍（段數少一點，重複的藤蔓才不會太密）
 const EDGE_STRETCH := 1.6
 # 吊胃口：每一軸輪到後獨自轉的秒數（turbo 時短一點；音效 tease 也是這個長度）、這期間的轉速（格／秒）、
 # 最後煞車的秒數；停輪回彈的秒數
@@ -34,7 +34,7 @@ const TeaseShader := preload("res://scripts/tease.gdshader")
 # 光框比轉輪往外多大一圈（左右、上下）：左右只溢出一點，不會蓋到隔壁軸的符號
 const TEASE_MARGIN := Vector2(16, 12)
 # 吊胃口時還在等的軸變多暗
-const WAIT_DIM := Color(0.34, 0.34, 0.42)
+const WAIT_DIM := Color(0.4, 0.36, 0.32)
 
 var cell := Vector2(70, 73)
 var turbo := false
@@ -152,7 +152,7 @@ func tile_center(i: int) -> Vector2:
 # ---------- 外框 ----------
 
 # 外框：四邊用無縫木板長條（art/ui/frame-edge.webp，外緣在上）轉向貼滿，每邊重複幾段、沿木紋稍微拉長；
-# 四角（含鐵件）從 frame.webp 切下來放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋住木板的頭尾；中間開口畫深色底。
+# 四角（雕花角塊）從 frame.webp 切下來放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋住木板的頭尾；中間開口畫深胡桃木色（格子之間的縫）。
 # 外框畫在轉輪底下，四角往內多出來的部分會被格子蓋住
 func _draw() -> void:
 	var tex := Art.ui("frame")
@@ -165,7 +165,7 @@ func _draw() -> void:
 	var o := frame_rect
 	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
 	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
-	draw_rect(Rect2(Vector2.ZERO, size), Color("05070c"))
+	draw_rect(Rect2(Vector2.ZERO, size), Color("4a2c14"))
 	# 上（外緣朝上）、下（轉 180 度）、左（轉 -90 度，外緣朝左）、右（轉 90 度）
 	_edge(Vector2(xs[1], ys[0]), xs[2] - xs[1], 0.0)
 	_edge(Vector2(xs[2], ys[3]), xs[2] - xs[1], PI)
@@ -344,7 +344,7 @@ func _tease_on(c: int) -> void:
 	Sfx.play("tease", 2.0 if turbo else 1.0)
 
 
-# 已經停好的軸：SCATTER 一跳一跳（石板底本來就透著金光，不加框），其他壓暗，讓視線集中到還在轉的那一軸
+# 已經停好的軸：SCATTER 一跳一跳（羊皮紙底本來就透著金光，不加框），其他壓暗，讓視線集中到還在轉的那一軸
 func _spotlight(c: int) -> void:
 	for r in Rules.ROWS:
 		var t: Control = tiles[r * Rules.COLS + c]
@@ -685,7 +685,7 @@ func _sparkle(at: Vector2) -> void:
 	p.finished.connect(p.queue_free)
 
 
-# 觸發 Free Spins：SCATTER 一起跳三下（亮著的石板底就是高亮，不加框）
+# 觸發 Free Spins：SCATTER 一起跳三下（亮著的羊皮紙底就是高亮，不加框）
 func scatter_glow(cells: Array) -> void:
 	for i in cells:
 		var t: Control = tiles[i]

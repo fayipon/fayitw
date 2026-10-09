@@ -226,7 +226,7 @@ func _make_sparks() -> CPUParticles2D:
 	return p
 
 
-# 紅葉：跟自走區一樣的小橢圓葉片，從上面飄下來
+# 紅花瓣：小橢圓片，從上面飄下來（跟小紅帽的斗篷、蘋果同色）
 func _make_petals() -> CPUParticles2D:
 	var img := Image.create(14, 8, false, Image.FORMAT_RGBA8)
 	for x in 14:

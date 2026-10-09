@@ -1,5 +1,5 @@
-# 上方自走區（照設計稿的月夜森林）：遠景（月亮、亮著燈的村莊、林間小路）固定、霧氣慢慢飄、
-# 近景（左右的大樹、前景地面）一直往左捲；紅葉從上面飄下來。
+# 上方自走區（照設計稿 s-ref-a 的白天森林，2026-10 繪本奇幻版）：遠景（陽光、外婆家的小屋、林間小路）固定、
+# 暖白的光霧慢慢飄，近景（左右的大樹、前景草地）一直往左捲；綠葉和花瓣從上面飄下來。
 # 小紅帽自己往前跑，遇到大野狼就停下來擺架式；每一段連鎖的中獎變成一次出招（連擊段數越多招式越多），狼倒下時從邊緣燒成灰；
 # 第 2 段連擊起上方出現格鬥遊戲式的連擊計數
 extends Control
@@ -11,8 +11,8 @@ const Art := preload("res://scripts/art.gd")
 const Fighter := preload("res://scripts/fighter.gd")
 const ComboCounter := preload("res://scripts/combo_counter.gd")
 
-# 每關的月光顏色：藍、紫、血月
-const TINTS := [Color.WHITE, Color(0.92, 0.84, 1.0), Color(1.0, 0.78, 0.76)]
+# 每關的天色：正午、午後金光、傍晚
+const TINTS := [Color.WHITE, Color(1.0, 0.93, 0.8), Color(1.0, 0.83, 0.74)]
 # 近景每秒捲動幾倍的區域高度
 const NEAR_SPEED := 0.3
 # 角色身高上限、腳踩的位置（都以區域高度為準）
@@ -68,8 +68,8 @@ func _ready() -> void:
 	_far = Art.tex("res://art/field/far.webp")
 	_near = Art.tex("res://art/field/near.webp")
 	var g := Gradient.new()
-	g.set_color(0, Color(0.75, 0.85, 1.0, 0.55))
-	g.set_color(1, Color(0.75, 0.85, 1.0, 0.0))
+	g.set_color(0, Color(1.0, 0.96, 0.82, 0.5))
+	g.set_color(1, Color(1.0, 0.96, 0.82, 0.0))
 	var fog := GradientTexture2D.new()
 	fog.gradient = g
 	fog.fill = GradientTexture2D.FILL_RADIAL
@@ -105,9 +105,12 @@ func _ready() -> void:
 	_combo.z_index = 13
 	add_child(_combo)
 	hero.aura_color = Color(1.0, 0.72, 0.25)
-	# 劍的位置（量自三張立繪）：架式、跑步都是右下斜持劍，揮砍時劍舉到右上（劍尖超出圖外）
-	var low := [Vector2(0.743, 0.59), Vector2(0.993, 0.764)]
-	hero.blades = {"stance": low, "run": low, "slash": [Vector2(0.84, 0.3), Vector2(1.0, 0.205)]}
+	# 劍的位置（量自三張立繪，劍根 → 劍尖）：架式劍尖朝右上，跑步時劍拿在後手、朝右下，揮砍時往右平伸（劍尖碰到圖邊）
+	hero.blades = {
+		"stance": [Vector2(0.786, 0.533), Vector2(0.99, 0.265)],
+		"run": [Vector2(0.462, 0.577), Vector2(0.671, 0.802)],
+		"slash": [Vector2(0.742, 0.452), Vector2(1.0, 0.348)],
+	}
 	resized.connect(layout)
 
 
@@ -156,18 +159,18 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	# 遠景：蓋滿整個區域、置中（月亮與外婆家在中間），固定不動
+	# 遠景：蓋滿整個區域、置中（外婆家的小屋在中間），固定不動
 	var s := maxf(size.y / _far.get_height(), size.x / _far.get_width())
 	var fw := _far.get_width() * s
 	var fh := _far.get_height() * s
 	draw_texture_rect(_far, Rect2((size.x - fw) / 2.0, size.y - fh, fw, fh), false, tint)
-	# 霧：幾團大霧慢慢往左飄
+	# 光霧：幾團暖白的光霧慢慢往左飄
 	for k in 5:
 		var speed := 8.0 + k * 5.0
 		var w := size.x * (0.7 + 0.15 * (k % 3))
 		var x := fposmod(size.x - _t * speed + k * size.x * 0.41, size.x + w) - w * 0.5
 		var y := size.y * (0.55 + 0.08 * (k % 3))
-		draw_texture_rect(_fog, Rect2(x - w / 2.0, y - w * 0.18, w, w * 0.36), false, Color(1, 1, 1, 0.22))
+		draw_texture_rect(_fog, Rect2(x - w / 2.0, y - w * 0.18, w, w * 0.36), false, Color(1, 1, 1, 0.16))
 	# 近景：縮到區域高度，左右無縫接著捲
 	var nw := _near.get_width() * size.y / _near.get_height()
 	var nx := -fposmod(scroll, nw)
@@ -180,14 +183,14 @@ func _draw() -> void:
 		PackedColorArray([Color(Art.INK, 0.0), Color(Art.INK, 0.0), Art.INK, Art.INK]))
 
 
-# 紅葉：小小的橢圓葉片，一邊轉一邊往左下飄
+# 落葉：小小的白色橢圓葉片，每片隨機染成嫩綠、黃綠或白色花瓣，一邊轉一邊往左下飄
 func _make_leaves() -> CPUParticles2D:
 	var img := Image.create(14, 8, false, Image.FORMAT_RGBA8)
 	for x in 14:
 		for y in 8:
 			var d := Vector2((x - 6.5) / 7.0, (y - 3.5) / 4.0).length()
 			if d < 1.0:
-				img.set_pixel(x, y, Color(0.75, 0.08, 0.1, clampf((1.0 - d) * 3.0, 0.0, 1.0)))
+				img.set_pixel(x, y, Color(1, 1, 1, clampf((1.0 - d) * 3.0, 0.0, 1.0)))
 	var p := CPUParticles2D.new()
 	p.texture = ImageTexture.create_from_image(img)
 	p.amount = 14
@@ -207,6 +210,11 @@ func _make_leaves() -> CPUParticles2D:
 	fade.set_color(0, Color(1, 1, 1, 0.9))
 	fade.set_color(1, Color(1, 1, 1, 0.0))
 	p.color_ramp = fade
+	var hues := Gradient.new()
+	hues.offsets = PackedFloat32Array([0.0, 0.45, 0.8, 1.0])
+	hues.colors = PackedColorArray([Color(0.36, 0.62, 0.18), Color(0.62, 0.78, 0.26), Color(0.86, 0.84, 0.36), Color(1.0, 0.95, 0.97)])
+	hues.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	p.color_initial_ramp = hues
 	return p
 
 
@@ -524,7 +532,7 @@ func end_combo() -> void:
 	_combo.finish()
 
 
-# 計數放在 logo 右邊、兩個角色頭上的夜空
+# 計數放在 logo 右邊、兩個角色頭上的樹梢
 func _combo_home() -> Vector2:
 	return Vector2(maxf(avoid.end.x + 26.0, size.x * 0.22), size.y * 0.08 + ComboCounter.NUM_SIZE * 0.78)
 

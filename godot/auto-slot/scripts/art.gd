@@ -1,19 +1,19 @@
 # 圖片與字型的集中載入（第一次用到才載，之後從快取拿）與共用色票
 extends RefCounted
 
-# 色票（照設計稿）：古金、骨白、深紅、深夜藍
+# 色票（照繪本奇幻版設計稿 s-ref-a）：亮金、羊皮紙白、紅寶石、深胡桃木
 const GOLD := Color("f2c96b")
 const GOLD_LIGHT := Color("ffe9a8")
 const GOLD_DEEP := Color("a8761f")
 const GOLD_INK := Color("2a1806")
 const CREAM := Color("f1e4c6")
-const MUTED := Color("9aa3b5")
-const PANEL := Color(0.05, 0.07, 0.11, 0.92)
-const PANEL_EDGE := Color("8a6a2e")
+const MUTED := Color("c2ae8e")
+const PANEL := Color(0.17, 0.1, 0.05, 0.94)
+const PANEL_EDGE := Color("b8862f")
 const RED := Color("c4161c")
 const BLOOD := Color("6e0c10")
 const GREEN := Color("3f9a2f")
-const INK := Color("070a12")
+const INK := Color("1e1009")
 
 # 連鎖爆開的碎片顏色：跟著符號
 const SYMBOL_COLORS := {

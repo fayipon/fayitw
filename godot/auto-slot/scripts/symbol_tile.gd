@@ -1,20 +1,12 @@
-# 盤面上的一格：每一格都畫同一塊石板底（art/tiles/bg.webp，設計稿的空白石板磚），上面放去背的符號（透明圖）；
-# 一般格子不畫框，金框符號才畫一道細金線、四角鑲小顆紅寶石；偏暗的圖案（大野狼、烏鴉、提燈）後面墊一團淡淡的背景光；
-# WILD、SCATTER（金鑰匙）底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
+# 盤面上的一格：每一格都先畫同一塊羊皮紙底（art/tiles/bg.webp），上面放符號：字母與金鑰匙是透明圖，
+# 圖案符號（大野狼、烏鴉、提燈、藥水、籃子）是整塊木框圖塊、WILD 是整塊金框肖像，直接蓋住羊皮紙；
+# 金框符號再畫一道細金線、四角鑲小顆紅寶石；WILD、SCATTER（金鑰匙）底下壓暗、寫金色大字；中獎時外框發光，其餘變暗
 # 轉動中有動態模糊：同一張圖往下錯開疊幾層（越下面越新、越清楚），模糊時字樣、金框、光框先不畫；
-# SCATTER 落定後一直亮著（lit）：不用框，石板底淡入成「石板透金光」（bg-lit.webp），之後一呼一吸
+# SCATTER 落定後一直亮著（lit）：不用框，羊皮紙底淡入成「羊皮紙透金光」（bg-lit.webp），之後一呼一吸
 extends Control
 
 const Rules := preload("res://scripts/rules.gd")
 const Art := preload("res://scripts/art.gd")
-
-# 偏暗的圖案在暗石板上看不清楚：後面墊一團柔光（狼、烏鴉是冷色月光，提燈是暖色燈光），alpha 是最亮處的強度
-const BACKLIGHT := {
-	"wolf": Color(0.66, 0.76, 1.0, 0.3),
-	"raven": Color(0.66, 0.78, 1.0, 0.32),
-	"lantern": Color(1.0, 0.74, 0.38, 0.3),
-}
-
 
 var id := "ten"
 var gold := false
@@ -27,7 +19,7 @@ var glow := 0.0:
 var dim := false:
 	set(v):
 		dim = v
-		modulate = Color(0.38, 0.36, 0.4) if v else Color.WHITE
+		modulate = Color(0.42, 0.38, 0.34) if v else Color.WHITE
 # 動態模糊拉長的像素（slot_view 依轉速設定，停下來是 0）
 var blur := 0.0:
 	set(v):
@@ -47,7 +39,6 @@ var _lt := 0.0
 var _lit_k := 0.0
 
 static var _glow_box: StyleBoxFlat
-static var _backlight: GradientTexture2D
 
 
 func setup(cell: Dictionary) -> void:
@@ -73,11 +64,9 @@ func _draw() -> void:
 	var tex := Art.symbol(id)
 	draw_texture_rect(Art.symbol("bg"), r, false)
 	if lit:
-		# 石板透金光：淡入後在 75%～100% 之間一呼一吸
+		# 羊皮紙透金光：淡入後在 75%～100% 之間一呼一吸
 		var p := 0.5 + 0.5 * sin(_lt * 3.2)
 		draw_texture_rect(Art.symbol("bg-lit"), r, false, Color(1, 1, 1, _lit_k * (0.75 + 0.25 * p)))
-	if BACKLIGHT.has(id):
-		draw_texture_rect(_backlight_tex(), r, false, BACKLIGHT[id])
 	if blur > 6.0:
 		draw_texture_rect(tex, Rect2(r.position - Vector2(0, blur * 0.5), r.size), false)
 		for k in 6:
@@ -100,23 +89,7 @@ func _draw() -> void:
 		draw_style_box(_glow_box, r.grow(1))
 
 
-# 背景光：白色放射漸層（中間偏上、往外很快淡掉，碰不到格子邊緣），畫的時候乘上 BACKLIGHT 的顏色
-static func _backlight_tex() -> GradientTexture2D:
-	if not _backlight:
-		var g := Gradient.new()
-		g.offsets = PackedFloat32Array([0.0, 0.3, 0.62, 1.0])
-		g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0.12), Color(1, 1, 1, 0)])
-		_backlight = GradientTexture2D.new()
-		_backlight.gradient = g
-		_backlight.fill = GradientTexture2D.FILL_RADIAL
-		_backlight.fill_from = Vector2(0.5, 0.46)
-		_backlight.fill_to = Vector2(0.92, 0.46)
-		_backlight.width = 128
-		_backlight.height = 128
-	return _backlight
-
-
-# 金框（細緻版）：往內縮一點、落在石板圓角裡；外側墊一圈淡暗影把金線跟石板分開，
+# 金框（細緻版）：往內縮一點、落在格子圓角裡；外側墊一圈淡暗影把金線跟底分開，
 # 一道細金線、裡面再一道更細的淡亮金線；四角各一顆小菱形：金邊包紅寶石、左上一點反光
 func _gold_frame(r: Rect2) -> void:
 	var u := size.x / 100.0

@@ -1,5 +1,5 @@
 # 圓形按鈕（照設計稿與 PG Soft 的投注列）：轉動鍵（紅色圓盤＋古金圈，中間畫金色循環箭頭；自動旋轉時改寫剩幾轉）、
-# 選單、TURBO（關著閃電被斜線劃掉、底下寫 OFF，開著寫 TURBO）、AUTO、押注加減（古金細圈＋深藍底，底下可帶小字）、
+# 選單、TURBO（關著閃電被斜線劃掉、底下寫 OFF，開著寫 TURBO）、AUTO、押注加減（亮金圈＋蜂蜜色木頭心，底下可帶小字）、
 # 補幣（綠寶石）；選單列的 QUIT、SOUND（靜音時喇叭旁畫叉）、PAYTABLE、RULES、HISTORY、CLOSE 也是同一種古金細圈。
 # 圈是 art/ui 的圖，圖示用程式畫
 extends BaseButton
@@ -89,7 +89,7 @@ func _draw() -> void:
 		draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, size.x + 20, fs, Art.GOLD_LIGHT if on else Art.CREAM)
 
 
-# 古金細圈按鈕：選單三條線、TURBO 閃電、AUTO 循環箭頭、押注加減；開著的時候外圈發金光
+# 金圈木頭心按鈕：選單三條線、TURBO 閃電、AUTO 循環箭頭、押注加減；開著的時候外圈發金光
 func _ring_face(r: float) -> void:
 	var on := lit or (toggle_mode and button_pressed)
 	if on:
@@ -99,6 +99,8 @@ func _ring_face(r: float) -> void:
 	var ring := Art.ui("ring")
 	var rs := r * 2.0 / ring.get_width()
 	draw_texture_rect(ring, Rect2(-Vector2(ring.get_width(), ring.get_height()) * rs / 2.0, Vector2(ring.get_width(), ring.get_height()) * rs), false)
+	# 金圈裡是淺色的蜂蜜色木頭：中間壓一層胡桃木色，奶油色的圖示才看得清楚
+	draw_circle(Vector2.ZERO, r * 0.72, Color(0.3, 0.15, 0.05, 0.42))
 	var ink := Art.GOLD_LIGHT if on or is_hovered() else Color("f3dfae")
 	match kind:
 		"menu":
@@ -112,11 +114,11 @@ func _ring_face(r: float) -> void:
 				bolt[i] *= s
 			draw_colored_polygon(bolt, ink)
 			if not on:
-				# 關著：一道斜線劃掉（先用深藍底色切開閃電，再畫細線）
+				# 關著：一道斜線劃掉（先用深棕色切開閃電，再畫細線）
 				var from := Vector2(-s * 0.75, -s * 0.8)
 				var to := Vector2(s * 0.75, s * 0.8)
 				var w := maxf(1.8, r * 0.08)
-				draw_line(from, to, Color("0b1020"), w * 2.4, true)
+				draw_line(from, to, Color("5a3414"), w * 2.4, true)
 				draw_line(from, to, ink, w, true)
 		"auto":
 			draw_set_transform(size.x / 2.0 * Vector2.ONE, _t if on else 0.0, Vector2.ONE)
