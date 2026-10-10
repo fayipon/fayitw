@@ -65,6 +65,48 @@ static func font(kind := "num") -> Font:
 	return _cache[key]
 
 
+# 纏藤蔓的蜂蜜色木框（SLOT 外框、Feature Buy 購買框共用）：o 是外框外緣、s 是原圖（art/ui/frame.webp）的縮放。
+# 四邊用無縫木板長條 frame-edge.webp 轉向貼滿（外緣朝外），四角的雕花角塊（葉子、小花、紅莓）從外框圖切下來放大 FRAME_CORNER_SCALE 倍，
+# 最後畫、蓋住木板的頭尾。FRAME_CORNER 是四角從開口的角再往邊上多留的原圖像素；FRAME_EDGE_STRETCH 是木板沿木紋拉長幾倍（重複的藤蔓才不會太密）
+const FRAME_CORNER := 90.0
+const FRAME_CORNER_SCALE := 1.2
+const FRAME_EDGE_STRETCH := 1.6
+
+static func draw_vine_frame(ci: CanvasItem, o: Rect2, s: float) -> void:
+	var tex := ui("frame")
+	var meta: Dictionary = ui_meta().frame
+	var w: float = meta.size[0]
+	var h: float = meta.size[1]
+	var us := [0.0, meta.inner[0] + FRAME_CORNER, meta.inner[2] - FRAME_CORNER, w]
+	var vs := [0.0, meta.inner[1] + FRAME_CORNER, meta.inner[3] - FRAME_CORNER, h]
+	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
+	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
+	# 上（外緣朝上）、下（轉 180 度）、左（轉 -90 度，外緣朝左）、右（轉 90 度）
+	_vine_edge(ci, Vector2(xs[1], ys[0]), xs[2] - xs[1], 0.0, s)
+	_vine_edge(ci, Vector2(xs[2], ys[3]), xs[2] - xs[1], PI, s)
+	_vine_edge(ci, Vector2(xs[0], ys[2]), ys[2] - ys[1], -PI / 2.0, s)
+	_vine_edge(ci, Vector2(xs[3], ys[1]), ys[2] - ys[1], PI / 2.0, s)
+	var cs := s * FRAME_CORNER_SCALE
+	for i in [0, 2]:
+		for j in [0, 2]:
+			var src := Rect2(us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j])
+			var sz := src.size * cs
+			var at := Vector2(o.position.x if i == 0 else o.end.x - sz.x, o.position.y if j == 0 else o.end.y - sz.y)
+			ci.draw_texture_rect_region(tex, Rect2(at, sz), src)
+
+
+# 一邊的木板：從 origin 沿著轉 rot 之後的 x 方向貼 length 長；段數取整數、每段平均分（接縫剛好落在長條的頭尾，看不出來）
+static func _vine_edge(ci: CanvasItem, origin: Vector2, length: float, rot: float, s: float) -> void:
+	var edge := ui("frame-edge")
+	var thick := edge.get_height() * s
+	var n := maxi(1, roundi(length / (edge.get_width() * s * FRAME_EDGE_STRETCH)))
+	var seg := length / n
+	ci.draw_set_transform(origin, rot, Vector2.ONE)
+	for k in n:
+		ci.draw_texture_rect(edge, Rect2(k * seg, 0, seg, thick), false)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 static func box(bg: Color, radius := 12, border := 0, border_color := Color.TRANSPARENT) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg

@@ -40,8 +40,6 @@ const MONSTERS := {
 	"chest": {"h": 0.6, "fps": 9.0, "bob": 2.0, "fx": Color("ffd25a"), "react": "coins", "face": FACE_CHEST,
 		"hurt_k": 0.88, "chomp": ["walk4", "walk1", "walk2"]},
 }
-# BOSS 一開始的樣子（第 3 關的外婆狼先扮成小紅帽敲門）
-const BOSS_FIRST := {"boss": "knock"}
 # 傷害、存進能量、獎勵的跳字顏色（紅、藍、金）
 const DAMAGE_COLOR := Color("ff4a3d")
 const DAMAGE_INK := Color("4a0306")
@@ -465,7 +463,6 @@ func release_charge() -> void:
 # 野豬是衝進來的（揚起塵土、畫面震一下），烏鴉飛在半空；BOSS（熊、雄鹿、外婆狼）身後有一圈光
 func spawn_enemy(kind: String, boss := false) -> void:
 	_boss_kind = kind if boss else ""
-	kind = BOSS_FIRST.get(kind, kind)
 	var m: Dictionary = MONSTERS.get(kind, MONSTERS.squirrel)
 	var poses := {"idle": Art.tex("res://art/field/%s.webp" % kind), "hurt": Art.tex("res://art/field/%s-hurt.webp" % kind)}
 	for k in 4:
@@ -590,12 +587,13 @@ func current_portrait() -> Array:
 	return portrait(_enemy_kind, _revealed)
 
 
-# 第 3 關 BOSS 血剩一半：扮成小紅帽的狼變身成外婆——砰一團粉紫色的煙、整隻閃白、轉一圈，煙最濃的時候換成外婆的立繪；
+# 第 3 關 BOSS 的第一階段（敲門的狼）被打倒：原地變身成外婆——砰一團粉紫色的煙、整隻閃白、轉一圈，煙最濃的時候換成外婆的立繪；
 # 回傳是不是這一下才變身（main 只喊一次）
 func transform_boss() -> bool:
-	if not enemy or _boss_kind != "boss" or _enemy_kind != "knock":
+	if not enemy or _enemy_kind != "knock":
 		return false
 	_enemy_kind = "boss"
+	_boss_kind = "boss"
 	var at := enemy_center()
 	_puff(at, enemy.height)
 	_bits(at, Color("ffc6e0"), 14, 1.1)
@@ -679,7 +677,7 @@ func unstash_enemy() -> bool:
 	return true
 
 
-# 假扮外婆的大灰狼血剩四分之一：露餡（換成凶相的站姿、不再換受擊立繪），噴一團粉紅蕾絲碎片（畫面震動交給露餡的橫幅，同一拍只震一次）；
+# 假扮外婆的大灰狼血剩一半：露餡（換成凶相的站姿、不再換受擊立繪），噴一團粉紅蕾絲碎片（畫面震動交給露餡的橫幅，同一拍只震一次）；
 # 回傳是不是這一下才露餡（main 只喊一次）
 func reveal_boss() -> bool:
 	if not enemy or _enemy_kind != "boss" or _revealed:
@@ -1040,6 +1038,17 @@ func impact(damage: String, crit: bool) -> void:
 		_hurt_enemy(1.4 if crit else 1.0)
 	Sfx.play("hit", 0.9 if crit else 1.05)
 	float_text(damage, at + Vector2(0, -size.y * 0.16), DAMAGE_COLOR, 32 if crit else 24, DAMAGE_INK)
+
+
+# EXTRA 結束時還沒打倒的寶箱怪：淡掉離場（不燒成灰、不歡呼）
+func dismiss_enemy() -> void:
+	if not enemy:
+		return
+	var e := enemy
+	enemy = null
+	var tw := e.create_tween()
+	tw.tween_property(e, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(e.queue_free)
 
 
 # 狼人倒下：從邊緣燒成灰，餘燼往上飄

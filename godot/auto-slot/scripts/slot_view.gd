@@ -17,11 +17,6 @@ const Tile := preload("res://scripts/symbol_tile.gd")
 
 const GAP := 4.0
 const PAD := 6.0
-# 外框九宮格：四角從開口的角再往邊上多留這麼多（原圖像素），角落的雕花角塊（葉子、小花、紅莓）整塊保留；四角稍微放大一點
-const CORNER := 90.0
-const CORNER_SCALE := 1.2
-# 四邊的木板沿木紋拉長幾倍（段數少一點，重複的藤蔓才不會太密）
-const EDGE_STRETCH := 1.6
 # 吊胃口：每一軸輪到後獨自轉的秒數（turbo 時短一點；音效 tease 也是這個長度）、這期間的轉速（格／秒）、
 # 最後煞車的秒數；停輪回彈的秒數
 const TEASE_SLOW := 1.8
@@ -152,45 +147,11 @@ func tile_center(i: int) -> Vector2:
 # ---------- 外框 ----------
 
 # 外框：四邊用無縫木板長條（art/ui/frame-edge.webp，外緣在上）轉向貼滿，每邊重複幾段、沿木紋稍微拉長；
-# 四角（雕花角塊）從 frame.webp 切下來放大 CORNER_SCALE 倍、貼齊外框的角，最後畫、蓋住木板的頭尾；中間開口畫深胡桃木色（格子之間的縫）。
+# 四角（雕花角塊）從 frame.webp 切下來放大、貼齊外框的角，最後畫、蓋住木板的頭尾（Art.draw_vine_frame，購買框也用）；中間開口畫深胡桃木色（格子之間的縫）。
 # 外框畫在轉輪底下，四角往內多出來的部分會被格子蓋住
 func _draw() -> void:
-	var tex := Art.ui("frame")
-	var meta: Dictionary = Art.ui_meta().frame
-	var w: float = meta.size[0]
-	var h: float = meta.size[1]
-	var us := [0.0, meta.inner[0] + CORNER, meta.inner[2] - CORNER, w]
-	var vs := [0.0, meta.inner[1] + CORNER, meta.inner[3] - CORNER, h]
-	var s := _frame_scale
-	var o := frame_rect
-	var xs := [o.position.x, o.position.x + us[1] * s, o.end.x - (w - us[2]) * s, o.end.x]
-	var ys := [o.position.y, o.position.y + vs[1] * s, o.end.y - (h - vs[2]) * s, o.end.y]
 	draw_rect(Rect2(Vector2.ZERO, size), Color("4a2c14"))
-	# 上（外緣朝上）、下（轉 180 度）、左（轉 -90 度，外緣朝左）、右（轉 90 度）
-	_edge(Vector2(xs[1], ys[0]), xs[2] - xs[1], 0.0)
-	_edge(Vector2(xs[2], ys[3]), xs[2] - xs[1], PI)
-	_edge(Vector2(xs[0], ys[2]), ys[2] - ys[1], -PI / 2.0)
-	_edge(Vector2(xs[3], ys[1]), ys[2] - ys[1], PI / 2.0)
-	var cs := s * CORNER_SCALE
-	for i in [0, 2]:
-		for j in [0, 2]:
-			var src := Rect2(us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j])
-			var sz := src.size * cs
-			var at := Vector2(o.position.x if i == 0 else o.end.x - sz.x, o.position.y if j == 0 else o.end.y - sz.y)
-			draw_texture_rect_region(tex, Rect2(at, sz), src)
-
-
-# 一邊的木板：從 origin 沿著轉 rot 之後的 x 方向貼 length 長；段數取整數、每段平均分（接縫剛好落在長條的頭尾，看不出來）
-func _edge(origin: Vector2, length: float, rot: float) -> void:
-	var edge := Art.ui("frame-edge")
-	var s := _frame_scale
-	var thick := edge.get_height() * s
-	var n := maxi(1, roundi(length / (edge.get_width() * s * EDGE_STRETCH)))
-	var seg := length / n
-	draw_set_transform(origin, rot, Vector2.ONE)
-	for k in n:
-		draw_texture_rect(edge, Rect2(k * seg, 0, seg, thick), false)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	Art.draw_vine_frame(self, frame_rect, _frame_scale)
 
 
 # ---------- 轉輪 ----------
@@ -631,6 +592,41 @@ func cascade(step: Dictionary, k: int) -> void:
 	for i in Rules.CELLS:
 		if tiles[i]:
 			tiles[i].glow = 0.0
+			_place(tiles[i], i / Rules.COLS)
+	_set_clip(false)
+
+
+# 寶箱怪掉的 WILD：轉輪停下後，小紅帽 WILD 一格一格從軸頂掉進來、蓋掉原本的符號（落地閃光、壓扁彈回）
+func drop_wilds(cells: Array) -> void:
+	var speed := 0.6 if turbo else 1.0
+	_set_clip(true)
+	var last := 0.0
+	for k in cells.size():
+		var i: int = cells[k]
+		var c := i % Rules.COLS
+		var r := i / Rules.COLS
+		var old: Control = tiles[i]
+		var t := _make({"id": "hood", "gold": false})
+		_strips[c].add_child(t)
+		_place(t, -1.2)
+		tiles[i] = t
+		var d := (0.3 + r * 0.05) * speed
+		var wait := k * 0.22 * speed
+		last = maxf(last, wait + d)
+		var tw := create_tween()
+		tw.tween_interval(wait)
+		tw.tween_callback(func(): Sfx.play("throw", 1.3, -6.0))
+		tw.tween_property(t, "position:y", r * _step_y(), d).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			old.queue_free()
+			_sparkle(tile_center(i))
+			_halo(tile_center(i))
+			Sfx.play("wild"))
+		tw.tween_property(t, "scale", Vector2(1.12, 0.86), 0.06 * speed)
+		tw.tween_property(t, "scale", Vector2.ONE, 0.2 * speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(last + 0.3 * speed).timeout
+	for i in Rules.CELLS:
+		if tiles[i]:
 			_place(tiles[i], i / Rules.COLS)
 	_set_clip(false)
 

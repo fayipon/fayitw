@@ -5,7 +5,8 @@
 # - 中間三軸的一般符號可能帶金框：金框符號中獎時不消失，而是變成小紅帽 WILD 留在原位
 # - 小紅帽是 WILD（只在第 2～4 軸，代替 SCATTER 以外的符號）；金鑰匙是 SCATTER（出現在哪都算），
 #   每軸最多一個，連鎖完的盤面上 3／4／5 個依 SCATTER_PAYS 給總押注的倍數，並觸發 8／10／12 次 Free Spins
-# - Free Spins 不扣押注，連鎖倍率換成 FS_MULTIPLIERS（加倍）；免費轉中再出 3 個以上 SCATTER 會加次數
+# - Free Spins（EXTRA）不扣押注，連鎖倍率換成 FS_MULTIPLIERS，而且整段 EXTRA 一路累積不歸零：每連鎖一段就往上爬一格，
+#   下一轉接著上一轉爬到的那一格（resolve 的 level）；免費轉中再出 3 個以上 SCATTER 會加次數
 # - 金額一律用「分」記（整數，畫面上 ÷ 100 顯示兩位小數）。押注照 PG Soft：總押注 = 每線押注 × 20 線，
 #   每線押注 BET_LEVELS 從 0.05 到 10.00（總押注 1.00～200.00）
 # - 賠率表 pays 是每一路在每線押注 20 時贏的金額（跟美術給的 paytable 同一組數字），
@@ -15,7 +16,8 @@
 # - 自走打怪：每一轉贏的金幣就是傷害，再加一次基本攻擊；敵人血量與賞金是出現當下總押注的倍數。
 #   傷害不浪費：沒有狼可以打時（走路中、剛打倒）打的、打倒時多出來的都存起來，下一隻站定就一次打出去
 #   （存與放在 main.gd）。賞金 ÷ 血量跟押注無關，所以換押注不會多賺或少賺
-# - 盤面每一格是 { id, gold }；照現在的權重模擬：主遊戲約 67%、Free Spins 約 12%、打怪賞金約 19%
+# - 盤面每一格是 { id, gold }；照現在的權重模擬：主遊戲約 70%、打怪賞金約 17.5%、EXTRA 約 10%（合計約 97.5%），
+#   EXTRA 大約每 385 轉一次、一次平均總押注的 38～39 倍（倍率累積、寶箱怪當場落 WILD，數字在 README）
 extends RefCounted
 
 const COLS := 5
@@ -29,11 +31,15 @@ const DEFAULT_BET := 1
 const START_COINS := 200000
 const REFILL := 100000
 const MULTIPLIERS := [1, 2, 3, 5]
-const FS_MULTIPLIERS := [2, 4, 6, 10]
+# EXTRA 的倍率梯：每連鎖一段往上爬一格、整段 EXTRA 不歸零，爬到最後一格就停在那裡
+const FS_MULTIPLIERS := [2, 3, 4, 5, 6, 8, 10]
 const FS_AWARD := {3: 8, 4: 10, 5: 12}
+# Feature Buy 的價錢是總押注的幾倍（照 buy_board 那套流程模擬：一次購買平均拿回總押注的 BUY_RETURN 倍，價錢讓回收率跟整體差不多）
+const BUY_COST := 40
 # SCATTER 的獎金：總押注 × 這個數 ÷ 20（3 個 = 0.25 倍、4 個 = 1 倍、5 個 = 5 倍）
 const SCATTER_PAYS := {3: 5, 4: 20, 5: 100}
-const GOLD_CHANCE := 0.115
+# 金框的機率（中間三軸的一般符號）：影響很大，0.105 時整體約 97.5%，降到 0.07 會掉到 81%
+const GOLD_CHANCE := 0.105
 const MAX_STEPS := 40
 
 # pays：3 連／4 連／5 連
@@ -55,19 +61,20 @@ const SYMBOL_IDS := ["ten", "jack", "queen", "king", "ace", "potion", "basket", 
 const ROYALS := ["ten", "jack", "queen", "king", "ace"]
 
 # 每一軸各符號的權重；百搭只在第 2～4 軸
-const EDGE := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 0.0}
-const MID := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 3.0}
+const EDGE := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 1.35, "hood": 0.0}
+const MID := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 1.35, "hood": 3.0}
 
 # 敵人（照小紅帽劇本）：每關 7 隻，前 6 隻是被大野狼使喚的森林小動物（每關 3 種，照 STAGE_ORDER 輪流出），
-# 第 7 隻是這一關的 BOSS——第 1 關大棕熊、第 2 關大雄鹿、第 3 關假扮外婆的大灰狼（kind 是 "boss"，先扮成小紅帽敲門，
-# 血剩一半變身成外婆、剩四分之一露餡；變身只是畫面，血量是同一條）。
+# 第 7 隻是這一關的 BOSS——第 1 關大棕熊、第 2 關大雄鹿、第 3 關是大灰狼，分兩階段：先披紅斗篷學小紅帽敲門（knock），
+# 打倒給一次賞金，接著原地變身成外婆（next = "boss"，血條補滿），外婆剩一半血露餡，打倒再給一次賞金才算過關。
 # hp 是總押注的倍數；小動物的賞金 = hp × MINION_RATE（跟改版前大野狼 3 倍血、0.4 倍賞金一樣的比例），
 # 每關 6 隻小動物的血量加起來 12 倍（跟改版前 4 隻 3 倍血的大野狼一樣），BOSS 的血量與賞金跟改版前的狼王一樣，
 # 所以打怪的回收率跟改版前一樣。
-# EXTRA 模式（Free Spins）出場的是寶箱怪：賞金 ÷ 血量 = 一整關平均下來的比例（TREASURE_RATE），
-# EXTRA 結束時沒打完的寶箱照打掉的血量分賞金，所以 EXTRA 裡打的傷害也一樣划算、不浪費；寶箱怪不算關卡進度
+# EXTRA 模式（Free Spins）出場的是寶箱怪：血量跟 BOSS 一樣（總押注 × 10）、不掉金幣，打倒時掉 WILD——
+# 當場在盤面上隨機 1～3 格落下小紅帽 WILD（drop_wilds），接著連鎖；一轉最多落一次；寶箱怪不算關卡進度
 const MINION_RATE := 0.4 / 3.0
-const TREASURE_RATE := (12.0 * 0.4 / 3.0 + 2.5) / 22.0
+# 寶箱怪掉的 WILD 一次落幾個（含兩端）
+const WILD_DROP := [1, 3]
 const ENEMIES := {
 	"squirrel": {"name": "Sneaky Squirrel", "hp": 1.5, "xp": 1},
 	"hedgehog": {"name": "Prickly Hedgehog", "hp": 2.0, "xp": 1},
@@ -80,14 +87,17 @@ const ENEMIES := {
 	"boar": {"name": "Wild Boar", "hp": 2.5, "xp": 1},
 	"bear": {"name": "Honey Bear", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
 	"stag": {"name": "Grumpy Stag", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
+	"knock": {"name": "Knocking Wolf", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true, "next": "boss"},
 	"boss": {"name": "Grandma?", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
-	"chest": {"name": "Treasure Chest", "hp": 3.0, "reward": 3.0 * TREASURE_RATE, "xp": 1, "treasure": true},
+	"chest": {"name": "Treasure Chest", "hp": 10.0, "reward": 0.0, "xp": 1, "treasure": true},
 }
 # 三關輪流：林間小路、花田、外婆家門口；每關的 [小動物 ×3, BOSS]
-const STAGES := [["squirrel", "hedgehog", "raccoon", "bear"], ["frog", "hare", "fox", "stag"], ["mouse", "raven", "boar", "boss"]]
+const STAGES := [["squirrel", "hedgehog", "raccoon", "bear"], ["frog", "hare", "fox", "stag"], ["mouse", "raven", "boar", "knock"]]
 const STAGE_NAMES := ["The Forest Path", "The Flower Meadow", "Grandma's House"]
 const STAGE_ORDER := [0, 1, 2, 0, 1, 2]
 const BOSS_EVERY := 7
+# 場景編號 EP01～EP99，EP99 之後回到 EP01（99 是 3 的倍數，所以回到 EP01 時場景、怪物也剛好回到第 1 關）
+const EP_MAX := 99
 const BASE_ATTACK := 0.2
 
 
@@ -193,13 +203,14 @@ static func scatters(board: Array) -> Array:
 #   win = raw × mult ÷ 20 四捨五入到分、
 #   cells 中獎格子、removed 消掉的格子、to_wild 金框變百搭的格子、
 #   moves 往下掉的 { col, from, to }（列）、added 補進來的 { col, row, cell }、next 掉完的盤面
-# free = true 是 Free Spins：倍率用 FS_MULTIPLIERS
+# free = true 是 Free Spins：倍率用 FS_MULTIPLIERS（從第一格開始；EXTRA 裡接著爬的用 resolve 的 level）
 static func play(rng: RandomNumberGenerator, bet: int, free := false) -> Dictionary:
 	return resolve(spin_board(rng), rng, bet, FS_MULTIPLIERS if free else MULTIPLIERS)
 
 
 # 從指定盤面開始連鎖（測試用固定盤面）
-static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: Array = MULTIPLIERS) -> Dictionary:
+# level 是倍率梯從第幾格開始（EXTRA 裡接著上一轉爬到的那一格）；回傳的 level 是連完之後爬到第幾格
+static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: Array = MULTIPLIERS, level := 0) -> Dictionary:
 	var steps := []
 	var board := start
 	var total := 0
@@ -207,7 +218,7 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: A
 		var ev := evaluate(board, bet)
 		if ev.wins.is_empty():
 			break
-		var mult: int = mults[mini(k, mults.size() - 1)]
+		var mult: int = mults[mini(level + k, mults.size() - 1)]
 		var marked := {}
 		for w in ev.wins:
 			for i in w.cells:
@@ -253,7 +264,42 @@ static func resolve(start: Array, rng: RandomNumberGenerator, bet: int, mults: A
 		total += win
 		board = next
 	var scatter := scatters(board)
-	return {"start": start, "steps": steps, "total": total, "final": board, "scatter": scatter, "triggered": scatter.size() >= 3}
+	return {"start": start, "steps": steps, "total": total, "final": board, "scatter": scatter, "triggered": scatter.size() >= 3, "level": level + steps.size()}
+
+
+static func buy_cost(bet: int) -> int:
+	return BUY_COST * total_bet(bet)
+
+
+# Feature Buy：抽盤面直到起手就有 3 個以上 SCATTER（跟自然觸發的那一轉同一個分布），之後照一般的一轉連鎖、進 EXTRA
+static func buy_board(rng: RandomNumberGenerator) -> Array:
+	var board := spin_board(rng)
+	while scatters(board).size() < 3:
+		board = spin_board(rng)
+	return board
+
+
+# 寶箱怪掉的 WILD 落在哪幾格：1～3 格，只落在中間三軸（WILD 本來就只出現在第 2～4 軸，第一軸沒有百搭），
+# 原本是 WILD 或 SCATTER 的格子不落；回傳格子編號（由小到大）
+static func drop_wilds(board: Array, rng: RandomNumberGenerator) -> Array:
+	var free_cells := []
+	for i in CELLS:
+		var c := i % COLS
+		if c >= 1 and c <= 3 and not is_wild(board[i].id) and not is_scatter(board[i].id):
+			free_cells.append(i)
+	var out := []
+	for k in mini(rng.randi_range(WILD_DROP[0], WILD_DROP[1]), free_cells.size()):
+		out.append(free_cells.pop_at(rng.randi_range(0, free_cells.size() - 1)))
+	out.sort()
+	return out
+
+
+# 盤面落下 WILD 之後的樣子（不動原本的盤面）
+static func with_wilds(board: Array, cells: Array) -> Array:
+	var out := board.duplicate()
+	for i in cells:
+		out[i] = {"id": "hood", "gold": false}
+	return out
 
 
 static func scatter_pay(count: int, bet: int) -> int:
@@ -279,7 +325,12 @@ static func make_enemy(kind: String, bet: int) -> Dictionary:
 	var tb := total_bet(bet)
 	var hp := roundi(e.hp * tb)
 	var reward: float = e.get("reward", e.hp * MINION_RATE)
-	return {"kind": kind, "name": e.name, "hp": hp, "max_hp": hp, "reward": roundi(reward * tb), "xp": e.xp, "boss": e.get("boss", false), "treasure": e.get("treasure", false)}
+	return {"kind": kind, "name": e.name, "hp": hp, "max_hp": hp, "reward": roundi(reward * tb), "xp": e.xp, "boss": e.get("boss", false), "treasure": e.get("treasure", false), "next": e.get("next", "")}
+
+
+# 第 stage 關（從 1 算）畫面上的場景編號：1～EP_MAX 一直輪
+static func episode(stage: int) -> int:
+	return (stage - 1) % EP_MAX + 1
 
 
 # 第 stage 關（從 1 算）的地點名稱

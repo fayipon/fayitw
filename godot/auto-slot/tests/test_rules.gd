@@ -121,7 +121,12 @@ func test_cascade_gold_turns_wild_and_drops() -> void:
 	for k in res.steps.size():
 		check(res.steps[k].mult == Rules.MULTIPLIERS[mini(k, Rules.MULTIPLIERS.size() - 1)], "multiplier ladder")
 	var free := Rules.resolve(start, rng, 4, Rules.FS_MULTIPLIERS)
-	check(free.steps[0].mult == Rules.FS_MULTIPLIERS[0] and free.steps[0].win == roundi(free.steps[0].raw * Rules.FS_MULTIPLIERS[0] / 20.0), "free spins use the doubled ladder")
+	check(free.steps[0].mult == Rules.FS_MULTIPLIERS[0] and free.steps[0].win == roundi(free.steps[0].raw * Rules.FS_MULTIPLIERS[0] / 20.0), "free spins use the EXTRA ladder")
+	# EXTRA 的倍率一路累積：從第 3 格接著爬，連完回傳爬到第幾格；爬到頂就停在最後一格
+	var cont := Rules.resolve(start, rng, 4, Rules.FS_MULTIPLIERS, 3)
+	check(cont.steps[0].mult == Rules.FS_MULTIPLIERS[3] and cont.level == 3 + cont.steps.size(), "EXTRA keeps climbing the ladder from where it left off")
+	var top := Rules.resolve(start, rng, 4, Rules.FS_MULTIPLIERS, 99)
+	check(top.steps[0].mult == Rules.FS_MULTIPLIERS[-1], "the ladder tops out at the last step")
 
 
 # 每一張盤面（開轉時與每段連鎖補完之後）都要守規矩：每軸最多一把金鑰匙、外側兩軸沒有 WILD 與金框、金框只在一般符號
@@ -170,7 +175,7 @@ func test_long_cascade_ladder() -> void:
 		check(not found.is_empty(), "a long cascade shows up (free=%s)" % free)
 		if found.is_empty():
 			continue
-		var want: Array = [2, 4, 6, 10, 10] if free else [1, 2, 3, 5, 5]
+		var want: Array = [2, 3, 4, 5, 6] if free else [1, 2, 3, 5, 5]
 		var got := []
 		var sum := 0
 		for k in found.steps.size():
@@ -199,10 +204,13 @@ func simulate(bet: int, n: int, seed: int) -> Array:
 		triggers += 1
 		free += Rules.scatter_pay(res.scatter.size(), bet)
 		var left := Rules.free_spins(res.scatter.size())
+		# EXTRA 的倍率整段累積：每一轉接著上一轉爬到的那一格（寶箱怪掉的 WILD 在 main 裡，這裡不算）
+		var level := 0
 		while left > 0:
 			left -= 1
 			spins += 1
-			var fs := Rules.play(rng, bet, true)
+			var fs := Rules.resolve(Rules.spin_board(rng), rng, bet, Rules.FS_MULTIPLIERS, level)
+			level = fs.level
 			free += fs.total
 			if fs.triggered:
 				free += Rules.scatter_pay(fs.scatter.size(), bet)
@@ -220,8 +228,8 @@ func test_rtp_and_multipliers() -> void:
 	var triggers: int = r[2]
 	print("base RTP %.3f, free spins RTP %.3f, free spins every %.0f spins (%.1f spins each)" % [base_rtp, free_rtp, float(n) / maxi(triggers, 1), float(r[3]) / maxi(triggers, 1)])
 	check(base_rtp > 0.64 and base_rtp < 0.8, "base game return %.3f" % base_rtp)
-	check(free_rtp > 0.06 and free_rtp < 0.18, "free spins return %.3f" % free_rtp)
-	check(triggers > 0 and float(n) / triggers > 70 and float(n) / triggers < 180, "free spins frequency")
+	check(free_rtp > 0.03 and free_rtp < 0.2, "free spins return %.3f" % free_rtp)
+	check(triggers > 0 and float(n) / triggers > 250 and float(n) / triggers < 650, "free spins frequency")
 	# 最低押注（每線 0.05）有不到 1 分的零頭要四捨五入：同樣的盤面，回收率要跟上面差不到 1%
 	var m := 10000
 	var hi := simulate(bet, m, 7)
@@ -245,7 +253,8 @@ func test_enemies() -> void:
 	for k in 4 * Rules.BOSS_EVERY:
 		kinds.append(Rules.spawn_enemy(k, 1).kind)
 	check(kinds.slice(0, 7) == ["squirrel", "hedgehog", "raccoon", "squirrel", "hedgehog", "raccoon", "bear"], "stage 1 is the forest path crew, the bear is its boss (%s)" % [kinds.slice(0, 7)])
-	check(kinds[7] == "frog" and kinds[13] == "stag" and kinds[14] == "mouse" and kinds[20] == "boss" and kinds.slice(21, 28) == kinds.slice(0, 7), "stages rotate through the story")
+	check(Rules.episode(1) == 1 and Rules.episode(99) == 99 and Rules.episode(100) == 1 and Rules.episode(198) == 99 and Rules.episode(199) == 1 and Rules.stage_name(100) == Rules.stage_name(1), "EP99 is followed by EP01 with the same scene")
+	check(kinds[7] == "frog" and kinds[13] == "stag" and kinds[14] == "mouse" and kinds[20] == "knock" and kinds.slice(21, 28) == kinds.slice(0, 7), "stages rotate through the story")
 	# 打怪的回收率不變：每一關的總賞金 ÷ 總血量跟改版前（4 隻 3 倍血 0.4 倍賞金的大野狼 + 10 倍血 2.5 倍賞金的狼王）一樣
 	for s in Rules.STAGES.size():
 		var hp := 0
@@ -256,10 +265,43 @@ func test_enemies() -> void:
 			pay += e.reward
 		var old := (4 * 0.4 + 2.5) / (4 * 3.0 + 10.0)
 		check(absf(float(pay) / hp - old) < 0.002, "stage %d pays %.4f per damage (was %.4f)" % [s + 1, float(pay) / hp, old])
-	# EXTRA 模式的寶箱怪：賞金 ÷ 血量跟一整關平均一樣，而且不是 BOSS
+	# 第 3 關 BOSS 兩階段：敲門的狼打倒後變身成外婆，兩段各一條 BOSS 血條、各給一次 BOSS 賞金
+	var knock := Rules.make_enemy("knock", 200)
+	var granny := Rules.make_enemy(knock.next, 200)
+	var bear := Rules.make_enemy("bear", 200)
+	check(knock.next == "boss" and granny.next == "" and knock.max_hp == bear.max_hp and granny.max_hp == bear.max_hp and knock.reward == bear.reward and granny.reward == bear.reward, "the knocking wolf turns into Grandma: two full boss HP bars, two boss rewards")
+	# EXTRA 模式的寶箱怪：血量跟 BOSS 一樣、不掉金幣（掉 WILD），不是 BOSS
 	var chest := Rules.make_enemy("chest", 200)
-	var old_rate := (4 * 0.4 + 2.5) / (4 * 3.0 + 10.0)
-	check(chest.treasure and not chest.boss and absf(float(chest.reward) / chest.max_hp - old_rate) < 0.002, "the treasure chest pays the stage average per damage")
+	var boss := Rules.make_enemy("bear", 200)
+	check(chest.treasure and not chest.boss and chest.max_hp == boss.max_hp and chest.reward == 0, "the treasure chest has the boss HP and drops no coins")
+	# 寶箱怪掉的 WILD：1～3 格、只落在中間三軸、不落在 WILD 或 SCATTER 上、不重複
+	var wrng := RandomNumberGenerator.new()
+	wrng.seed = 77
+	var counts := {}
+	var ok := true
+	for n in 3000:
+		var board := Rules.spin_board(wrng)
+		var cells := Rules.drop_wilds(board, wrng)
+		counts[cells.size()] = counts.get(cells.size(), 0) + 1
+		var seen := {}
+		for i in cells:
+			var c: int = i % Rules.COLS
+			ok = ok and c >= 1 and c <= 3 and not seen.has(i) and not Rules.is_wild(board[i].id) and not Rules.is_scatter(board[i].id)
+			seen[i] = true
+		var after := Rules.with_wilds(board, cells)
+		for i in Rules.CELLS:
+			ok = ok and (Rules.is_wild(after[i].id) if seen.has(i) else after[i] == board[i])
+	check(ok, "dropped WILDs land only on middle-reel cells that are not WILD or SCATTER")
+	check(counts.keys().all(func(k): return k >= 1 and k <= 3) and counts.size() == 3, "a chest drops 1 to 3 WILDs (%s)" % [counts])
+	# Feature Buy：起手盤面一定有 3 個以上 SCATTER，連鎖完一定進 EXTRA；價錢是總押注的 BUY_COST 倍
+	var brng := RandomNumberGenerator.new()
+	brng.seed = 5
+	var always := true
+	for n in 300:
+		var start := Rules.buy_board(brng)
+		always = always and Rules.scatters(start).size() >= 3 and Rules.resolve(start, brng, 20).triggered
+	check(always, "a Feature Buy always triggers EXTRA")
+	check(Rules.buy_cost(20) == Rules.BUY_COST * Rules.total_bet(20), "the Feature Buy costs %d× the total bet" % Rules.BUY_COST)
 	check(not Rules.hit(wolf, Rules.base_attack(5)), "a base attack alone does not kill")
 	check(Rules.hit(wolf, 100000) and wolf.hp == 0, "a big win defeats the enemy")
 
