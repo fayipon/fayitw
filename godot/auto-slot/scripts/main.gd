@@ -30,11 +30,12 @@ const TIPS := [
 	["hood", "Gold-framed symbols turn into WILD when they win"],
 	["", "Every cascade raises the multiplier ×1 ×2 ×3 ×5 · in EXTRA it keeps climbing to ×10"],
 	["wolf", "Every coin you win strikes the foe · every 7th is the stage boss"],
-	["hood", "EXTRA: beat a treasure chest and 1-3 WILDs drop right away"],
+	["hood", "EXTRA: beat a treasure chest and 1-3 WILDs drop on the next spin"],
 ]
 
-# charge：還沒打出去的傷害（沒有狼可以打時存起來，下一隻站定就打出去）
-var state := {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "turbo": false, "sound": true, "history": []}
+# charge：還沒打出去的傷害（沒有狼可以打時存起來，下一隻站定就打出去）；
+# wilds：寶箱怪掉的 WILD 還有幾次沒落下（每轉開轉落一次）
+var state := {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "wilds": 0, "turbo": false, "sound": true, "history": []}
 var rng := RandomNumberGenerator.new()
 var started := false
 var busy := false
@@ -107,10 +108,10 @@ var _tip_k := 0
 var _spin_btn: BaseButton
 var _auto_btn: BaseButton
 var _turbo_btn: BaseButton
-# EXTRA 的倍率爬到第幾格（整段 EXTRA 累積不歸零）；這一轉打爆了幾隻寶箱還沒落 WILD；飛向轉輪的 WILD 還有幾個在路上
+# EXTRA 的倍率爬到第幾格（整段 EXTRA 累積不歸零）
 var fs_level := 0
-var _drops := 0
-var _flying := 0
+# 倍率條右邊的小牌子：寶箱怪掉的 WILD 還有幾次（小紅帽 WILD 圖示 ×n），沒有就不畫
+var _wild_badge: Control
 var _minus_btn: BaseButton
 var _plus_btn: BaseButton
 var _callout: Label
@@ -188,6 +189,11 @@ func _ready() -> void:
 	_ladder = _build_ladder()
 	_ladder.z_index = 22
 	add_child(_ladder)
+	_wild_badge = _painter(_draw_wild_badge)
+	_wild_badge.size = Vector2(62, 28)
+	_wild_badge.pivot_offset = _wild_badge.size / 2.0
+	_wild_badge.z_index = 22
+	add_child(_wild_badge)
 	_extra_fx = _build_extra_fx()
 	_extra_fx.z_index = 19
 	add_child(_extra_fx)
@@ -281,6 +287,8 @@ func _layout() -> void:
 	_floor.get_node("FloorFade").size = Vector2(vp.x, 80)
 	_ladder.scale = Vector2(u, u)
 	_ladder.position = Vector2((vp.x - _ladder.size.x * u) / 2.0, slot.position.y - border - _ladder.size.y * u * 0.5)
+	_wild_badge.scale = Vector2(u, u)
+	_wild_badge.position = _ladder.position + Vector2((_ladder.size.x + 8.0) * u, (_ladder.size.y - _wild_badge.size.y) * u / 2.0)
 	_extra_fx.size = vp
 	_layout_extra_sparks()
 	hud.scale = Vector2(u, u)
@@ -516,9 +524,28 @@ func _build_ladder() -> Control:
 	return l
 
 
-# 寶箱怪掉的 WILD：小紅帽 WILD 從寶箱那裡彈出來、飛向轉輪中間，到了閃一下淡掉（接著 _round 讓 WILD 落進盤面）
+# 寶箱怪掉的 WILD 還有幾次：跟倍率條同款的圓角底（EXTRA 時紫色）、外圈金光一呼一吸，左邊小紅帽 WILD、右邊 ×n
+func _draw_wild_badge(c: Control) -> void:
+	if state.wilds <= 0:
+		return
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+	var r := Rect2(Vector2.ZERO, c.size)
+	var sb := Art.box(Color(0.16, 0.09, 0.04, 0.94).lerp(Color(Art.EXTRA_DEEP, 0.96), _extra_k), int(c.size.y / 2.0), 1, Art.GOLD)
+	sb.shadow_color = Color(1.0, 0.75, 0.3, 0.35 + 0.35 * pulse)
+	sb.shadow_size = 4 + int(4 * pulse)
+	c.draw_style_box(sb, r)
+	var icon := Art.symbol("hood")
+	var ih := c.size.y + 6.0
+	c.draw_texture_rect(icon, Rect2(Vector2(-4, -3), Vector2(ih * icon.get_width() / icon.get_height(), ih)), false)
+	var f := Art.font()
+	var base := Vector2(ih * 0.8, c.size.y * 0.5 + 15 * 0.36)
+	var text := "×%d" % state.wilds
+	c.draw_string_outline(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, c.size.x - ih * 0.8, 15, 4, Art.GOLD_INK)
+	c.draw_string(f, base, text, HORIZONTAL_ALIGNMENT_CENTER, c.size.x - ih * 0.8, 15, Art.GOLD_LIGHT)
+
+
+# 寶箱怪掉的 WILD：小紅帽 WILD 從寶箱那裡彈出來、飛到倍率條旁邊的小牌子，牌子彈一下
 func _fly_wild(from: Vector2) -> void:
-	_flying += 1
 	var icon := TextureRect.new()
 	icon.texture = Art.symbol("hood")
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -529,19 +556,19 @@ func _fly_wild(from: Vector2) -> void:
 	icon.position = from - icon.size / 2.0
 	icon.z_index = 30
 	add_child(icon)
-	var to := slot.position + slot.size * Vector2(0.5, 0.2) - icon.size / 2.0
+	var to := _wild_badge.position + Vector2(14, 14) * _wild_badge.scale - icon.size / 2.0
 	icon.scale = Vector2(0.3, 0.3)
 	var tw := create_tween()
-	tw.tween_property(icon, "scale", Vector2(1.3, 1.3), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(icon, "position:y", icon.position.y - 30.0, 0.22).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.12)
+	tw.tween_property(icon, "scale", Vector2(1.25, 1.25), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(icon, "position:y", icon.position.y - 30.0, 0.2).set_ease(Tween.EASE_OUT)
 	tw.tween_property(icon, "position", to, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	tw.parallel().tween_property(icon, "scale", Vector2(0.8, 0.8), 0.42)
-	tw.tween_property(icon, "modulate", Color(2.0, 2.0, 2.0, 0.0), 0.16)
-	tw.parallel().tween_property(icon, "scale", Vector2(1.4, 1.4), 0.16)
+	tw.parallel().tween_property(icon, "scale", Vector2(0.45, 0.45), 0.42).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func():
 		icon.queue_free()
-		_flying -= 1)
+		_wild_badge.queue_redraw()
+		_wild_badge.scale = Vector2(1.35, 1.35) * _ladder.scale
+		create_tween().tween_property(_wild_badge, "scale", _ladder.scale, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		Sfx.play("wild", 1.2, -4.0))
 
 
 func _set_ladder(k: int) -> void:
@@ -555,6 +582,7 @@ func _set_ladder(k: int) -> void:
 
 
 func _refresh_fs() -> void:
+	_refresh_controls()
 	_buy.queue_redraw()
 	_ladder.queue_redraw()
 
@@ -1438,70 +1466,42 @@ func _round(bet: int, buy := false) -> Dictionary:
 	_set_ladder(level)
 	var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
 	var start := Rules.buy_board(rng) if buy else Rules.spin_board(rng)
-	_drops = 0
+	# 寶箱怪掉的 WILD：還有的話這一轉用掉一次——轉輪停下後隨機 1～3 格落下 WILD，連鎖照落下後的盤面算
+	var drop := []
+	if state.wilds > 0:
+		state.wilds -= 1
+		drop = Rules.drop_wilds(start, rng)
+	var res := Rules.resolve(Rules.with_wilds(start, drop), rng, bet, mults, level)
 	Sfx.play("spin")
 	await slot.spin(start)
-	var board: Array = start
-	var res := Rules.resolve(board, rng, bet, mults, level)
-	var steps: Array = res.steps
-	var i := 0
-	var n := 0
-	var total := 0
-	var dropped := false
+	if not drop.is_empty():
+		_wild_badge.queue_redraw()
+		await slot.drop_wilds(drop)
 	var won := fs_total if free else 0
 	var base := Rules.base_attack(bet)
 	var tb := Rules.total_bet(bet)
-	if steps.is_empty():
+	for k in res.steps.size():
+		var st: Dictionary = res.steps[k]
+		_set_ladder(level + k)
+		slot.mark(st.cells)
+		Sfx.play("win", 1.0 + mini(k, 8) * 0.12)
+		won += st.win
+		_set_win(st.win, true)
+		# Total Win 等跳字飛到才更新
+		_step_popup(st, won)
+		# 第 k + 1 段連擊：小紅帽的招式跟著段數變多，第 2 段起自走區出現連擊計數
+		_queue_attack(st.win + (base if k == 0 else 0), st.win >= 5 * tb, k + 1)
+		await get_tree().create_timer(0.36 if state.turbo else 0.62).timeout
+		await slot.cascade(st, k)
+	if res.steps.is_empty():
 		_queue_attack(base, false)
-	while true:
-		while i < steps.size():
-			var st: Dictionary = steps[i]
-			_set_ladder(level)
-			slot.mark(st.cells)
-			Sfx.play("win", 1.0 + mini(n, 8) * 0.12)
-			won += st.win
-			total += st.win
-			_set_win(st.win, true)
-			# Total Win 等跳字飛到才更新
-			_step_popup(st, won)
-			# 第 n + 1 段連擊：小紅帽的招式跟著段數變多，第 2 段起自走區出現連擊計數
-			_queue_attack(st.win + (base if n == 0 else 0), st.win >= 5 * tb, n + 1)
-			await get_tree().create_timer(0.36 if state.turbo else 0.62).timeout
-			await slot.cascade(st, n)
-			board = st.next
-			level += 1
-			n += 1
-			i += 1
-			if free and _drops > 0 and not dropped:
-				break
-		# EXTRA：寶箱怪被打爆就當場落 1～3 個 WILD（一轉最多一次），倍率接著爬、繼續連鎖。
-		# 連鎖都跑完了還沒爆的話，等小紅帽這一轉的招式打完再看一次（最後一刀才打爆的也算這一轉）
-		if free and not dropped:
-			if _drops == 0:
-				while _working:
-					await get_tree().process_frame
-			if _drops > 0:
-				dropped = true
-				while _flying > 0:
-					await get_tree().process_frame
-				var cells := Rules.drop_wilds(board, rng)
-				if not cells.is_empty():
-					await slot.drop_wilds(cells)
-					board = Rules.with_wilds(board, cells)
-					res = Rules.resolve(board, rng, bet, mults, level)
-					steps = res.steps
-					i = 0
-					continue
-		break
-	_drops = 0
 	if free:
-		fs_level = level
+		fs_level = res.level
 	# 這一輪的招式都打完才收起連擊計數（排在佇列最後）
 	_queue.append([0, false, false, -1])
 	if not _working:
 		_work()
-	var scatter := Rules.scatters(board)
-	return {"total": total, "triggered": scatter.size() >= 3, "scatter": scatter}
+	return res
 
 
 # 3 個以上 SCATTER（金鑰匙）：先給 SCATTER 獎金，再連轉 Free Spins（倍率加倍，可以再觸發）
@@ -1706,6 +1706,8 @@ func _process(delta: float) -> void:
 		if _idle > IDLE_TWIRL:
 			_idle = IDLE_TWIRL - 5.0
 			field.twirl()
+	if state.wilds > 0:
+		_wild_badge.queue_redraw()
 	if _extra_k > 0.0:
 		_extra_t += delta
 		_extra_fx.queue_redraw()
@@ -1887,8 +1889,8 @@ func _defeat() -> void:
 	create_tween().tween_property(_enemy_box, "modulate:a", 0.0, 0.3)
 	await get_tree().create_timer(0.45).timeout
 	if e.treasure:
-		# 寶箱怪不掉金幣、掉 WILD：從寶箱飛向轉輪，這一轉當場落下（一轉最多一次，_round 落）
-		_drops += 1
+		# 寶箱怪不掉金幣、掉 WILD：飛到倍率條旁邊存著，下一轉轉輪停下時落下（一轉落一次）
+		state.wilds += 1
 		field.float_text("WILD!", at + Vector2(0, -40), Art.GOLD, 30, Art.GOLD_INK)
 		Sfx.play("wild")
 		_fly_wild(at)
@@ -1931,7 +1933,7 @@ func _enter_treasure() -> void:
 
 
 # 出 EXTRA 模式：還沒打倒的寶箱怪淡掉離場（沒打倒不掉 WILD），再把原本的敵人放回來（血量、變身到哪都跟進 EXTRA 前一樣）；
-# EXTRA 期間存著還沒打出去的能量不帶出 EXTRA（作廢），能量條換回進 EXTRA 前存的
+# EXTRA 期間存著還沒打出去的能量不帶出 EXTRA（作廢），能量條換回進 EXTRA 前存的。寶箱掉的 WILD 還沒落完的話留到之後的轉
 func _leave_treasure() -> void:
 	_swapping = true
 	while _working or _defeating or (not enemy.is_empty() and not enemy_ready):
@@ -2038,7 +2040,8 @@ func _refresh_controls() -> void:
 	_minus_btn.modulate.a = 0.35 if _minus_btn.disabled else 1.0
 	_plus_btn.modulate.a = 0.35 if _plus_btn.disabled else 1.0
 	_spin_btn.busy = busy
-	_spin_btn.count = auto_left if auto else 0
+	# EXTRA 是自動轉：轉動鍵中間顯示還剩幾轉（跟 AUTO 一樣），不用玩家按
+	_spin_btn.count = fs_left if free else (auto_left if auto else 0)
 	_auto_btn.lit = auto
 
 
@@ -2338,7 +2341,7 @@ func _fill_rules() -> void:
 		tiers.append("%s from %d× total bet" % [t[2], t[0]])
 	body.add_child(_body(", ".join(tiers) + "."))
 	body.add_child(_divider("AUTO-RUN"))
-	body.add_child(_body("Red Hood walks to Grandma's house on her own: the forest path, the flower meadow, then Grandma's front door. When one of the Big Bad Wolf's forest friends blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while nobody is around, and any overkill, is stored and unleashed on the next one. Defeat them for coins and XP; every 7th is the stage boss: the Honey Bear, the Grumpy Stag, then the wolf knocking at Grandma's door. During EXTRA, treasure chests pop up instead: they have a boss's HP and drop no coins, but beating one drops 1-3 WILDs onto the middle reels right away (once per spin). EXTRA energy charges separately (purple) and stays in EXTRA. Then you're back where you left off."))
+	body.add_child(_body("Red Hood walks to Grandma's house on her own: the forest path, the flower meadow, then Grandma's front door. When one of the Big Bad Wolf's forest friends blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while nobody is around, and any overkill, is stored and unleashed on the next one. Defeat them for coins and XP; every 7th is the stage boss: the Honey Bear, the Grumpy Stag, then the wolf knocking at Grandma's door. During EXTRA, treasure chests pop up instead: they have a boss's HP and drop no coins, but beating one drops 1-3 WILDs onto the middle reels as the next spin lands. EXTRA energy charges separately (purple) and stays in EXTRA. Then you're back where you left off."))
 	var n: int = state.kills % Rules.BOSS_EVERY + 1
 	body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · EP%02d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), Rules.episode(state.kills / Rules.BOSS_EVERY + 1), n], 12))
 	var reset := Button.new()
@@ -2358,8 +2361,9 @@ func _fill_rules() -> void:
 			armed[0] = true
 			reset.text = "Tap again to reset coins, level, stage and history"
 			return
-		for k in ["coins", "bet", "level", "xp", "kills", "charge"]:
-			state[k] = {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0}[k]
+		for k in ["coins", "bet", "level", "xp", "kills", "charge", "wilds"]:
+			state[k] = {"coins": Rules.START_COINS, "bet": Rules.DEFAULT_BET, "level": 1, "xp": 0, "kills": 0, "charge": 0, "wilds": 0}[k]
+		_wild_badge.queue_redraw()
 		state.history = []
 		_shown_coins = state.coins
 		field.set_stage(1)
@@ -2450,7 +2454,7 @@ func _boot() -> void:
 	_web("asReady", 1.0)
 	# 預覽演出（只是畫面，不扣押注也不派獎）：網址帶 ?bigwin 演一次總押注 60 倍的 BIG WIN（網頁版等第一次點擊、有聲音了才演）；
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
-	# ?wilddrop 轉一次、演寶箱怪掉 WILD（飛向轉輪、落下 3 個 WILD）；
+	# ?wilddrop 演寶箱怪掉 WILD（飛到倍率條旁邊），再轉一次、落下 3 個 WILD；
 	# ?buy 打開 Feature Buy 購買框；
 	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
 	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）；
@@ -2477,22 +2481,25 @@ func _boot() -> void:
 	# ?buy 打開 Feature Buy 購買框（看畫面用，按 Start 才會真的買）
 	if search.contains("buy"):
 		_open_buy()
-	# ?wilddrop 轉一次，演寶箱怪掉 WILD：從敵人那裡飛向轉輪、落下 3 個 WILD（只是畫面，不算贏分、不動存檔）
+	# ?wilddrop 演寶箱怪掉 WILD、再轉一次落下 3 個 WILD（只是畫面，不算贏分、不動存檔）
 	if search.contains("wilddrop"):
 		while enemy.is_empty() or not enemy_ready:
 			await get_tree().process_frame
 		busy = true
-		var board := Rules.spin_board(rng)
-		Sfx.play("spin")
-		await slot.spin(board)
+		# 先演寶箱怪掉 WILD、飛到倍率條旁邊（暫時 +1，下面轉的時候用掉，存檔不變）
+		state.wilds += 1
 		field.float_text("WILD!", field.enemy_center() + Vector2(0, -40), Art.GOLD, 30, Art.GOLD_INK)
 		Sfx.play("wild")
 		_fly_wild(field.enemy_center())
-		while _flying > 0:
-			await get_tree().process_frame
+		await get_tree().create_timer(1.6).timeout
+		state.wilds -= 1
+		_wild_badge.queue_redraw()
+		var board := Rules.spin_board(rng)
 		var cells := []
 		while cells.size() < 3:
 			cells = Rules.drop_wilds(board, rng)
+		Sfx.play("spin")
+		await slot.spin(board)
 		await slot.drop_wilds(cells)
 		busy = false
 	if search.contains("tease"):

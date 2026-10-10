@@ -610,8 +610,8 @@ func drop_wilds(cells: Array) -> void:
 		_strips[c].add_child(t)
 		_place(t, -1.2)
 		tiles[i] = t
-		var d := (0.3 + r * 0.05) * speed
-		var wait := k * 0.22 * speed
+		var d := (0.22 + r * 0.04) * speed
+		var wait := k * 0.1 * speed
 		last = maxf(last, wait + d)
 		var tw := create_tween()
 		tw.tween_interval(wait)
@@ -624,7 +624,7 @@ func drop_wilds(cells: Array) -> void:
 			Sfx.play("wild"))
 		tw.tween_property(t, "scale", Vector2(1.12, 0.86), 0.06 * speed)
 		tw.tween_property(t, "scale", Vector2.ONE, 0.2 * speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await get_tree().create_timer(last + 0.3 * speed).timeout
+	await get_tree().create_timer(last + 0.16 * speed).timeout
 	for i in Rules.CELLS:
 		if tiles[i]:
 			_place(tiles[i], i / Rules.COLS)
