@@ -288,5 +288,389 @@
     "file": "s-wolf-walksheet.jpg",
     "generationId": "1f1c439e-e43b-6270-9aa8-dc64faedcaab",
     "cut": "s-wolf-walksheet-cut.png"
+  },
+  "s-m-squirrel": {
+    "imageId": "6c4fa886-ea6f-4eab-a56f-1abb499e2e7b",
+    "file": "s-m-squirrel.jpg",
+    "generationId": "1f1c43f7-2fe7-6ae0-8438-12c25973ef07",
+    "cut": "s-m-squirrel-cut.png"
+  },
+  "s-m-badger": {
+    "imageId": "014e910e-2800-4ec5-b369-8d27b3e6d319",
+    "file": "s-m-badger.jpg",
+    "generationId": "1f1c43f7-3095-6050-962f-6f10a03dfd03",
+    "cut": "s-m-badger-cut.png"
+  },
+  "s-m-fox": {
+    "imageId": "21675753-ac2b-491b-adff-d62a7cbc1d1f",
+    "file": "s-m-fox.jpg",
+    "generationId": "1f1c43f7-308d-6b20-8e42-b0161572bcd8",
+    "cut": "s-m-fox-cut.png"
+  },
+  "s-m-hedgehog": {
+    "imageId": "e3427e67-cd9e-47a9-a211-251e63413a0c",
+    "file": "s-m-hedgehog.jpg",
+    "generationId": "1f1c43f7-302e-67b0-a293-deab102a6c00",
+    "cut": "s-m-hedgehog-cut.png"
+  },
+  "s-m-squirrel-hurt": {
+    "imageId": "d92988e0-80b2-47aa-bca2-a3840e352581",
+    "file": "s-m-squirrel-hurt.jpg",
+    "generationId": "1f1c43f8-0a24-6d20-9bac-678691cea88b",
+    "cut": "s-m-squirrel-hurt-cut.png"
+  },
+  "s-m-squirrel-walk": {
+    "imageId": "9747ab8f-c93d-4d08-a2d3-844a3888baa1",
+    "file": "s-m-squirrel-walk.jpg",
+    "generationId": "1f1c43f8-0d0d-6730-9d27-b57d5190ba34",
+    "cut": "s-m-squirrel-walk-cut.png"
+  },
+  "s-m-hedgehog-hurt": {
+    "imageId": "cb67624a-5d27-4ec3-8215-d45619f1cc51",
+    "file": "s-m-hedgehog-hurt.jpg",
+    "generationId": "1f1c43f8-2dfb-6a00-b52a-33f2bb118391",
+    "cut": "s-m-hedgehog-hurt-cut.png"
+  },
+  "s-m-hedgehog-walk": {
+    "imageId": "2d7dfaf8-c883-4540-ad10-6e860f170920",
+    "file": "s-m-hedgehog-walk.jpg",
+    "generationId": "1f1c43f8-3067-6be0-82d3-b31b59cd4011",
+    "cut": "s-m-hedgehog-walk-cut.png"
+  },
+  "s-m-fox-walk": {
+    "imageId": "1321bb88-b330-4268-ab61-a957b6788810",
+    "file": "s-m-fox-walk.jpg",
+    "generationId": "1f1c43f8-df6c-66e0-9e40-1797a32e76ee",
+    "cut": "s-m-fox-walk-cut.png"
+  },
+  "s-m-fox-hurt": {
+    "imageId": "001f1700-5fe2-4dd0-ba90-095aa642e7ca",
+    "file": "s-m-fox-hurt.jpg",
+    "generationId": "1f1c43f8-dc0e-69d0-843e-b8a0af6fc137",
+    "cut": "s-m-fox-hurt-cut.png"
+  },
+  "s-m-badger-hurt": {
+    "imageId": "42d663fc-2f3d-4b47-b2bc-b2b66f711d44",
+    "file": "s-m-badger-hurt.jpg",
+    "generationId": "1f1c43f9-03ac-6370-b8cd-f7117baddc9e",
+    "cut": "s-m-badger-hurt-cut.png"
+  },
+  "s-m-badger-walk": {
+    "imageId": "439769e3-a994-480f-a9e5-867ed6e06294",
+    "file": "s-m-badger-walk.jpg",
+    "generationId": "1f1c43f9-1082-6590-baa9-4d54d90c2202",
+    "cut": "s-m-badger-walk-cut.png"
+  },
+  "s-m-gent": {
+    "imageId": "08cabf79-f402-4963-99c5-e7c20ce432da",
+    "file": "s-m-gent.jpg",
+    "generationId": "1f1c43f9-dcc1-6f20-bf84-2c6cacd0a94e",
+    "cut": "s-m-gent-cut.png"
+  },
+  "s-m-boar": {
+    "imageId": "2e278b01-ca64-4607-81e9-d9d12829a4a0",
+    "file": "s-m-boar.jpg",
+    "generationId": "1f1c43f9-dc2d-6050-a4d0-cf63cf92a440",
+    "cut": "s-m-boar-cut.png"
+  },
+  "s-m-raven": {
+    "imageId": "8baf61f9-996c-41ee-b3af-5b025b6f215c",
+    "file": "s-m-raven.jpg",
+    "generationId": "1f1c43f9-aff4-6380-803b-1044073aa0f2",
+    "cut": "s-m-raven-cut.png"
+  },
+  "s-m-knock": {
+    "imageId": "1fd6ed52-744b-42cc-9466-34660bfc1b9c",
+    "file": "s-m-knock.jpg",
+    "generationId": "1f1c43fa-04ca-6f80-b3a1-7f95be4fd36e",
+    "cut": "s-m-knock-cut.png"
+  },
+  "s-m-raven-hurt": {
+    "imageId": "9ba99ccd-4ee9-46a7-b7b8-8540aaafbdcb",
+    "file": "s-m-raven-hurt.jpg",
+    "generationId": "1f1c43fa-b665-6470-a669-7576b86e7d51",
+    "cut": "s-m-raven-hurt-cut.png"
+  },
+  "s-m-boar-hurt": {
+    "imageId": "05caccd5-7704-474f-84ce-9b061c7ab76c",
+    "file": "s-m-boar-hurt.jpg",
+    "generationId": "1f1c43fa-ba2c-6130-b037-ca7bf1bf48ae",
+    "cut": "s-m-boar-hurt-cut.png"
+  },
+  "s-m-raven-walk": {
+    "imageId": "a429bc5e-0ffa-46f8-a457-4f0da2efc586",
+    "file": "s-m-raven-walk.jpg",
+    "generationId": "1f1c43fa-bdb8-6470-bfc6-2ca042227ed3",
+    "cut": "s-m-raven-walk-cut.png"
+  },
+  "s-m-boar-walk": {
+    "imageId": "48ff2ef8-32ae-48d0-a247-e71a2beb3d33",
+    "file": "s-m-boar-walk.jpg",
+    "generationId": "1f1c43fb-4343-64a0-be7f-77cddf5b9499",
+    "cut": "s-m-boar-walk-cut.png"
+  },
+  "s-m-knock-hurt": {
+    "imageId": "925d07da-4b59-4416-9d29-17c5b532ee44",
+    "file": "s-m-knock-hurt.jpg",
+    "generationId": "1f1c43fb-92fb-6010-b366-cd597027a1f4",
+    "cut": "s-m-knock-hurt-cut.png"
+  },
+  "s-m-gent-hurt": {
+    "imageId": "226bd5cb-5c0f-47a8-8847-aa38904aabbc",
+    "file": "s-m-gent-hurt.jpg",
+    "generationId": "1f1c43fb-8962-6f30-b6bc-1014951af588",
+    "cut": "s-m-gent-hurt-cut.png"
+  },
+  "s-m-gent-walk": {
+    "imageId": "e523ef11-7be8-4a0b-b9f9-325cf310be95",
+    "file": "s-m-gent-walk.jpg",
+    "generationId": "1f1c43fb-8d3a-6d60-9ed1-04dfe1d803f5",
+    "cut": "s-m-gent-walk-cut.png"
+  },
+  "s-m-knock-walk": {
+    "imageId": "66d5dd24-bf33-4d01-aae0-6b8b3e948fd0",
+    "file": "s-m-knock-walk.jpg",
+    "generationId": "1f1c43fc-1e1a-63d0-a7f6-01e81f68daba",
+    "cut": "s-m-knock-walk-cut.png"
+  },
+  "s-m-boss": {
+    "imageId": "dc0fc76d-b2a5-4edb-9f3a-78fbc8d1936e",
+    "file": "s-m-boss.jpg",
+    "generationId": "1f1c43fc-66d1-6f60-b2b0-4eb9cb53b079",
+    "cut": "s-m-boss-cut.png"
+  },
+  "s-scene3": {
+    "imageId": "11c87f00-1c98-459f-aa8b-6985bed825ad",
+    "file": "s-scene3.jpg",
+    "generationId": "1f1c43fc-c981-6a20-aa4f-d09da27bf992"
+  },
+  "s-scene2": {
+    "imageId": "49cf6369-495a-4d29-9978-c803db8fb6d7",
+    "file": "s-scene2.jpg",
+    "generationId": "1f1c43fc-9eb4-69a0-adcd-a5c8efea1b59"
+  },
+  "s-m-boss-walk": {
+    "imageId": "553e7d3a-abf8-4279-b0da-c5083b5a7571",
+    "file": "s-m-boss-walk.jpg",
+    "generationId": "1f1c43fd-5034-60e0-b202-2ac72e30c7b0",
+    "cut": "s-m-boss-walk-cut.png"
+  },
+  "s-m-boss-hurt": {
+    "imageId": "559d4ce8-03b6-402e-9bfa-3cbfe3130b12",
+    "file": "s-m-boss-hurt.jpg",
+    "generationId": "1f1c43fd-4fbc-66d0-b70a-67106480c7c5",
+    "cut": "s-m-boss-hurt-cut.png"
+  },
+  "s-m-boss-reveal": {
+    "imageId": "52b646ec-e7c2-4b37-a7af-d0ec2d77b6c9",
+    "file": "s-m-boss-reveal.jpg",
+    "generationId": "1f1c43fd-883d-6c20-b1f1-e7d5d4545318",
+    "cut": "s-m-boss-reveal-cut.png"
+  },
+  "s-far2": {
+    "imageId": "b260d22a-5577-4388-b112-5c2ca9346501",
+    "file": "s-far2.jpg",
+    "generationId": "1f1c43fd-a94e-61d0-9e61-9ae72bd0087f"
+  },
+  "s-near2": {
+    "imageId": "352c863d-33f5-4ff8-87ae-ad861cfe1763",
+    "file": "s-near2.jpg",
+    "generationId": "1f1c43fe-54fe-6c00-9f22-a7591fb6cd23"
+  },
+  "s-far3": {
+    "imageId": "5b686792-7940-4c97-892d-ce21e2cde50f",
+    "file": "s-far3.jpg",
+    "generationId": "1f1c43fe-5a05-65f0-a56d-c0328af5d4f3"
+  },
+  "s-near3": {
+    "imageId": "97eafa77-7fe7-4387-8f8e-f173fddf8478",
+    "file": "s-near3.jpg",
+    "generationId": "1f1c43fe-5d10-62e0-83e4-c705e8d6483a"
+  },
+  "s-hero-twirl": {
+    "imageId": "7e3cc31b-a085-4f35-b87c-f8112452ba34",
+    "file": "s-hero-twirl.jpg",
+    "generationId": "1f1c4400-42d3-6a60-b45c-a7c374593ab7",
+    "cut": "s-hero-twirl-cut.png"
+  },
+  "s-m-gent-try-b": {
+    "imageId": "130a7e90-3403-42e6-84b3-b9e05afa76b6",
+    "file": "s-m-gent-try-b.jpg",
+    "generationId": "1f1c444b-35d1-6c40-81d3-e48bf79323e0",
+    "cut": "s-m-gent-try-b-cut.png"
+  },
+  "s-m-gent-try-a": {
+    "imageId": "1b6de147-22f7-40fc-93ed-936514585377",
+    "file": "s-m-gent-try-a.jpg",
+    "generationId": "1f1c444b-34d1-66b0-97df-a58630a5bf6c",
+    "cut": "s-m-gent-try-a-cut.png"
+  },
+  "s-m-gent-try-c": {
+    "imageId": "685d5b43-f4f0-4403-835e-2d2bc6398630",
+    "file": "s-m-gent-try-c.jpg",
+    "generationId": "1f1c444b-368d-6c10-9925-f8f49d042b7d",
+    "cut": "s-m-gent-try-c-cut.png"
+  },
+  "s-m-stag": {
+    "imageId": "269f8de7-1c19-42a4-8bf6-f111f9b5e4f5",
+    "file": "s-m-stag.jpg",
+    "generationId": "1f1c4450-8a62-6610-88d8-1e880737bd2a",
+    "cut": "s-m-stag-cut.png"
+  },
+  "s-m-bear": {
+    "imageId": "2e5c84ce-ff30-4e32-8441-8c0d14b2b57a",
+    "file": "s-m-bear.jpg",
+    "generationId": "1f1c4450-89fb-6d70-8023-1733651dd640",
+    "cut": "s-m-bear-cut.png"
+  },
+  "s-m-bear-walk": {
+    "imageId": "398c29ee-dd81-40d9-8a17-3a0b81895d9b",
+    "file": "s-m-bear-walk.jpg",
+    "generationId": "1f1c4451-6643-6710-a8f6-f202be5c670d",
+    "cut": "s-m-bear-walk-cut.png"
+  },
+  "s-m-bear-hurt": {
+    "imageId": "770b1381-c76e-48a7-b1dd-cd508f0d2ad8",
+    "file": "s-m-bear-hurt.jpg",
+    "generationId": "1f1c4451-66b1-64e0-99ee-cc575e10426c",
+    "cut": "s-m-bear-hurt-cut.png"
+  },
+  "s-m-stag-hurt": {
+    "imageId": "840b0eae-8853-4ef6-b81a-a2bb34f771a9",
+    "file": "s-m-stag-hurt.jpg",
+    "generationId": "1f1c4451-6269-61d0-bf32-6973ca4d9687",
+    "cut": "s-m-stag-hurt-cut.png"
+  },
+  "s-m-stag-walk": {
+    "imageId": "291bd29b-3cac-4e39-bd57-637d3836c8d7",
+    "file": "s-m-stag-walk.jpg",
+    "generationId": "1f1c4451-7d41-6ac0-a864-95c329061e8d",
+    "cut": "s-m-stag-walk-cut.png"
+  },
+  "s-m-hare": {
+    "imageId": "a98e901c-998b-4ce6-95bd-1f53cb7b436c",
+    "file": "s-m-hare.jpg",
+    "generationId": "1f1c4452-e7e6-6960-aecf-5d746ec0ce2c",
+    "cut": "s-m-hare-cut.png"
+  },
+  "s-m-hare-hurt": {
+    "imageId": "6f405747-8694-49f4-8b80-7e6ffaa633c3",
+    "file": "s-m-hare-hurt.jpg",
+    "generationId": "1f1c4453-e9c3-6c50-bd0c-ae8c59858085",
+    "cut": "s-m-hare-hurt-cut.png"
+  },
+  "s-m-hare-walk": {
+    "imageId": "77d1c07a-6f89-48c9-93f7-10334e063d8e",
+    "file": "s-m-hare-walk.jpg",
+    "generationId": "1f1c4453-ea05-6b00-80e1-93c0cd24d99e",
+    "cut": "s-m-hare-walk-cut.png"
+  },
+  "s-m-bear-hurt2": {
+    "imageId": "4f52083e-0eef-4109-b4bf-d91dc8c0e13a",
+    "file": "s-m-bear-hurt2.jpg",
+    "generationId": "1f1c4456-a688-6be0-a71c-804707d4b450",
+    "cut": "s-m-bear-hurt2-cut.png"
+  },
+  "s-m-stag-hurt2": {
+    "imageId": "8cfbd5c5-e124-4d07-a801-7ee57250ccf6",
+    "file": "s-m-stag-hurt2.jpg",
+    "generationId": "1f1c4456-a6d9-64f0-932a-b4e29c8826c2",
+    "cut": "s-m-stag-hurt2-cut.png"
+  },
+  "s-m-raccoon": {
+    "imageId": "120a09e1-eec7-4dc3-8967-2dfa7fce4bf0",
+    "file": "s-m-raccoon.jpg",
+    "generationId": "1f1c4463-78fc-65c0-ac18-4adf6c2d7f36",
+    "cut": "s-m-raccoon-cut.png"
+  },
+  "s-m-frog": {
+    "imageId": "2cfcfe6c-b021-490a-8f21-34e8b0718d5d",
+    "file": "s-m-frog.jpg",
+    "generationId": "1f1c4463-7932-6120-a46f-22ec31e1ce4d",
+    "cut": "s-m-frog-cut.png"
+  },
+  "s-m-mouse": {
+    "imageId": "a44f88d5-7bc5-47a3-a592-98f7c6f0b2e7",
+    "file": "s-m-mouse.jpg",
+    "generationId": "1f1c4463-7960-6750-83c7-da0ef2b55658",
+    "cut": "s-m-mouse-cut.png"
+  },
+  "s-m-raccoon-walk": {
+    "imageId": "1c2eada8-ec43-4b7d-ba1a-684fd35ead62",
+    "file": "s-m-raccoon-walk.jpg",
+    "generationId": "1f1c4464-59b8-6190-89b8-35f978c604c2",
+    "cut": "s-m-raccoon-walk-cut.png"
+  },
+  "s-m-raccoon-hurt": {
+    "imageId": "7b6007df-7a3f-4c43-b09d-89680bd22ef8",
+    "file": "s-m-raccoon-hurt.jpg",
+    "generationId": "1f1c4464-59d0-6830-acb0-25cd3a34579d",
+    "cut": "s-m-raccoon-hurt-cut.png"
+  },
+  "s-m-frog-hurt": {
+    "imageId": "2a31a964-6c02-42a6-9e3c-2b33f8f7952e",
+    "file": "s-m-frog-hurt.jpg",
+    "generationId": "1f1c4464-6d44-6fb0-8373-eb546d5dabdc",
+    "cut": "s-m-frog-hurt-cut.png"
+  },
+  "s-m-frog-walk": {
+    "imageId": "7bba8a70-778a-4219-afc5-61513baf2d5a",
+    "file": "s-m-frog-walk.jpg",
+    "generationId": "1f1c4464-7e57-6190-8c24-84d98ea47201",
+    "cut": "s-m-frog-walk-cut.png"
+  },
+  "s-m-mouse-hurt": {
+    "imageId": "30e91445-67b6-4159-b0f3-d5ea104d2c4f",
+    "file": "s-m-mouse-hurt.jpg",
+    "generationId": "1f1c4465-2f32-6fa0-befa-50dfe9eea01e",
+    "cut": "s-m-mouse-hurt-cut.png"
+  },
+  "s-m-mouse-walk": {
+    "imageId": "c4e41d09-0407-490c-9431-9b2b17de9814",
+    "file": "s-m-mouse-walk.jpg",
+    "generationId": "1f1c4465-412d-6070-a89f-d8a69a6ad051",
+    "cut": "s-m-mouse-walk-cut.png"
+  },
+  "s-m-chest": {
+    "imageId": "0a4c0dd4-bce2-4e59-96a9-9a5257b31b79",
+    "file": "s-m-chest.jpg",
+    "generationId": "1f1c446e-878e-6d30-acec-9577a6aceb81",
+    "cut": "s-m-chest-cut.png"
+  },
+  "s-m-chest-walk": {
+    "imageId": "cf3238ef-b918-4a68-8169-b044ca140d5d",
+    "file": "s-m-chest-walk.jpg",
+    "generationId": "1f1c446f-677b-60b0-982b-5ce8f84e1440",
+    "cut": "s-m-chest-walk-cut.png"
+  },
+  "s-m-chest-hurt": {
+    "imageId": "61754960-b7e5-47a3-8d78-ef90a512251b",
+    "file": "s-m-chest-hurt.jpg",
+    "generationId": "1f1c446f-6723-6270-9d83-ec8b5870fdcd",
+    "cut": "s-m-chest-hurt-cut.png"
+  },
+  "s-m-chest2": {
+    "imageId": "35a44851-676b-463d-a72f-188ec170907d",
+    "file": "s-m-chest2.jpg",
+    "generationId": "1f1c4496-d668-6cd0-af17-248ec2434dd6",
+    "cut": "s-m-chest2-cut.png"
+  },
+  "s-m-chest2-walk": {
+    "imageId": "6f353030-9564-4247-af18-6619dee478dd",
+    "file": "s-m-chest2-walk.jpg",
+    "generationId": "1f1c4497-fe29-6b10-b8a6-142d4a11094e",
+    "cut": "s-m-chest2-walk-cut.png"
+  },
+  "s-m-chest2-hurt": {
+    "imageId": "0f177270-c22b-4c2d-a168-8656f8a4ec33",
+    "file": "s-m-chest2-hurt.jpg",
+    "generationId": "1f1c4497-fdea-6370-a119-9cc21472862f",
+    "cut": "s-m-chest2-hurt-cut.png"
+  },
+  "s-m-chest2-walk2": {
+    "imageId": "56b6250a-17e0-4f8d-aa20-5efbfddb7e53",
+    "file": "s-m-chest2-walk2.jpg",
+    "generationId": "1f1c449a-040b-6d10-8e74-4fc6faf69a63",
+    "cut": "s-m-chest2-walk2-cut.png"
   }
 }

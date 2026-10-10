@@ -58,11 +58,36 @@ const ROYALS := ["ten", "jack", "queen", "king", "ace"]
 const EDGE := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 0.0}
 const MID := {"ten": 13.0, "jack": 13.0, "queen": 12.0, "king": 12.0, "ace": 11.0, "potion": 9.0, "basket": 8.0, "lantern": 8.0, "raven": 6.0, "wolf": 5.0, "key": 2.2, "hood": 3.0}
 
+# 敵人（照小紅帽劇本）：每關 7 隻，前 6 隻是被大野狼使喚的森林小動物（每關 3 種，照 STAGE_ORDER 輪流出），
+# 第 7 隻是這一關的 BOSS——第 1 關大棕熊、第 2 關大雄鹿、第 3 關假扮外婆的大灰狼（kind 是 "boss"，先扮成小紅帽敲門，
+# 血剩一半變身成外婆、剩四分之一露餡；變身只是畫面，血量是同一條）。
+# hp 是總押注的倍數；小動物的賞金 = hp × MINION_RATE（跟改版前大野狼 3 倍血、0.4 倍賞金一樣的比例），
+# 每關 6 隻小動物的血量加起來 12 倍（跟改版前 4 隻 3 倍血的大野狼一樣），BOSS 的血量與賞金跟改版前的狼王一樣，
+# 所以打怪的回收率跟改版前一樣。
+# EXTRA 模式（Free Spins）出場的是寶箱怪：賞金 ÷ 血量 = 一整關平均下來的比例（TREASURE_RATE），
+# EXTRA 結束時沒打完的寶箱照打掉的血量分賞金，所以 EXTRA 裡打的傷害也一樣划算、不浪費；寶箱怪不算關卡進度
+const MINION_RATE := 0.4 / 3.0
+const TREASURE_RATE := (12.0 * 0.4 / 3.0 + 2.5) / 22.0
 const ENEMIES := {
-	"wolf": {"name": "Big Bad Wolf", "hp": 3.0, "reward": 0.4, "xp": 1},
-	"boss": {"name": "Wolf King", "hp": 10.0, "reward": 2.5, "xp": 4},
+	"squirrel": {"name": "Sneaky Squirrel", "hp": 1.5, "xp": 1},
+	"hedgehog": {"name": "Prickly Hedgehog", "hp": 2.0, "xp": 1},
+	"raccoon": {"name": "Bandit Raccoon", "hp": 2.5, "xp": 1},
+	"frog": {"name": "Cheeky Frog", "hp": 1.5, "xp": 1},
+	"hare": {"name": "Cheeky Hare", "hp": 2.0, "xp": 1},
+	"fox": {"name": "Sly Fox", "hp": 2.5, "xp": 1},
+	"mouse": {"name": "Greedy Mouse", "hp": 1.5, "xp": 1},
+	"raven": {"name": "Spy Raven", "hp": 2.0, "xp": 1},
+	"boar": {"name": "Wild Boar", "hp": 2.5, "xp": 1},
+	"bear": {"name": "Honey Bear", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
+	"stag": {"name": "Grumpy Stag", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
+	"boss": {"name": "Grandma?", "hp": 10.0, "reward": 2.5, "xp": 4, "boss": true},
+	"chest": {"name": "Treasure Chest", "hp": 3.0, "reward": 3.0 * TREASURE_RATE, "xp": 1, "treasure": true},
 }
-const BOSS_EVERY := 5
+# 三關輪流：林間小路、花田、外婆家門口；每關的 [小動物 ×3, BOSS]
+const STAGES := [["squirrel", "hedgehog", "raccoon", "bear"], ["frog", "hare", "fox", "stag"], ["mouse", "raven", "boar", "boss"]]
+const STAGE_NAMES := ["The Forest Path", "The Flower Meadow", "Grandma's House"]
+const STAGE_ORDER := [0, 1, 2, 0, 1, 2]
+const BOSS_EVERY := 7
 const BASE_ATTACK := 0.2
 
 
@@ -239,12 +264,27 @@ static func free_spins(count: int) -> int:
 	return FS_AWARD.get(mini(count, 5), 0)
 
 
+# 第 count 隻敵人（從 0 算）：每 BOSS_EVERY 隻一關，前 4 隻照 STAGE_ORDER 從這一關的名單出，第 5 隻是王
 static func spawn_enemy(count: int, bet: int) -> Dictionary:
-	var kind := "boss" if (count + 1) % BOSS_EVERY == 0 else "wolf"
+	var stage := count / BOSS_EVERY
+	var slot := count % BOSS_EVERY
+	var crew: Array = STAGES[stage % STAGES.size()]
+	var kind: String = crew[3] if slot == BOSS_EVERY - 1 else crew[STAGE_ORDER[slot]]
+	return make_enemy(kind, bet)
+
+
+# 照種類做出一隻敵人（血量、賞金是總押注的倍數）
+static func make_enemy(kind: String, bet: int) -> Dictionary:
 	var e: Dictionary = ENEMIES[kind]
 	var tb := total_bet(bet)
 	var hp := roundi(e.hp * tb)
-	return {"kind": kind, "name": e.name, "hp": hp, "max_hp": hp, "reward": roundi(e.reward * tb), "xp": e.xp}
+	var reward: float = e.get("reward", e.hp * MINION_RATE)
+	return {"kind": kind, "name": e.name, "hp": hp, "max_hp": hp, "reward": roundi(reward * tb), "xp": e.xp, "boss": e.get("boss", false), "treasure": e.get("treasure", false)}
+
+
+# 第 stage 關（從 1 算）的地點名稱
+static func stage_name(stage: int) -> String:
+	return STAGE_NAMES[(stage - 1) % STAGE_NAMES.size()]
 
 
 # 打一下：回傳這一下的傷害與是否打倒

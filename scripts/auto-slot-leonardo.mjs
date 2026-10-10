@@ -13,7 +13,15 @@ const only = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const indexPath = `${outDir}/index.json`;
 const index = existsSync(indexPath) ? JSON.parse(readFileSync(indexPath, 'utf8')) : {};
-const save = () => writeFileSync(indexPath, JSON.stringify(index, null, 2));
+// 存 index.json：Windows 上偶爾被別的程式短暫鎖住（UNKNOWN: open），等一下重試，免得已經扣點的圖沒記到
+const save = () => {
+  for (let i = 0; ; i++) {
+    try { writeFileSync(indexPath, JSON.stringify(index, null, 2)); return; } catch (e) {
+      if (i >= 20) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+  }
+};
 
 const H = { authorization: `Bearer ${key}`, accept: 'application/json', 'content-type': 'application/json' };
 const api = async (method, path, body) => {
@@ -259,6 +267,90 @@ const JOBS = [
     prompt: `${SB_STYLE} A vertical background texture for the bottom half of a mobile slot game screen, like the bottom of the reference image: warm honey-brown wooden planks seen from the front across the middle and top, a sunny grassy forest floor along the bottom edge with ferns, wildflowers and red-capped mushrooms, soft warm sunlight from above, gentle vignette, calm and low-contrast so buttons stay readable. Absolutely no frames, no panels, no boxes, no buttons, no rectangles, no borders, no UI, no text, no characters.`,
   },
 ];
+
+// 2026-10 怪物多樣化（照小紅帽劇本）：每關兩種被大野狼使喚的森林動物 + 那段劇情的狼，第 5 隻是假扮外婆的大灰狼。
+// 每隻畫站姿、受擊、走路 4 格（一張圖畫完整個循環再切開），都去背；王另外畫一張露餡的站姿
+const MONSTERS = [
+  ['squirrel', 'a mischievous little red squirrel, one of the Big Bad Wolf\'s forest minions, with a huge bushy tail, big buck teeth and a cheeky scheming grin, standing on its hind legs and clutching a pinecone ready to throw', 'hopping forward on its hind legs'],
+  ['hedgehog', 'a grumpy round little hedgehog, one of the Big Bad Wolf\'s forest minions, with a coat of brown spines, a pointy pink snout, a frowning face and tiny clawed paws, standing on its hind legs', 'scurrying forward on its tiny hind legs'],
+  ['fox', 'a sly slender orange fox, one of the Big Bad Wolf\'s forest minions, with a big white-tipped bushy tail, narrow scheming eyes and a sneaky smile, standing on its hind legs', 'trotting forward on its hind legs'],
+  ['badger', 'a stocky grumpy badger, one of the Big Bad Wolf\'s forest minions, with a black-and-white striped face, grey fur, big digging claws and a scowl, standing on its hind legs', 'waddling forward on its short hind legs'],
+  ['raven', 'a big black raven, the Big Bad Wolf\'s spy, with glossy blue-black feathers, a sharp beak and a sly glaring eye, hovering in mid-air with its wings spread wide', 'flying forward with its wings flapping: wings raised high, wings level, wings swept down, wings level'],
+  // 花田的大隻：原本是紳士狼（太醜，換掉），改成抱著蜂蜜罐的大棕熊
+  ['bear', 'a big burly brown bear, one of the Big Bad Wolf\'s forest minions, with thick shaggy brown fur, small round ears, a big round belly, a sticky honey pot hugged under one arm with honey dripping, and a grumpy greedy scowl, standing upright on his hind legs', 'lumbering forward on his hind legs'],
+  ['boar', 'a big hairy wild boar, one of the Big Bad Wolf\'s forest minions, with dark brown bristly fur, curved white tusks, a big snout and an angry glare, standing on all four legs', 'trotting forward on all four legs'],
+  // 花田的中隻：原本是獾（辨識度不高，換掉），改成長耳朵、扛著紅蘿蔔的野兔
+  ['hare', 'a cheeky big brown hare, one of the Big Bad Wolf\'s forest minions, with very long upright ears, big hind feet, a fluffy white tail, buck teeth and a smug mischievous grin, carrying a big orange carrot over his shoulder like a club, standing upright on his hind legs', 'hopping forward on his big hind feet'],
+  // 每關改成 3 種小動物（關卡 7 隻），再補三種一眼就認得的：林間小路的浣熊、花田的青蛙、外婆家門口的老鼠
+  ['raccoon', 'a mischievous little raccoon, one of the Big Bad Wolf\'s forest minions, with a black bandit mask around his eyes, a big ringed striped tail, grey fur, tiny clever paws and a sneaky grin, holding a stolen shiny red apple, standing upright on his hind legs', 'sneaking forward on his hind legs'],
+  ['frog', 'a chubby green frog, one of the Big Bad Wolf\'s forest minions, with big round golden eyes, a wide cheeky grin, a pale yellow belly and long webbed back legs, squatting upright', 'hopping forward: crouched, leaping up with legs stretched, in mid-air, landing crouched'],
+  ['mouse', 'a sneaky little grey mouse from Grandma\'s cottage, one of the Big Bad Wolf\'s minions, with big round pink ears, a long thin tail, twitchy whiskers and a greedy grin, hugging a big wedge of yellow cheese, standing upright on his hind legs', 'scurrying forward on his hind legs'],
+  // 第 2 關 BOSS：原本是外婆家門口的大隻（只留動物，換掉披紅斗篷敲門的狼），後來改成第 2 關 BOSS 的大雄鹿
+  ['stag', 'a big proud grumpy red stag, one of the Big Bad Wolf\'s forest minions, with huge branching antlers, a shaggy neck mane, a reddish-brown coat with a pale belly and a stubborn haughty glare, standing on all four legs with his head lowered ready to charge', 'walking forward on all four legs with a proud stride'],
+];
+const WOLVES = [
+  ['boss', 'exactly the same wolf as in the reference image, disguised as Grandma: a white frilly nightcap with his big ears poking out, small round spectacles on his snout, a pink knitted lace shawl over a long flowery nightgown, a sugary fake-sweet smile showing a hint of big teeth, standing hunched on his hind legs'],
+];
+// 第一批的受擊寫了「被劍打到」，有幾張就把劍畫進去了：之後的都明確不要武器
+const HURT = 'It has just been hit: recoiling backward to the right off balance, eyes squeezed shut in a comical pained grimace, arms or paws flailing. A funny cartoon hit reaction, not gory, no blood, no wounds. Only the character: no sword, no weapon, no blade, nothing else.';
+const SHEET = (desc, gait) => `${SB_STYLE} A sprite sheet for a 2D side-scrolling game: exactly four frames of one complete walking cycle of the same character as in the reference images (same face, same colors, same outfit, same storybook rendering): ${desc}. The four frames stand in a single evenly spaced horizontal row with wide empty gaps between them, every frame the same size and drawn at the same scale on the same ground line, all in side view facing left, ${gait}. Only the legs, paws or wings change between frames, a clear alternating cycle. Nothing overlaps, on a plain flat solid light-grey background, no ground, no shadows, no text, no numbers.`;
+for (const [id, desc, gait] of MONSTERS) {
+  JOBS.push(
+    { name: `s-m-${id}`, w: 1024, h: 1024, refs: [['s-wolf', 'LOW'], ['s-ref-a', 'LOW']], cut: true,
+      prompt: `${SB_STYLE} Full-body character art in the same storybook style and rendering as the Big Bad Wolf in the first reference image: ${desc}. Side view facing left, a cute but naughty storybook villain, not scary. ${ISOLATED}` },
+    { name: `s-m-${id}-hurt`, w: 1024, h: 1024, refs: [[`s-m-${id}`, 'HIGH']], cut: true,
+      prompt: `${SB_STYLE} Full-body art of exactly the same character as in the reference image, same face, same colors, same storybook rendering: ${desc}. Side view facing left. ${HURT} ${ISOLATED}` },
+    { name: `s-m-${id}-walk`, w: 1376, h: 768, refs: [[`s-m-${id}`, 'MID']], cut: true, prompt: SHEET(desc, gait) },
+  );
+}
+for (const [id, desc] of WOLVES) {
+  JOBS.push(
+    { name: `s-m-${id}`, w: 1024, h: 1024, refs: [['s-wolf', 'HIGH'], ['s-ref-wolf', 'MID']], cut: true,
+      prompt: `${SB_STYLE} Full-body art in the same storybook rendering as the reference image: ${desc}. Side view facing left. ${ISOLATED}` },
+    { name: `s-m-${id}-hurt`, w: 1024, h: 1024, refs: [[`s-m-${id}`, 'HIGH']], cut: true,
+      prompt: `${SB_STYLE} Full-body art of exactly the same character as in the reference image, same face, same clothes, same storybook rendering: ${desc}. Side view facing left. ${HURT} ${ISOLATED}` },
+    { name: `s-m-${id}-walk`, w: 1376, h: 768, refs: [[`s-m-${id}`, 'MID']], cut: true, prompt: SHEET(desc, 'walking forward on his hind legs') },
+  );
+}
+// 待機 2：玩家一陣子沒轉時，小紅帽站在原地耍一段劍花（4 格，切法跟跑步一樣）
+JOBS.push({
+  name: 's-hero-twirl', w: 1376, h: 768, refs: [['s-hero-stance', 'MID'], ['s-ref-hero', 'MID']], cut: true,
+  prompt: `${SB_STYLE} A sprite sheet for a 2D side-scrolling game: exactly four frames of one sword-twirling flourish by the same girl as in the reference images (same face, same hairstyle, same outfit, same short silver sword, same storybook rendering): ${SB_HERO}. The four frames stand in a single evenly spaced horizontal row with wide empty gaps between them, every frame the same size and drawn at the same scale on the same ground line, all in side view facing right, standing in place with a playful confident smile, twirling the sword in one hand like a show-off: 1) the sword held up vertically in front of her face; 2) the sword spinning flat in front of her chest with a curved silver motion trail; 3) the sword swung around behind her back over her shoulder; 4) a finishing pose with the sword pointed forward to the right and her free hand on her hip, the cape swirling. Nothing overlaps, on a plain flat solid light-grey background, no ground, no shadows, no text, no numbers.`,
+});
+// 熊和雄鹿的受擊第一版畫進了一把劍：重畫，明確不要武器
+for (const [id, desc] of MONSTERS.filter(([id]) => id === 'bear' || id === 'stag')) {
+  JOBS.push({ name: `s-m-${id}-hurt2`, w: 1024, h: 1024, refs: [[`s-m-${id}`, 'HIGH']], cut: true,
+    prompt: `${SB_STYLE} Full-body art of exactly the same character as in the reference image, same face, same colors, same storybook rendering: ${desc}. Side view facing left. It has just been hit: recoiling backward to the right off balance, eyes squeezed shut in a comical pained grimace, paws or legs flailing. A funny cartoon hit reaction, not gory, no blood, no wounds. Only the character: no sword, no weapon, no blade, no motion lines, no stars, nothing else. ${ISOLATED}` });
+}
+JOBS.push(
+  { name: 's-m-boss-reveal', w: 1024, h: 1024, refs: [['s-m-boss', 'HIGH']], cut: true,
+    prompt: `${SB_STYLE} Full-body art of exactly the same wolf in Grandma's clothes as in the reference image, same storybook rendering, side view facing left, but now the disguise falls apart: the nightcap knocked askew, the spectacles flying off, the shawl slipping off his shoulders, his huge eyes and huge toothy jaws wide open in a fierce comical roar, claws raised. Not gory. ${ISOLATED}` },
+  // 第 2、3 關的背景（照故事：狼騙小紅帽去採花的花田、傍晚的外婆家門口），一樣拆成遠景與洋紅底的近景
+  { name: 's-scene2', w: 1376, h: 768, refs: [['s-scene', 'MID']],
+    prompt: `${SB_STYLE} Wide background plate for the top area of a vertical mobile slot game, in exactly the same painterly style as the reference image: a sunny flower meadow clearing deep in the enchanted forest in warm afternoon light, carpets of red poppies, white daisies and bluebells, butterflies, a winding dirt path through the flowers, soft light beams. Big leafy tree trunks frame the far left and far right edges; the foreground is grass full of flowers. No characters, no animals, no people, no text, no UI.` },
+  { name: 's-far2', w: 1376, h: 768, refs: [['s-scene2', 'HIGH']],
+    prompt: `${SB_STYLE} The far background layer of the reference scene only, for a parallax game: the same sky and light beams, the same distant trees, the same flower meadow and path. Remove the big tree trunks on the far left and far right and the foreground grass; the meadow and the path continue down to the bottom edge. Same lighting and colors. No characters.` },
+  { name: 's-near2', w: 1376, h: 768, refs: [['s-scene2', 'MID']],
+    prompt: `Foreground layer for a side-scrolling parallax game, in the same painterly storybook style, colors and warm afternoon lighting as the reference image. Only three things are painted: one big leafy tree trunk with green foliage at the far left edge, one big leafy tree trunk at the far right edge, and a strip of grass along the bottom fifth of the image full of red poppies, white daisies and yellow flowers. Everything else, the whole center and upper area, is flat solid pure magenta (#FF00FF). No pink, purple or magenta flowers anywhere. No path, no distant trees, no sky, no light beams. No gradients or glow on the magenta. No text.` },
+  { name: 's-scene3', w: 1376, h: 768, refs: [['s-scene', 'MID']],
+    prompt: `${SB_STYLE} Wide background plate for the top area of a vertical mobile slot game, in exactly the same painterly style as the reference image: the end of the forest path at golden sunset, Grandma's cozy thatched cottage in the middle distance at the center with a round wooden front door, flower boxes under warm glowing windows, smoke curling from the chimney, a little white picket fence and a garden gate, a warm orange and pink sunset sky. Big leafy tree trunks frame the far left and far right edges; the foreground is a grassy garden path with flowers. No characters, no animals, no people, no text, no UI.` },
+  { name: 's-far3', w: 1376, h: 768, refs: [['s-scene3', 'HIGH']],
+    prompt: `${SB_STYLE} The far background layer of the reference scene only, for a parallax game: the same sunset sky, the same cottage with the glowing windows and smoking chimney, the same fence and garden. Remove the big tree trunks on the far left and far right and the foreground grass; the garden path continues down to the bottom edge. Same lighting and colors. No characters.` },
+  { name: 's-near3', w: 1376, h: 768, refs: [['s-scene3', 'MID']],
+    prompt: `Foreground layer for a side-scrolling parallax game, in the same painterly storybook style, colors and golden sunset lighting as the reference image. Only three things are painted: one big leafy tree trunk at the far left edge, one big leafy tree trunk at the far right edge, and a strip of grassy garden along the bottom fifth of the image with flowers and small stones. Everything else, the whole center and upper area, is flat solid pure magenta (#FF00FF). No pink, purple or magenta flowers anywhere. No cottage, no fence, no sky. No gradients or glow on the magenta. No text.` },
+);
+// EXTRA 模式（Free Spins）出場的寶箱怪：第一版畫成有大眼睛、舌頭、小短腿的擬人寶箱（太擬人，換掉），
+// 改成一般的木頭寶箱，只有蓋子一開一合當嘴巴
+const CHEST = 'a classic storybook treasure chest made of honey-colored wooden planks with polished gold metal bands, gold corner caps and a gold lock plate on the front, a domed lid, a pile of shining gold coins and colorful gems inside. It is an ordinary object, not a character: no face, no eyes, no tongue, no teeth, no arms, no legs';
+JOBS.push(
+  { name: 's-m-chest2', w: 1024, h: 1024, refs: [['s-ref-a', 'LOW']], cut: true,
+    prompt: `${SB_STYLE} Full-body game art: ${CHEST}. Three-quarter side view with the front of the chest facing left, sitting flat on its bottom, the lid propped wide open toward the upper right like a gaping mouth, warm golden light glowing from the treasure inside. ${ISOLATED}` },
+  { name: 's-m-chest2-hurt', w: 1024, h: 1024, refs: [['s-m-chest2', 'HIGH']], cut: true,
+    prompt: `${SB_STYLE} Full-body game art of exactly the same treasure chest as in the reference image, same wood, same gold bands, same storybook rendering: ${CHEST}. Three-quarter side view with the front facing left. It has just been hit: the lid slammed shut, the whole chest tipped backward to the right off balance, resting on its back bottom corner. Only the chest: no loose coins, no motion lines, no stars, no sword, nothing else. ${ISOLATED}` },
+  // 開合 4 格：第一版半開的兩格裡面是空的（只有全開那格有金幣），播起來一閃一閃，重畫成每格都裝滿
+  { name: 's-m-chest2-walk2', w: 1376, h: 768, refs: [['s-m-chest2', 'MID']], cut: true,
+    prompt: `${SB_STYLE} A sprite sheet for a 2D side-scrolling game: exactly four frames of the same treasure chest as in the reference image (same wood, same gold bands, same storybook rendering): ${CHEST}. The four frames stand in a single evenly spaced horizontal row with wide empty gaps between them, every frame the same size and drawn at the same scale sitting on the same ground line, all in three-quarter side view with the front facing left. Only the lid moves, chomping like a mouth: 1) lid shut, 2) lid half open, 3) lid wide open, 4) lid half open. The chest is always full of treasure: in every frame where the lid is open, even a little, the same heaped pile of shining gold coins and colorful gems is visible inside with the same warm golden glow. Nothing overlaps, no loose coins, on a plain flat solid light-grey background, no ground, no shadows, no text, no numbers.` },
+);
 
 const byName = Object.fromEntries(JOBS.map(j => [j.name, j]));
 const todo = JOBS.filter(j => (!index[j.name] || (j.cut && !index[j.name].cut)) && (!only.length || only.includes(j.name)));

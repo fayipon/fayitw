@@ -2,6 +2,8 @@
 # 跑步上下彈（著地壓扁、騰空拉長）、站著呼吸、揮砍時往前衝、倒下時從邊緣燒成灰（溶解 shader）；
 # 被打：閃紅、往後仰、壓扁再彈回、往後退，有受擊立繪（hurt）的換成受擊姿勢，重擊頭上轉一圈金星；
 # 連段招式用的零件：轉身（turn 從 1 翻到 -1 再翻回來）、前傾（tilt）、殘影（ghost）、換面向（face）、落地壓扁（land）、伸展（stretch）；
+# 怪物用的零件：懸浮（hover，烏鴉飛在半空、上下飄）、走路彈跳幅度（bob）、被打退多少（kick_k）、以身體中心旋轉（spin，滾一圈、後空翻）、
+# 站著時偶爾演一小段（idle_anim，寶箱怪的蓋子喀一聲闔上再張開）；
 # 劍上的火（flame，SCATTER 落下時點燃）：劍身一道橘光、沿著劍身冒火焰與火星（火焰留在原地往上飄，衝刺時會拖出一道火尾），
 # 全身外圍泛出火光（glow，fighter_glow.gdshader）；點燃那一下 flare 讓光再亮一點
 extends Node2D
@@ -11,6 +13,7 @@ signal stepped
 
 const SHADER := preload("res://scripts/fighter.gdshader")
 const GLOW_SHADER := preload("res://scripts/fighter_glow.gdshader")
+const IDLE_DT := 0.07
 
 var poses := {}            # 名稱 → Texture2D
 var pose := ""
@@ -36,7 +39,14 @@ var turn := 1.0             # 水平縮放：1 → -1 → 1 看起來像原地�
 var tilt := 0.0             # 以腳底為軸前傾（衝刺時）
 var recoil := 0.0           # 被打往後仰（以腳底為軸）
 var squash := Vector2.ONE   # 壓扁／拉長（以腳底為準，寬高反向變）
+var hover := 0.0            # 離地多高（飛行的怪）；影子留在地上
+var bob := 1.0              # 走路時上下彈的幅度倍率（松鼠、狐狸蹦蹦跳）
+var kick_k := 1.0           # 被打往後退的倍率（野豬幾乎不退）
+var spin := 0.0             # 以身體中心旋轉（弧度）
 var dizzy := 0.0            # 頭上轉圈的金星還剩幾秒
+# 站著時大約每 idle_every 秒演一次的連續格（每格 IDLE_DT 秒，演完回站姿）；空的就不演
+var idle_anim: Array = []
+var idle_every := 3.0
 # 劍的位置：姿勢 → [護手, 劍尖]（以圖的寬高為 1 的座標），沒有的姿勢不冒火
 var blades := {}
 var flame := 0.0            # 劍上的火（0～1）
@@ -56,7 +66,11 @@ var _run_sq := 1.0
 var _step := 0
 var _hurt_until := -1.0
 var _rest_pose := ""
+var _idle_i := -1           # 站著的小動作演到第幾格（-1 是沒在演）
+var _idle_at := 0.0
+var _idle_next := 0.0
 var _sq: Tween
+var _spin_tw: Tween
 var _halo: Node2D
 var _halo_mat: ShaderMaterial
 var _blade_fx: Node2D
@@ -148,7 +162,7 @@ func _process(delta: float) -> void:
 				if int(phase) % 2 == 0:
 					stepped.emit()
 			step = sin(PI * fposmod(phase, 2.0) / 2.0)
-			_lift = step * height * 0.025
+			_lift = step * height * 0.025 * bob
 			_rot = sin(PI * phase) * 0.02
 		else:
 			step = absf(sin(_t * 9.0))
@@ -167,6 +181,8 @@ func _process(delta: float) -> void:
 		_breath = sin(_t * 2.4) * 0.012
 	if pose == "hurt" and _t > _hurt_until:
 		set_pose(_rest_pose)
+	if not idle_anim.is_empty():
+		_idle_anim_step()
 	dizzy = maxf(0.0, dizzy - delta)
 	rotation = _rot + tilt + recoil
 	_apply()
@@ -180,7 +196,18 @@ func _apply() -> void:
 		var sy := _s * (1.0 + _breath) * sq.y
 		var flip := (facing < 0.0) != flip_source
 		_sprite.scale = Vector2((-_s if flip else _s) * turn * sq.x, sy)
-		_sprite.position = Vector2(_base_x * turn * sq.x + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y)
+		var p := Vector2(_base_x * turn * sq.x + kick_x, -_sprite.texture.get_height() * sy - _lift - hop_y - _hover_y())
+		# 以圖的中心旋轉：位置繞中心轉過去，圖本身也轉同樣的角度
+		if spin != 0.0:
+			var c := p + _sprite.texture.get_size() * _sprite.scale / 2.0
+			p = c + (p - c).rotated(spin)
+		_sprite.rotation = spin
+		_sprite.position = p
+
+
+# 飛行的怪離地的高度：固定的 hover 再加一點上下飄
+func _hover_y() -> float:
+	return hover + (sin(_t * 3.2) * height * 0.04 if hover > 0.0 else 0.0)
 
 
 # 腳下的影子（有光暈的話身後再加一圈光）
@@ -192,7 +219,7 @@ func _draw() -> void:
 	for k in 4:
 		var f := 1.0 - k * 0.22
 		draw_set_transform(Vector2(0, 0), 0.0, Vector2(1.0, 0.22))
-		draw_circle(Vector2.ZERO, w * f * (1.0 - (_lift + hop_y) / (height * 0.2)), Color(0, 0, 0, 0.16 * fade))
+		draw_circle(Vector2.ZERO, w * f * maxf(0.3, 1.0 - (_lift + hop_y + _hover_y()) / (height * 0.2)), Color(0, 0, 0, 0.16 * fade))
 	draw_set_transform(Vector2.ZERO)
 	if dizzy > 0.0:
 		_draw_stars()
@@ -201,7 +228,7 @@ func _draw() -> void:
 # 被重擊時頭上轉一圈小金星（橢圓軌道，後面那半圈小一點、暗一點）
 func _draw_stars() -> void:
 	var a := clampf(dizzy / 0.25, 0.0, 1.0) * fade
-	var head := Vector2(facing * height * 0.14, -height * 1.0 - hop_y)
+	var head := Vector2(facing * height * 0.14, -height * 1.0 - hop_y - _hover_y())
 	for i in 3:
 		var ang := _t * 7.0 + TAU * i / 3.0
 		var p := head + Vector2(cos(ang) * height * 0.16, sin(ang) * height * 0.04)
@@ -253,7 +280,8 @@ func hurt(strength := 1.0) -> void:
 	tw.tween_method(func(v: float): _mat.set_shader_parameter("flash", v), f, 0.0, 0.3)
 	if poses.has("hurt"):
 		if pose != "hurt":
-			_rest_pose = pose
+			# 站著的小動作演到一半被打：打完回站姿，不要停在半開的那格
+			_rest_pose = "idle" if _idle_i >= 0 else pose
 			set_pose("hurt")
 		_hurt_until = maxf(_hurt_until, _t + clampf(0.14 + 0.2 * strength, 0.18, 0.5))
 	if strength >= 1.0:
@@ -264,8 +292,46 @@ func hurt(strength := 1.0) -> void:
 	rt.tween_property(self, "recoil", 0.0, 0.32).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	bump(Vector2(1.0 + 0.06 * strength, 1.0 - 0.07 * strength), 0.05, 0.3)
 	_restart_move()
-	_move.tween_property(self, "kick_x", facing * -height * 0.08 * strength, 0.06)
+	_move.tween_property(self, "kick_x", facing * -height * 0.08 * strength * kick_k, 0.06)
 	_move.tween_property(self, "kick_x", 0.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# 站著的小動作：走路、被打、翻滾時不演（停下來後過半個間隔才開始）；演完回站姿，下一次的間隔前後抖一點
+func _idle_anim_step() -> void:
+	if walking or pose == "hurt" or spin != 0.0:
+		_idle_i = -1
+		_idle_next = maxf(_idle_next, _t + idle_every * 0.5)
+		return
+	if _idle_i < 0:
+		if pose == "idle" and _t >= _idle_next:
+			_idle_i = 0
+			_idle_at = _t
+			set_pose(idle_anim[0])
+		return
+	var i := int((_t - _idle_at) / IDLE_DT)
+	if i >= idle_anim.size():
+		_idle_i = -1
+		_idle_next = _t + idle_every * randf_range(0.7, 1.3)
+		set_pose("idle")
+	elif i != _idle_i:
+		_idle_i = i
+		set_pose(idle_anim[i])
+
+
+# 以身體中心轉 turns 圈（正的是往前滾），花 dur 秒
+func roll(turns: float, dur := 0.4) -> void:
+	if _spin_tw:
+		_spin_tw.kill()
+	spin = 0.0
+	_spin_tw = create_tween()
+	_spin_tw.tween_property(self, "spin", TAU * turns * -facing, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_spin_tw.tween_callback(func(): spin = 0.0)
+
+
+# 整隻閃白（變身用），dur 秒內淡回來
+func flash(v := 1.0, dur := 0.3) -> void:
+	_mat.set_shader_parameter("flash", v)
+	create_tween().tween_method(func(x: float): _mat.set_shader_parameter("flash", x), v, 0.0, dur)
 
 
 # 壓扁／拉長一下再彈回原樣（to：寬高倍率；hold：變形花多久；back：彈回花多久）
@@ -316,7 +382,7 @@ func tint(c: Color) -> void:
 
 func sprite_rect() -> Rect2:
 	var sz := _sprite.texture.get_size() * _s
-	return Rect2(position + Vector2(-sz.x / 2.0, -sz.y), sz)
+	return Rect2(position + Vector2(-sz.x / 2.0, -sz.y - _hover_y()), sz)
 
 
 # ---------- 劍上的火、全身的火光 ----------
@@ -432,6 +498,7 @@ func _update_fire() -> void:
 	if _halo.visible:
 		_halo.position = _sprite.position
 		_halo.scale = _sprite.scale
+		_halo.rotation = _sprite.rotation
 		_halo_mat.set_shader_parameter("strength", g * fade)
 		_halo.queue_redraw()
 

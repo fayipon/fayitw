@@ -311,17 +311,21 @@ def frame(src=f'{V}-frame.jpg', out='frame.webp'):
 # 連續格（整張去背後的一排動作）：依連通塊切出 n 格、照 x 排好；每格用同一個高度範圍（保留圖上原本的著地線，
 # 騰空那格自然比較高）、同一個寬度，水平以頭部（上面 30% 的重心）對齊，播放時頭才不會左右晃；
 # flip 是原圖畫反了方向（大野狼要面向左）。統一縮成 720 高 → godot/auto-slot/art/field/<out>-<i>.webp
-def frames(src, out, n, flip=False):
+def frames(src, out, n, flip=False, rows=1, tight=False, base=False):
     rgba = load(src, cv2.IMREAD_UNCHANGED)
     a = rgba[..., 3]
-    # 各格排得很近（尾巴快碰到前一隻）：小膨脹找色塊，每塊依中心落在整張平均分的哪一欄歸到那一格
+    # 各格排得很近（尾巴快碰到前一隻）：小膨脹找色塊，每塊依中心落在整張平均分的哪一格歸到那一格；
+    # rows=2 是畫成 2 × 2 四宮格的（雄鹿），照左上、右上、左下、右下的順序
     mask = cv2.dilate((a > 40).astype(np.uint8), np.ones((5, 5), np.uint8))
     count, lab0, st, cents = cv2.connectedComponentsWithStats(mask)
     lab = np.zeros_like(lab0)
-    W = rgba.shape[1]
+    H, W = a.shape
+    cols = n // rows
     for i in range(1, count):
         if st[i][4] >= 150:
-            lab[lab0 == i] = min(int(cents[i][0] / (W / n)), n - 1) + 1
+            c = min(int(cents[i][0] / (W / cols)), cols - 1)
+            r = min(int(cents[i][1] / (H / rows)), rows - 1)
+            lab[lab0 == i] = r * cols + c + 1
     blobs_ = list(range(1, n + 1))
     boxes = []
     for i in blobs_:
@@ -330,18 +334,31 @@ def frames(src, out, n, flip=False):
             sys.exit(f'{src}: frame {i} is empty')
         top = ys.min()
         head = (ys < top + (ys.max() - top) * 0.3)
+        # base：改用最底下那一段對齊（寶箱的蓋子一開一合會往後仰，頭的位置會跑，箱底不動）
+        if base:
+            head = (ys > ys.max() - (ys.max() - top) * 0.3)
         boxes.append((xs.min(), ys.min(), xs.max(), ys.max(), xs[head].mean()))
-    y0 = min(b[1] for b in boxes) - 6
-    y1 = max(b[3] for b in boxes) + 6
-    half = max(max(cx - b[0], b[2] - cx) for b in boxes for cx in [b[4]]) + 6
+    # 同一列的格子用同一個高度範圍（保留圖上原本的著地線）；不同列的高度不一樣時，底邊對齊
+    spans = []
+    for r in range(rows):
+        bs = boxes[r * cols:(r + 1) * cols]
+        spans.append((min(b[1] for b in bs) - 6, max(b[3] for b in bs) + 6))
+    ch = max(y1 - y0 for y0, y1 in spans)
+    # 以頭對齊：預設左右對稱留白（小紅帽的劍位置照這個量的）；tight 時左右各留到最寬的那一格就好，
+    # 整格的中心才會落在身體中間（四腳的野豬、雄鹿頭在最前面，對稱留白的話走路時身體會偏一邊，站定換站姿時跳一下）
+    left = max(cx - b[0] for b in boxes for cx in [b[4]]) + 6
+    right = max(b[2] - cx for b in boxes for cx in [b[4]]) + 6
+    if not tight:
+        left = right = max(left, right)
     for k, (bx0, by0, bx1, by1, cx) in enumerate(boxes):
-        x0 = int(round(cx - half))
-        crop = np.zeros((y1 - y0, int(half * 2), 4), np.uint8)
+        y0, y1 = spans[k // cols]
+        x0 = int(round(cx - left))
+        crop = np.zeros((ch, int(left + right), 4), np.uint8)
         sx0, sx1 = max(x0, 0), min(x0 + crop.shape[1], rgba.shape[1])
         # 只拿這一格自己的像素（隔壁格的披風、尾巴伸過來也不要）
         part = rgba[y0:y1, sx0:sx1].copy()
         part[lab[y0:y1, sx0:sx1] != blobs_[k]] = 0
-        crop[:, sx0 - x0:sx0 - x0 + part.shape[1]] = part
+        crop[ch - part.shape[0]:, sx0 - x0:sx0 - x0 + part.shape[1]] = part
         if flip:
             crop = crop[:, ::-1]
         h = 720
@@ -349,6 +366,32 @@ def frames(src, out, n, flip=False):
         path = os.path.join(ART, 'field', f'{out}-{k + 1}.webp')
         cv2.imwrite(path, crop, [cv2.IMWRITE_WEBP_QUALITY, 88])
     print('frames', out, n, crop.shape[1], crop.shape[0])
+
+
+def boss_glasses():
+    """外婆狼露餡圖上飛出去的眼鏡是獨立的一塊：拆開——身體存成 s-m-boss-reveal2-cut.png（auto-slot-assets.mjs 用），
+    眼鏡縮成跟身體同一個比例（身體高 720）→ art/field/boss-glasses.webp，遊戲裡露餡那一下才讓它飛出去"""
+    rgba = load(f'{V}-m-boss-reveal-cut.png', cv2.IMREAD_UNCHANGED)
+    a = rgba[..., 3]
+    n, lab, st, _ = cv2.connectedComponentsWithStats((a > 30).astype(np.uint8))
+    order = sorted(range(1, n), key=lambda i: -st[i][4])
+    body = order[0]
+    glasses = [i for i in order[1:] if st[i][4] > 1000]
+    if not glasses:
+        sys.exit('boss reveal: glasses not found')
+    keep = np.isin(lab, [body]) | (a <= 30) & ~np.isin(lab, glasses)
+    out = rgba.copy()
+    out[~keep] = 0
+    out[np.isin(lab, glasses)] = 0
+    cv2.imwrite(os.path.join(SRC, f'{V}-m-boss-reveal2-cut.png'), out)
+    k = 720 / st[body][3]
+    x, y, w, h = st[glasses[0]][:4]
+    g = rgba[y:y + h, x:x + w].copy()
+    g[lab[y:y + h, x:x + w] != glasses[0]] = 0
+    g = cv2.resize(g, (round(w * k), round(h * k)), interpolation=cv2.INTER_AREA)
+    path = os.path.join(ART, 'field', 'boss-glasses.webp')
+    cv2.imwrite(path, g, [cv2.IMWRITE_WEBP_QUALITY, 90])
+    print('boss glasses', g.shape[1], g.shape[0])
 
 
 def floor():
@@ -366,8 +409,15 @@ if __name__ == '__main__':
     meta['logo'] = logo()
     meta.update(titles())
     meta['frame'] = frame()
+    boss_glasses()
     frames(f'{V}-hero-runsheet-cut.png', 'hero-run', 4)
-    frames(f'{V}-wolf-walksheet-cut.png', 'wolf-walk', 4, flip=True)
+    # 待機 2：耍劍花 4 格（面向右）
+    frames(f'{V}-hero-twirl-cut.png', 'hero-twirl', 4)
+    # 怪物的走路（烏鴉是飛）4 格，畫出來就面向左；雄鹿畫成 2 × 2 四宮格、面向右，要翻過來
+    for mid in ['squirrel', 'hedgehog', 'raccoon', 'frog', 'hare', 'fox', 'mouse', 'raven', 'boar', 'bear', 'stag', 'knock', 'boss']:
+        frames(f'{V}-m-{mid}-walk-cut.png', f'{mid}-walk', 4, flip=mid == 'stag', rows=2 if mid == 'stag' else 1, tight=True)
+    # 寶箱怪是一般的寶箱（s-m-chest2），走路是蓋子一開一合的 4 格，以箱底對齊
+    frames(f'{V}-m-chest2-walk2-cut.png', 'chest-walk', 4, tight=True, base=True)
     floor()
     with open(os.path.join(ART, 'ui', 'ui.json'), 'w', encoding='utf-8') as fp:
         json.dump(meta, fp, indent=1)

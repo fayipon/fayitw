@@ -14,6 +14,9 @@ const RED := Color("c4161c")
 const BLOOD := Color("6e0c10")
 const GREEN := Color("3f9a2f")
 const INK := Color("1e1009")
+# EXTRA 模式（Free Spins）的魔法紫：外框光、倍率條、Feature Buy 的外光
+const EXTRA := Color("b35cff")
+const EXTRA_DEEP := Color("2c0f4a")
 
 # 連鎖爆開的碎片顏色：跟著符號
 const SYMBOL_COLORS := {

@@ -11,6 +11,7 @@ const Field := preload("res://scripts/field.gd")
 const SlotView := preload("res://scripts/slot_view.gd")
 const IconButton := preload("res://scripts/icon_button.gd")
 const BigWin := preload("res://scripts/big_win.gd")
+const Encounter := preload("res://scripts/encounter.gd")
 const MenuStrip := preload("res://scripts/menu_bar.gd")
 const SAVE_PATH := "user://save.cfg"
 # 遊戲改名前（自走SLOT）的存檔資料夾：user:// 跟著專案名稱走，改名後換了資料夾，舊存檔在同一層的這個資料夾
@@ -45,6 +46,29 @@ var walk_left := 2.5
 var free := false
 var fs_left := 0
 var fs_done := 0
+# EXTRA 模式（Free Spins）的畫面強度 0～1：外框的魔法光、Feature Buy 的 EXTRA 字樣、倍率條換色，進出時淡入淡出
+var _extra_k := 0.0
+var _extra_fx: Control
+var _extra_sparks: CPUParticles2D
+var _extra_t := 0.0
+# 待機多久沒轉了：超過 IDLE_TWIRL 秒，小紅帽耍一段劍花（待機 2），之後每隔一陣子再耍一次
+const IDLE_TWIRL := 2.0
+var _idle := 0.0
+# 血條旁邊菱形頭像：[圖, 臉的中心 uv, 半徑 uv]
+var _portrait: Array = []
+# 左上角的場景編號（EP01）與場景名稱；_ep_stage 是正在顯示的關卡
+var _ep: Control
+var _ep_stage := 0
+# 預覽（網址 ?stage=2）：關卡從第 2 關第 1 隻開始算——出什麼怪、背景、EP 與關卡進度都照「打倒數 + _kill_off」走，
+# 存檔裡的打倒數照常加（之前寫死 EP 與進度，預覽時進度不會動、換關喊的名字也對不上）
+var _kill_off := 0
+# 預覽用（網址 ?enemy=fox）：之後出來的敵人都換成這一種，不動存檔的進度
+var _force_enemy := ""
+# EXTRA 模式時先收起來的敵人（EXTRA 結束放回來）；_swapping 是正在收起來或放回來（這時不叫下一隻出場）
+var _stashed := {}
+# 進 EXTRA 前存著的能量（EXTRA 期間的能量只在 EXTRA 裡用，兩邊分開算）
+var _charge_kept := 0
+var _swapping := false
 var fs_total := 0
 
 var field: Control
@@ -55,7 +79,8 @@ var overlay: Control
 
 var _floor: TextureRect
 var _ui := 1.0
-var _logo: TextureRect
+# 敵人登場的橫幅（疊在自走區上）
+var _encounter: Control
 var _enemy_box: Control
 var _hp_num: Label
 var _hp_bar: Control
@@ -101,6 +126,8 @@ const TOTAL_GAP := 22.0
 var _glow: GradientTexture2D
 var _queue: Array = []
 var _working := false
+# 這次打開遊戲後玩家轉過了沒：還沒轉的話，存檔留下來的能量不會在狼站定時自己打出去（開場不會自己出手）
+var _spun := false
 var _toast_tween: Tween
 var _auto_running := false
 var _defeating := false
@@ -131,7 +158,7 @@ func _ready() -> void:
 	_floor.add_child(fade)
 	field = Field.new()
 	add_child(field)
-	field.tint = Field.TINTS[(_stage() - 1) % Field.TINTS.size()]
+	field.set_backdrop(_stage())
 	field.set_charge(state.charge, 0, _charge_power(), _charge_cap())
 	slot = SlotView.new()
 	slot.z_index = 20
@@ -150,6 +177,9 @@ func _ready() -> void:
 	_ladder = _build_ladder()
 	_ladder.z_index = 22
 	add_child(_ladder)
+	_extra_fx = _build_extra_fx()
+	_extra_fx.z_index = 19
+	add_child(_extra_fx)
 	_buy = _build_buy()
 	_buy.z_index = 21
 	add_child(_buy)
@@ -165,6 +195,10 @@ func _ready() -> void:
 	hud = _build_hud()
 	hud.z_index = 30
 	add_child(hud)
+	_encounter = Encounter.new()
+	_encounter.z_index = 31
+	_encounter.shake.connect(_shake)
+	add_child(_encounter)
 	_menu_layer = _build_menu_layer()
 	_menu_layer.z_index = 40
 	add_child(_menu_layer)
@@ -236,10 +270,14 @@ func _layout() -> void:
 	_floor.get_node("FloorFade").size = Vector2(vp.x, 80)
 	_ladder.scale = Vector2(u, u)
 	_ladder.position = Vector2((vp.x - _ladder.size.x * u) / 2.0, slot.position.y - border - _ladder.size.y * u * 0.5)
+	_extra_fx.size = vp
+	_layout_extra_sparks()
 	hud.scale = Vector2(u, u)
 	hud.position = Vector2(x0, 0)
 	hud.size = Vector2(dw, field_h / u)
 	_layout_hud(dw, field_h / u)
+	_encounter.position = Vector2.ZERO
+	_encounter.size = Vector2(vp.x, field_h)
 	overlay.size = vp
 	_layout_overlay()
 
@@ -271,10 +309,14 @@ func _three_slice(c: CanvasItem, tex: Texture2D, r: Rect2, cap: float, mod := Co
 	c.draw_texture_rect_region(tex, Rect2(r.end.x - w, r.position.y, w, r.size.y), Rect2(tw - src_cap, 0, src_cap, tex.get_height()), mod)
 
 
-# 菱形頭像（血條右邊的大野狼）：符號磚的臉部裁成菱形，外圈古金框
-func _diamond(tile: String, center_uv: Vector2, radius_uv: float) -> Control:
-	var tex := Art.symbol(tile)
+# 菱形頭像（血條右邊的敵人）：敵人站姿圖的臉部（_portrait）裁成菱形，外圈古金框
+func _diamond() -> Control:
 	return _painter(func(c: Control):
+		if _portrait.is_empty():
+			return
+		var tex: Texture2D = _portrait[0]
+		var center_uv: Vector2 = _portrait[1]
+		var radius_uv: Vector2 = _portrait[2]
 		var r := c.size.x / 2.0
 		var o := Vector2(r, r)
 		var corners := [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]
@@ -300,17 +342,11 @@ func _diamond(tile: String, center_uv: Vector2, radius_uv: float) -> Control:
 		c.draw_polyline(pts, Color(Art.GOLD_LIGHT, 0.9), 1.0, true))
 
 
-# ---------- 上方：標題字（左上）、大野狼血條與菱形頭像（右上，有敵人時才出現） ----------
+# ---------- 上方：場景編號（左上，EP01 ＋ 場景名稱）、敵人血條與菱形頭像（右上，有敵人時才出現） ----------
 
 func _build_hud() -> Control:
 	var h := Control.new()
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_logo = TextureRect.new()
-	_logo.texture = Art.ui("logo")
-	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(_logo)
 	_enemy_box = Control.new()
 	_enemy_box.name = "Enemy"
 	_enemy_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -327,19 +363,94 @@ func _build_hud() -> Control:
 	_enemy_box.add_child(_hp_bar)
 	_hp_num = Art.label("", Art.label_settings(10, Color.WHITE, "num", 3, Art.INK))
 	_hp_bar.add_child(_hp_num)
-	var wolf := _diamond("wolf", Vector2(0.42, 0.45), 0.34)
-	wolf.name = "Portrait"
-	_enemy_box.add_child(wolf)
+	var face := _diamond()
+	face.name = "Portrait"
+	_enemy_box.add_child(face)
+	_ep = _painter(_draw_ep)
+	h.add_child(_ep)
 	return h
 
 
+# 場景編號：金色大字 EP01，底下一條往右淡掉的金線，再一行場景名稱；後面墊一片往右淡掉的暗色，亮背景上也看得清楚
+func _draw_ep(c: Control) -> void:
+	if _ep_stage <= 0:
+		return
+	var f := Art.font()
+	var ep := "EP%02d" % _ep_stage
+	var title := Rules.stage_name(_ep_stage)
+	var nw := Art.font("light").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var w := maxf(nw, 90.0) + 40.0
+	var dark := Color(Art.INK, 0.42)
+	var clear := Color(Art.INK, 0.0)
+	c.draw_polygon(PackedVector2Array([Vector2(-14, -4), Vector2(w, -4), Vector2(w, 68), Vector2(-14, 68)]),
+		PackedColorArray([dark, clear, clear, dark]))
+	var base := Vector2(0, 24)
+	c.draw_string_outline(f, base + Vector2(0, 2), ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color(0, 0, 0, 0.5))
+	c.draw_string_outline(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 6, Art.GOLD_INK)
+	c.draw_string(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Art.GOLD_LIGHT)
+	c.draw_polygon(PackedVector2Array([Vector2(0, 30), Vector2(nw + 24, 30), Vector2(nw + 24, 31.5), Vector2(0, 31.5)]),
+		PackedColorArray([Art.GOLD, Color(Art.GOLD, 0.0), Color(Art.GOLD, 0.0), Art.GOLD]))
+	var lf := Art.font("light")
+	c.draw_string_outline(lf, Vector2(0, 45), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Art.INK)
+	c.draw_string(lf, Vector2(0, 45), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Art.CREAM)
+	_draw_progress(c, Vector2(5, 58))
+
+
+# 關卡進度：6 顆小菱形是小動物（打倒的填金、正在打的那顆一閃一閃），最後一顆大一點的皇冠是 BOSS
+func _draw_progress(c: Control, at: Vector2) -> void:
+	var done: int = _kills() % Rules.BOSS_EVERY
+	var gap := 13.0
+	for i in Rules.BOSS_EVERY:
+		var p := at + Vector2(i * gap + (4.0 if i == Rules.BOSS_EVERY - 1 else 0.0), 0)
+		var current := i == done
+		var lit := i < done
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)
+		if i < Rules.BOSS_EVERY - 1:
+			var r := 4.2
+			var pts := PackedVector2Array([p + Vector2(0, -r), p + Vector2(r, 0), p + Vector2(0, r), p + Vector2(-r, 0)])
+			c.draw_colored_polygon(pts, Color(Art.INK, 0.75))
+			var inner := PackedVector2Array()
+			for q in pts:
+				inner.append(p + (q - p) * 0.72)
+			if lit:
+				c.draw_colored_polygon(inner, Art.GOLD)
+			elif current:
+				c.draw_colored_polygon(inner, Color(Art.GOLD_LIGHT, 0.35 + 0.55 * pulse))
+			pts.append(pts[0])
+			c.draw_polyline(pts, Color(Art.GOLD_DEEP, 0.9), 1.0, true)
+		else:
+			# BOSS：小皇冠
+			var w := 7.5
+			var crown := PackedVector2Array([p + Vector2(-w, 4), p + Vector2(-w, -3), p + Vector2(-w * 0.5, 0.5), p + Vector2(0, -6),
+				p + Vector2(w * 0.5, 0.5), p + Vector2(w, -3), p + Vector2(w, 4)])
+			var col := Color("e0262c") if current else (Art.GOLD if lit else Color(Art.INK, 0.75))
+			if current:
+				col = col.lerp(Color(1, 0.6, 0.6), 0.4 * pulse)
+			c.draw_colored_polygon(crown, col)
+			crown.append(crown[0])
+			c.draw_polyline(crown, Art.GOLD_LIGHT if current or lit else Color(Art.GOLD_DEEP, 0.9), 1.2, true)
+
+
+# 換關：場景編號換成新的一關，animate 時放大彈回、閃一下
+func _set_ep(stage: int, animate: bool) -> void:
+	_ep_stage = stage
+	_ep.queue_redraw()
+	if animate:
+		var tw := create_tween()
+		_ep.scale = Vector2(1.35, 1.35)
+		_ep.modulate = Color(2.0, 2.0, 2.0, _ep.modulate.a)
+		tw.tween_property(_ep, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(_ep, "modulate:r", 1.0, 0.4)
+		tw.parallel().tween_property(_ep, "modulate:g", 1.0, 0.4)
+		tw.parallel().tween_property(_ep, "modulate:b", 1.0, 0.4)
+
+
 func _layout_hud(dw: float, fh: float) -> void:
-	# 標題字照設計稿約 84 高；自走區太矮時跟著縮，免得壓到小紅帽
-	var lh := clampf(fh * 0.3, 52.0, 84.0)
-	var meta: Array = Art.ui_meta().logo
-	_logo.size = Vector2(lh * meta[0] / meta[1], lh)
-	_logo.position = Vector2(10, 8)
-	field.avoid = Rect2(hud.position + _logo.position * _ui, _logo.size * _ui)
+	# 遊戲裡不放標題字（網頁 loading 畫面才有），存著傷害的能量條不必讓位
+	field.avoid = Rect2()
+	_ep.position = Vector2(14, 12)
+	_ep.size = Vector2(170, 66)
+	_ep.pivot_offset = Vector2(0, 24)
 	_enemy_box.position = Vector2(dw - 196, 30)
 	_enemy_box.size = Vector2(186, 52)
 	var portrait: Control = _enemy_box.get_node("Portrait")
@@ -357,9 +468,9 @@ func _build_ladder() -> Control:
 	var l := _painter(func(c: Control):
 		var mults: Array = Rules.FS_MULTIPLIERS if free else Rules.MULTIPLIERS
 		var r := Rect2(Vector2.ZERO, c.size)
-		var sb := Art.box(Color(0.16, 0.09, 0.04, 0.94), int(c.size.y / 2.0), 1, Art.GOLD_DEEP)
-		sb.shadow_color = Color(0, 0, 0, 0.6)
-		sb.shadow_size = 5
+		var sb := Art.box(Color(0.16, 0.09, 0.04, 0.94).lerp(Color(Art.EXTRA_DEEP, 0.96), _extra_k), int(c.size.y / 2.0), 1, Art.GOLD_DEEP.lerp(Art.EXTRA, _extra_k))
+		sb.shadow_color = Color(0, 0, 0, 0.6).lerp(Color(Art.EXTRA, 0.7), _extra_k)
+		sb.shadow_size = 5 + int(5 * _extra_k)
 		c.draw_style_box(sb, r)
 		var cw := (c.size.x - 8.0) / mults.size()
 		var f := Art.font()
@@ -367,7 +478,7 @@ func _build_ladder() -> Control:
 			var cell := Rect2(4.0 + i * cw, 3.0, cw, c.size.y - 6.0)
 			var on := i == _ladder_k
 			if on:
-				var hi := Art.box(Color("8e0d14"), int(cell.size.y / 2.0), 1, Art.GOLD)
+				var hi := Art.box(Color("8e0d14").lerp(Color("7a2bc4"), _extra_k), int(cell.size.y / 2.0), 1, Art.GOLD)
 				hi.shadow_color = Color(1, 0.55, 0.2, 0.6)
 				hi.shadow_size = 6
 				c.draw_style_box(hi, cell.grow_individual(-2, 0, -2, 0))
@@ -396,7 +507,7 @@ func _refresh_fs() -> void:
 	_ladder.queue_redraw()
 
 
-# ---------- Feature Buy：金框木頭底板；目前只放按鈕，Free Spins 時改寫剩幾轉 ----------
+# ---------- Feature Buy：金框木頭底板；目前只放按鈕。Free Spins（EXTRA 模式）時改寫兩行：大大的 EXTRA、下面「FREE SPINS 第幾轉 / 共幾轉」，外圈紫光一呼一吸 ----------
 
 # 底板原圖（art/ui/buy.webp）兩端金色捲花的寬度（原圖像素），三段式拉長時這兩段不變形
 const BUY_CAP := 140.0
@@ -412,13 +523,22 @@ func _build_buy() -> Button:
 		var r := Rect2(Vector2.ZERO, b.size)
 		var sz := r.size * press
 		var plate := Rect2(r.get_center() - sz / 2.0, sz)
+		var pulse := 0.5 + 0.5 * sin(_extra_t * 3.4)
+		if _extra_k > 0.01:
+			var glow := Art.box(Color(0, 0, 0, 0), int(plate.size.y / 2.0))
+			glow.shadow_color = Color(Art.EXTRA, (0.45 + 0.35 * pulse) * _extra_k)
+			glow.shadow_size = int(10 + 8 * pulse)
+			b.draw_style_box(glow, plate.grow(-4))
 		# 底板拉滿整個按鈕寬：兩端的金色捲花不變形、中間木板橫向拉長（原圖比例偏高，等比縮的話中間太窄、字會超出框）
-		_three_slice(b, tex, plate, BUY_CAP, Color(0.75, 0.75, 0.75) if free else Color.WHITE)
-		var text := "FREE SPINS  %d / %d" % [fs_done, fs_done + fs_left] if free else "Feature Buy"
+		_three_slice(b, tex, plate, BUY_CAP, Color.WHITE.lerp(Color(1.0, 0.9, 1.12), _extra_k))
 		var f := Art.font()
 		# 字只放在中間木板裡（扣掉兩端捲花與金邊），太長就縮小
 		var room := plate.size.x - 2.0 * BUY_CAP * plate.size.y / tex.get_height() - 12.0
-		var fs := int(14 if free else 18)
+		if free:
+			_draw_extra_text(b, f, r, room, pulse)
+			return
+		var text := "Feature Buy"
+		var fs := 18
 		while fs > 9 and f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
 			fs -= 1
 		var base := Vector2(0, r.size.y * 0.5 + fs * 0.36)
@@ -433,6 +553,87 @@ func _build_buy() -> Button:
 		Sfx.play("click")
 		toast("Feature Buy — coming soon"))
 	return b
+
+
+# EXTRA 模式的字樣：兩行，上面大大的金色 EXTRA（紫色描邊、一呼一吸微微變亮），下面小字照原本寫「FREE SPINS 第幾轉 / 共幾轉」
+func _draw_extra_text(b: Control, f: Font, r: Rect2, room: float, pulse: float) -> void:
+	var count := "FREE SPINS  %d / %d" % [fs_done, fs_done + fs_left]
+	var big := 17
+	var small := 10
+	while big > 11 and f.get_string_size("EXTRA", HORIZONTAL_ALIGNMENT_LEFT, -1, big).x > room:
+		big -= 1
+	while small > 7 and f.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, small).x > room:
+		small -= 1
+	var ink := Color("3a0b5e")
+	var top := r.size.y * 0.5 - 1.0
+	var base := Vector2(0, top)
+	b.draw_string_outline(f, base + Vector2(0, 1.5), "EXTRA", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, big, 6, Color(0, 0, 0, 0.6))
+	b.draw_string_outline(f, base, "EXTRA", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, big, 5, ink)
+	b.draw_string(f, base, "EXTRA", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, big, Art.GOLD_LIGHT.lerp(Color.WHITE, 0.35 * pulse))
+	var cb := Vector2(0, top + small + 3.0)
+	b.draw_string_outline(f, cb, count, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, small, 4, ink)
+	b.draw_string(f, cb, count, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, small, Art.CREAM)
+
+
+# EXTRA 模式的外框光：不畫邊線，只讓紫光從外框底下透出來——以外框圖（含藤蔓、雕花角塊）外緣往內縮一點的圓角方塊當光源，
+# 一層寬而淡、一層窄而亮的柔光（一呼一吸），木框外緣一路冒出小小的金色、紫色光點慢慢往上飄
+func _build_extra_fx() -> Control:
+	var c := _painter(func(c: Control):
+		if _extra_k < 0.01:
+			return
+		var wood := Rect2(slot.position + slot.frame_rect.position, slot.frame_rect.size).grow(-10.0)
+		var pulse := 0.5 + 0.5 * sin(_extra_t * 2.2)
+		for layer in [[30.0, 0.42, Art.EXTRA], [12.0, 0.5, Color(0.86, 0.68, 1.0)]]:
+			var sb := Art.box(Color(0, 0, 0, 0), 20)
+			sb.shadow_color = Color(layer[2], layer[1] * (0.7 + 0.3 * pulse) * _extra_k)
+			sb.shadow_size = int(layer[0] + 6.0 * pulse)
+			c.draw_style_box(sb, wood))
+	_extra_sparks = CPUParticles2D.new()
+	_extra_sparks.emitting = false
+	_extra_sparks.amount = 36
+	_extra_sparks.lifetime = 1.4
+	_extra_sparks.emission_shape = CPUParticles2D.EMISSION_SHAPE_POINTS
+	_extra_sparks.direction = Vector2.UP
+	_extra_sparks.spread = 25.0
+	_extra_sparks.gravity = Vector2(0, -18)
+	_extra_sparks.initial_velocity_min = 8.0
+	_extra_sparks.initial_velocity_max = 30.0
+	_extra_sparks.scale_amount_min = 1.2
+	_extra_sparks.scale_amount_max = 2.6
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.2, 0.7, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.95, 0.7, 0), Color(1, 0.92, 0.7, 0.9), Color(0.8, 0.55, 1.0, 0.6), Color(0.7, 0.4, 1.0, 0)])
+	_extra_sparks.color_ramp = ramp
+	c.add_child(_extra_sparks)
+	return c
+
+
+# 光點冒出來的位置：外框圖外緣一圈，每隔幾個像素一點
+func _layout_extra_sparks() -> void:
+	var r := Rect2(slot.position + slot.frame_rect.position, slot.frame_rect.size).grow(-4.0)
+	var pts := PackedVector2Array()
+	var step := 14.0
+	var x := r.position.x
+	while x <= r.end.x:
+		pts.append(Vector2(x, r.position.y))
+		pts.append(Vector2(x, r.end.y))
+		x += step
+	var y := r.position.y
+	while y <= r.end.y:
+		pts.append(Vector2(r.position.x, y))
+		pts.append(Vector2(r.end.x, y))
+		y += step
+	_extra_sparks.position = Vector2.ZERO
+	_extra_sparks.emission_points = pts
+
+
+# 進出 EXTRA 模式：外框光、Feature Buy、倍率條淡入淡出，自走區罩上魔法光，Total Win 的字樣改成 EXTRA WIN
+func _set_extra(on: bool) -> void:
+	create_tween().tween_property(self, "_extra_k", 1.0 if on else 0.0, 0.6)
+	_extra_sparks.emitting = on
+	field.set_extra(on)
+	(_total.get_node("Cap") as Label).text = "EXTRA\nWIN" if on else "TOTAL\nWIN"
+	_refresh_fs()
 
 
 # ---------- Total Win（照 PG Piñata Wins）：這一轉所有連鎖的總和；Free Spins 時是整輪累計。框跟下面三格一樣；
@@ -839,7 +1040,11 @@ func _layout_overlay() -> void:
 
 func callout(big: String, small := "", gold := false, hold := 1.2) -> void:
 	_callout.text = big
-	_callout.label_settings = Art.label_settings(38, Art.GOLD if gold else Art.CREAM, "num", 10, Art.GOLD_INK if gold else Art.INK, 4)
+	# 字太長（敵人名字）時縮小，免得超出畫面
+	var fs := 38
+	while fs > 18 and Art.font().get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > _callout.size.x - 36.0:
+		fs -= 1
+	_callout.label_settings = Art.label_settings(fs, Art.GOLD if gold else Art.CREAM, "num", 10, Art.GOLD_INK if gold else Art.INK, 4)
 	_callout_sub.text = small
 	var tw := create_tween()
 	_callout.scale = Vector2(0.5, 0.5)
@@ -945,6 +1150,13 @@ func _spin() -> bool:
 	_refresh_controls()
 	state.coins -= tb
 	_coins_to(state.coins)
+	# 開場後第一次轉：狼已經站著、身上還存著上次留下來的能量的話，按下去就先打出去
+	if not _spun:
+		_spun = true
+		if state.charge > 0 and enemy_ready and not enemy.is_empty():
+			_queue.push_front([0, false, true, 0])
+			if not _working:
+				_work()
 	var res := await _round(bet)
 	var total: int = res.total
 	if total > 0:
@@ -1019,8 +1231,10 @@ func _free_spins(cells: Array, bet: int) -> void:
 	Music.mode("free")
 	var spins := Rules.free_spins(cells.size())
 	var pay := Rules.scatter_pay(cells.size(), bet)
-	await callout("FREE SPINS!", "%d spins · cascades ×2 ×4 ×6 ×10" % spins, true, 1.4)
+	await callout("EXTRA!", "%d free spins · cascades ×2 ×4 ×6 ×10" % spins, true, 1.4)
 	free = true
+	_set_extra(true)
+	await _enter_treasure()
 	field.scatter_fire(3)
 	fs_left = spins
 	fs_done = 0
@@ -1048,9 +1262,11 @@ func _free_spins(cells: Array, bet: int) -> void:
 			_coins_to(state.coins)
 			_set_total(fs_total, true)
 			_refresh_fs()
-			await callout("+%d FREE SPINS" % more, "", true, 1.1)
+			await callout("+%d EXTRA SPINS" % more, "", true, 1.1)
 		await get_tree().create_timer(0.25 if state.turbo else 0.45).timeout
+	await _leave_treasure()
 	free = false
+	_set_extra(false)
 	field.scatter_fire(0)
 	_refresh_fs()
 	_set_ladder(0)
@@ -1059,7 +1275,7 @@ func _free_spins(cells: Array, bet: int) -> void:
 	else:
 		Music.mode("base")
 		Sfx.play("coin")
-		await callout("+%s" % Art.money(fs_total), "Free spins total", true, 1.3)
+		await callout("+%s" % Art.money(fs_total), "EXTRA total", true, 1.3)
 	_refresh_fs()
 	_set_total(fs_total, false)
 
@@ -1193,9 +1409,28 @@ func _big_win(total: int, tb: int, after := "") -> void:
 func _process(delta: float) -> void:
 	if not started:
 		return
+	# 場景編號：關卡變了就換（打倒王時放大彈回）；連擊計數出現在左上角時先淡出讓位
+	var st := _stage()
+	if st != _ep_stage:
+		_set_ep(st, _ep_stage > 0)
+	_ep.modulate.a = move_toward(_ep.modulate.a, 0.0 if field.combo_showing() else 1.0, delta * 5.0)
+	_ep.queue_redraw()
+	# 待機 2：狼站著等玩家轉、超過 IDLE_TWIRL 秒沒轉，小紅帽耍一段劍花，之後每隔約 5 秒再耍一次
+	if busy or auto or free or enemy.is_empty() or not enemy_ready or _working:
+		_idle = 0.0
+	else:
+		_idle += delta
+		if _idle > IDLE_TWIRL:
+			_idle = IDLE_TWIRL - 5.0
+			field.twirl()
+	if _extra_k > 0.0:
+		_extra_t += delta
+		_extra_fx.queue_redraw()
+		_buy.queue_redraw()
+		_ladder.queue_redraw()
 	if enemy.is_empty():
 		field.walking = true
-		if not _defeating:
+		if not _defeating and not _swapping:
 			walk_left -= delta
 			if walk_left <= 0.0:
 				_meet()
@@ -1204,21 +1439,33 @@ func _process(delta: float) -> void:
 
 
 func _meet() -> void:
-	enemy = Rules.spawn_enemy(state.kills, Rules.BET_LEVELS[state.bet])
+	enemy = Rules.spawn_enemy(_kills(), Rules.BET_LEVELS[state.bet])
+	if _force_enemy != "":
+		enemy = Rules.make_enemy(_force_enemy, Rules.BET_LEVELS[state.bet])
+	# EXTRA 模式出場的都是寶箱怪
+	if free:
+		enemy = Rules.make_enemy("chest", Rules.BET_LEVELS[state.bet])
 	enemy_ready = false
 	if _hp_tween:
 		_hp_tween.kill()
 	_hp = 1.0
 	_hp_num.text = "%s / %s" % [Art.money(enemy.hp), Art.money(enemy.max_hp)]
+	_portrait = field.portrait(Field.BOSS_FIRST.get(enemy.kind, enemy.kind))
+	_enemy_box.get_node("Portrait").queue_redraw()
 	create_tween().tween_property(_enemy_box, "modulate:a", 1.0, 0.3)
 	_hp_bar.queue_redraw()
 	_refresh_all()
-	callout("WOLF KING!" if enemy.kind == "boss" else "WOLF AHEAD!", "Every coin you win hits him", false, 1.1)
-	Music.wolf(true, enemy.kind == "boss")
-	await field.spawn_enemy(enemy.kind)
+	# 只有 BOSS 登場時演橫幅，小動物安靜地走進來
+	if enemy.boss:
+		var lines := {"bear": ["HONEY BEAR!", "He won't share the forest path"], "stag": ["GRUMPY STAG!", "Lord of the flower meadow"],
+			"boss": ["KNOCK KNOCK!", "“Grandma, it's me… Little Red Riding Hood!”"]}
+		var l: Array = lines.get(enemy.kind, ["%s!" % enemy.name.to_upper(), ""])
+		_encounter.play(l[0], l[1], _portrait, true)
+	Music.wolf(true, enemy.boss)
+	await field.spawn_enemy(enemy.kind, enemy.boss)
 	enemy_ready = true
-	# 走路時存起來的傷害：狼一站定就先打出去
-	if state.charge > 0 and not enemy.is_empty():
+	# 走路時存起來的傷害：狼一站定就先打出去（開場後還沒轉過的話先留著，等第一次轉動）
+	if _spun and state.charge > 0 and not enemy.is_empty():
 		_queue.push_front([0, false, true, 0])
 		if not _working:
 			_work()
@@ -1277,6 +1524,15 @@ func _attack(damage: int, crit: bool, release := false, combo := 1) -> void:
 		_hp = v
 		_hp_bar.queue_redraw(), _hp, to, 0.35)
 	_hp_num.text = "%s / %s" % [Art.money(enemy.hp), Art.money(enemy.max_hp)]
+	# 第 3 關 BOSS：血剩一半，扮成小紅帽的狼變身成外婆；剩四分之一露餡
+	if not killed and enemy.kind == "boss" and enemy.hp * 2 <= enemy.max_hp and field.transform_boss():
+		_portrait = field.current_portrait()
+		_enemy_box.get_node("Portrait").queue_redraw()
+		_encounter.play("GRANDMA?!", "What big eyes you have…", _portrait, true, true)
+	elif not killed and enemy.kind == "boss" and enemy.hp * 4 <= enemy.max_hp and field.reveal_boss():
+		_portrait = field.current_portrait()
+		_enemy_box.get_node("Portrait").queue_redraw()
+		_encounter.play("IT'S THE WOLF!", "All the better to eat you with!", _portrait, true, true)
 	if killed:
 		_store(over)
 		await _defeat()
@@ -1297,9 +1553,9 @@ func _charge_cap() -> int:
 	return 100 * Rules.total_bet(Rules.BET_LEVELS[state.bet])
 
 
-# 存越多小紅帽身上的金光越亮：存到一隻狼的血量就最亮
+# 存越多小紅帽身上的金光越亮：存到總押注 3 倍（改版前一隻大野狼的血量）就最亮
 func _charge_power() -> float:
-	var hp: float = Rules.ENEMIES.wolf.hp * Rules.total_bet(Rules.BET_LEVELS[state.bet])
+	var hp: float = 3.0 * Rules.total_bet(Rules.BET_LEVELS[state.bet])
 	return clampf(0.35 + 0.65 * state.charge / hp, 0.35, 1.0)
 
 
@@ -1309,8 +1565,10 @@ func _defeat() -> void:
 	enemy = {}
 	enemy_ready = false
 	_defeating = true
-	walk_left = rng.randf_range(2.4, 3.8)
-	state.kills += 1
+	walk_left = rng.randf_range(0.6, 1.0) if e.treasure else rng.randf_range(2.4, 3.8)
+	# 寶箱怪不算關卡進度
+	if not e.treasure:
+		state.kills += 1
 	Music.wolf(false)
 	field.defeat_enemy()
 	create_tween().tween_property(_enemy_box, "modulate:a", 0.0, 0.3)
@@ -1322,9 +1580,9 @@ func _defeat() -> void:
 	var ups := Rules.gain_xp(state, e.xp)
 	_refresh_all()
 	_save()
-	if e.kind == "boss":
+	if e.boss:
 		field.set_stage(_stage())
-		await callout("GRANDMA'S HOUSE!", "Stage %d begins · reward +%s" % [_stage(), Art.money(e.reward)], true, 1.5)
+		await callout(Rules.stage_name(_stage()).to_upper(), "Stage %d begins · reward +%s" % [_stage(), Art.money(e.reward)], true, 1.5)
 	elif ups > 0:
 		Sfx.play("level")
 		field.hero.cheer()
@@ -1332,8 +1590,83 @@ func _defeat() -> void:
 	_defeating = false
 
 
+# 進 EXTRA 模式：等前一轉的招式打完、正在走進來的敵人站定，把它收起來（關卡進度不動），接著出場的都是寶箱怪
+func _enter_treasure() -> void:
+	_swapping = true
+	while _working or _defeating or (not enemy.is_empty() and not enemy_ready):
+		await get_tree().process_frame
+	# EXTRA 期間的能量只在 EXTRA 裡用：原本存的能量先收起來，能量條從 0 開始
+	_charge_kept = state.charge
+	state.charge = 0
+	field.set_charge(0, 0, _charge_power(), _charge_cap())
+	_stashed = enemy
+	if not enemy.is_empty():
+		field.stash_enemy()
+		enemy = {}
+		enemy_ready = false
+		Music.wolf(false)
+		create_tween().tween_property(_enemy_box, "modulate:a", 0.0, 0.25)
+	walk_left = 0.4
+	_swapping = false
+
+
+# 出 EXTRA 模式：還沒打完的寶箱照打掉的血量分賞金、打開淡掉，再把原本的敵人放回來（血量、變身到哪都跟進 EXTRA 前一樣）；
+# EXTRA 期間存著還沒打出去的能量不帶出 EXTRA：照寶箱怪的賞金比例一起換成賞金（回收率不變），能量條換回進 EXTRA 前存的
+func _leave_treasure() -> void:
+	_swapping = true
+	while _working or _defeating or (not enemy.is_empty() and not enemy_ready):
+		await get_tree().process_frame
+	var chest := Rules.make_enemy("chest", Rules.BET_LEVELS[state.bet])
+	var pay := roundi(float(chest.reward) * state.charge / chest.max_hp)
+	state.charge = _charge_kept
+	_charge_kept = 0
+	field.set_charge(state.charge, 0, _charge_power(), _charge_cap())
+	var at: Vector2 = field.enemy_center()
+	var opened: bool = not enemy.is_empty() and enemy.treasure
+	if opened:
+		pay += roundi(float(enemy.reward) * (enemy.max_hp - enemy.hp) / enemy.max_hp)
+		field.defeat_enemy()
+		enemy = {}
+		enemy_ready = false
+		Music.wolf(false)
+		create_tween().tween_property(_enemy_box, "modulate:a", 0.0, 0.3)
+	if pay > 0:
+		await get_tree().create_timer(0.45).timeout
+		state.coins += pay
+		_coins_to(state.coins)
+		field.float_text("+%s" % Art.money(pay), at + Vector2(0, -40), Art.GOLD, 30, Art.GOLD_INK)
+		Sfx.play("coin")
+	if opened or pay > 0:
+		await get_tree().create_timer(0.5).timeout
+	enemy = _stashed
+	_stashed = {}
+	if not enemy.is_empty() and field.unstash_enemy():
+		_portrait = field.current_portrait()
+		_enemy_box.get_node("Portrait").queue_redraw()
+		_hp = float(enemy.hp) / enemy.max_hp
+		_hp_num.text = "%s / %s" % [Art.money(enemy.hp), Art.money(enemy.max_hp)]
+		_hp_bar.queue_redraw()
+		create_tween().tween_property(_enemy_box, "modulate:a", 1.0, 0.3)
+		Music.wolf(true, enemy.boss)
+		enemy_ready = true
+		# 進 EXTRA 前存著的能量：放回來的敵人一站好就打出去，跟新的敵人站定時一樣
+		if _spun and state.charge > 0:
+			_queue.push_front([0, false, true, 0])
+			if not _working:
+				_work()
+	else:
+		enemy = {}
+		walk_left = rng.randf_range(1.2, 2.0)
+	_swapping = false
+
+
 func _stage() -> int:
-	return state.kills / Rules.BOSS_EVERY + 1
+	return _kills() / Rules.BOSS_EVERY + 1
+
+
+# 關卡用的打倒數（預覽 ?stage= 時加上位移）
+func _kills() -> int:
+	return maxi(0, state.kills + _kill_off)
 
 
 # ---------- 補幣、存檔、更新畫面 ----------
@@ -1697,9 +2030,9 @@ func _fill_rules() -> void:
 		tiers.append("%s from %d× total bet" % [t[2], t[0]])
 	body.add_child(_body(", ".join(tiers) + "."))
 	body.add_child(_divider("AUTO-RUN"))
-	body.add_child(_body("Red Hood walks to Grandma's house on her own. When a wolf blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while no wolf is around, and any overkill, is stored and unleashed on the next one. Defeat wolves for coins and XP; every 5th is the Wolf King."))
+	body.add_child(_body("Red Hood walks to Grandma's house on her own: the forest path, the flower meadow, then Grandma's front door. When one of the Big Bad Wolf's forest friends blocks the path, every coin you win is thrown at it as damage, plus a small hit each spin. No hit is wasted: damage dealt while nobody is around, and any overkill, is stored and unleashed on the next one. Defeat them for coins and XP; every 7th is the stage boss: the Honey Bear, the Grumpy Stag, then the wolf knocking at Grandma's door. During EXTRA, treasure chests pop up instead; when EXTRA ends you're back where you left off."))
 	var n: int = state.kills % Rules.BOSS_EVERY + 1
-	body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · Stage %d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), _stage(), n], 12))
+	body.add_child(_body("Your progress: Lv. %d (XP %d / %d) · Stage %d-%d" % [state.level, state.xp, Rules.xp_to_next(state.level), state.kills / Rules.BOSS_EVERY + 1, n], 12))
 	var reset := Button.new()
 	reset.text = "Reset progress"
 	reset.focus_mode = Control.FOCUS_NONE
@@ -1811,8 +2144,17 @@ func _boot() -> void:
 	# ?tease 轉一次第 1、2、4 軸各有一把金鑰匙的盤面，看 SCATTER 差一個時的吊胃口；
 	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
 	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）；
-	# ?slow=0.25 整個遊戲用四分之一速度跑（檢查動作用，可以跟上面幾個一起帶）
+	# ?slow=0.25 整個遊戲用四分之一速度跑（檢查動作用，可以跟上面幾個一起帶）；
+	# ?enemy=fox 之後出來的敵人都換成這一種、?stage=2 從第 2 關第 1 隻開始（背景、EP、關卡進度、出的怪都跟著，存檔的打倒數照常加）；?extra 看 EXTRA 模式的畫面；?reveal 看第 3 關 BOSS 變身、露餡
 	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
+	if search.contains("enemy="):
+		var k := search.get_slice("enemy=", 1).get_slice("&", 0)
+		if Rules.ENEMIES.has(k):
+			_force_enemy = k
+	if search.contains("stage="):
+		var st := maxi(1, search.get_slice("stage=", 1).get_slice("&", 0).to_int())
+		_kill_off = (st - 1) * Rules.BOSS_EVERY - state.kills
+		field.set_backdrop(st)
 	if search.contains("slow="):
 		Engine.time_scale = clampf(search.get_slice("slow=", 1).get_slice("&", 0).to_float(), 0.05, 1.0)
 	if search.contains("bigwin"):
@@ -1844,6 +2186,30 @@ func _boot() -> void:
 		Sfx.play("spin")
 		await slot.spin(board)
 		busy = false
+	# ?reveal：等第 3 關 BOSS 站定，先打掉一半多一點的血看變身，再打到剩四分之一看露餡（只動這隻 BOSS 的血量，不給錢、不存檔；搭配 ?enemy=boss）
+	if search.contains("reveal"):
+		while enemy.is_empty() or not enemy_ready:
+			await get_tree().process_frame
+		var mx: int = enemy.max_hp
+		_queue_attack(mx / 2 + 1, true, 4)
+		_queue_attack(mx / 4 + 1, true, 4)
+	# ?extra：只看 EXTRA 模式的畫面 8 秒（不能轉、不動餘額）
+	if search.contains("extra"):
+		busy = true
+		free = true
+		fs_done = 3
+		fs_left = 5
+		_set_extra(true)
+		await _enter_treasure()
+		# 演一下 EXTRA 的紫色能量條（只動畫面，不動 state.charge）
+		await get_tree().create_timer(1.5).timeout
+		field.set_charge(_charge_cap() * 2 / 5, _charge_cap() * 2 / 5, 0.6, _charge_cap())
+		await get_tree().create_timer(6.5).timeout
+		await _leave_treasure()
+		free = false
+		_set_extra(false)
+		busy = false
+		_refresh_fs()
 	if search.contains("combo"):
 		while enemy.is_empty() or not enemy_ready:
 			await get_tree().process_frame

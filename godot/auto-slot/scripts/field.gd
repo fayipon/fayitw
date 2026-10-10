@@ -11,8 +11,47 @@ const Art := preload("res://scripts/art.gd")
 const Fighter := preload("res://scripts/fighter.gd")
 const ComboCounter := preload("res://scripts/combo_counter.gd")
 
-# 每關的天色：正午、午後金光、傍晚
-const TINTS := [Color.WHITE, Color(1.0, 0.93, 0.8), Color(1.0, 0.83, 0.74)]
+# 每關的天色：三關各有自己的背景（林間小路、花田、傍晚的外婆家門口），天色只再微微調一點
+const TINTS := [Color.WHITE, Color(1.0, 0.98, 0.95), Color(1.0, 0.97, 0.93)]
+# 浣熊、青蛙、老鼠、寶箱怪的臉（站姿圖上量的）
+const FACE_RACCOON := [0.19, 0.24, 0.14]
+const FACE_FROG := [0.3, 0.17, 0.2]
+const FACE_MOUSE := [0.27, 0.25, 0.14]
+const FACE_CHEST := [0.42, 0.52, 0.3]
+# 敵人（照小紅帽劇本）：h 是身高（舊的大野狼 = 1）、fps 走路幾格／秒、bob 走路彈跳幅度、hover 飛多高（身高的倍數）、
+# kick 被打退多少、fx 被打時噴出來的碎屑顏色、react 被打時的特別動作、charge 衝刺進場、aura BOSS 身後那圈光的顏色、
+# face 血條頭像要裁的臉（站姿圖上的中心 u、v 與半徑，半徑以圖高為準）、hurt_k 受擊圖的身高倍率、chomp 站著時偶爾演的連續格。
+# 寶箱怪是一般的寶箱：站著蓋子張開、被打蓋子闔上往後倒（斜著放比較高，縮一點）、走路是蓋子一開一合，站著時每隔幾秒喀一聲咬一下。
+# knock 是第 3 關 BOSS（外婆狼）的第一階段：披著紅斗篷學小紅帽敲門的狼，血剩一半變身成外婆（boss）
+const MONSTERS := {
+	"squirrel": {"h": 0.5, "fps": 9.0, "bob": 2.4, "fx": Color("b0682a"), "react": "hop", "face": [0.17, 0.33, 0.15]},
+	"hedgehog": {"h": 0.46, "fps": 9.0, "fx": Color("7a5a35"), "react": "roll", "face": [0.22, 0.37, 0.15]},
+	"raccoon": {"h": 0.55, "fps": 8.0, "fx": Color("8f8f9a"), "react": "flip", "face": FACE_RACCOON},
+	"frog": {"h": 0.42, "fps": 8.0, "bob": 2.6, "fx": Color("6cbf3a"), "react": "hop", "face": FACE_FROG},
+	"hare": {"h": 0.62, "fps": 9.0, "bob": 2.2, "fx": Color("f08a2c"), "react": "hop", "face": [0.31, 0.3, 0.13]},
+	"fox": {"h": 0.66, "fps": 9.0, "bob": 1.8, "fx": Color("f08a2c"), "react": "flip", "face": [0.13, 0.27, 0.13]},
+	"mouse": {"h": 0.38, "fps": 10.0, "bob": 1.6, "fx": Color("ffd34a"), "react": "roll", "face": FACE_MOUSE},
+	"raven": {"h": 0.42, "fps": 8.0, "hover": 0.85, "fx": Color("1e2533"), "react": "feathers", "face": [0.12, 0.54, 0.12]},
+	"boar": {"h": 0.62, "fps": 9.0, "kick": 0.2, "fx": Color("6b4a2c"), "react": "huff", "charge": true, "face": [0.2, 0.47, 0.2]},
+	"bear": {"h": 1.15, "fps": 6.0, "kick": 0.4, "fx": Color("f2b33d"), "react": "duck", "aura": Color(1.0, 0.75, 0.25), "face": [0.27, 0.19, 0.12]},
+	"stag": {"h": 1.15, "fps": 7.0, "kick": 0.6, "fx": Color("8a5a30"), "react": "huff", "aura": Color(1.0, 0.55, 0.3), "face": [0.19, 0.47, 0.11]},
+	"knock": {"h": 1.05, "fps": 7.0, "fx": Color("d8323c"), "react": "petals", "aura": Color(0.95, 0.35, 0.6), "face": [0.16, 0.32, 0.14]},
+	"boss": {"h": 1.12, "fps": 6.0, "fx": Color("ffd6e6"), "react": "petals", "aura": Color(0.95, 0.35, 0.6), "face": [0.17, 0.28, 0.15]},
+	"chest": {"h": 0.6, "fps": 9.0, "bob": 2.0, "fx": Color("ffd25a"), "react": "coins", "face": FACE_CHEST,
+		"hurt_k": 0.88, "chomp": ["walk4", "walk1", "walk2"]},
+}
+# BOSS 一開始的樣子（第 3 關的外婆狼先扮成小紅帽敲門）
+const BOSS_FIRST := {"boss": "knock"}
+# 傷害、存進能量、獎勵的跳字顏色（紅、藍、金）
+const DAMAGE_COLOR := Color("ff4a3d")
+const DAMAGE_INK := Color("4a0306")
+const CHARGE_COLOR := Color("6cc4ff")
+const CHARGE_INK := Color("0a2a55")
+# EXTRA 期間的能量是另一筆（只在 EXTRA 裡用，進 EXTRA 時從 0 開始）：能量條、跳字、身上的光都換成紫色
+const EXTRA_CHARGE_COLOR := Color("c88cff")
+const EXTRA_CHARGE_INK := Color("2c0f4a")
+const HERO_AURA := Color(1.0, 0.72, 0.25)
+const HERO_AURA_EXTRA := Color(0.72, 0.4, 1.0)
 # 近景每秒捲動幾倍的區域高度
 const NEAR_SPEED := 0.3
 # 角色身高上限、腳踩的位置（都以區域高度為準）
@@ -39,8 +78,19 @@ var ground := 0.0
 # 疊在自走區上的標題字（區域座標）：頭上的牌子碰到它就往右讓開
 var avoid := Rect2()
 
-var _far: Texture2D
-var _near: Texture2D
+# 三關的遠景與近景；換關時從 _bg_prev 交叉淡到 _bg
+var _fars: Array = []
+var _nears: Array = []
+var _bg := 0
+var _bg_prev := 0
+var _bg_fade := 1.0
+# 敵人現在的樣子（MONSTERS 的 key；外婆狼第一階段是 knock）、規則上的種類、露餡了沒
+var _enemy_kind := "squirrel"
+var _boss_kind := ""
+var _revealed := false
+# EXTRA 模式時先收起來的敵人（EXTRA 結束再放回來）
+var _stash := {}
+var _twirling := false
 var _fog: Texture2D
 var _actors: Node2D
 var _leaves: CPUParticles2D
@@ -66,14 +116,19 @@ var _combo: Node2D
 # 出招中（招式自己換姿勢，_process 不要插手）；歡呼的跳躍姿勢要維持到這個時間
 var _striking := false
 var _pose_hold := 0.0
+# EXTRA 模式（Free Spins）的強度 0～1：上方罩一層金色魔法光、兩側淡紫暈，落葉換成金色、紫色的光屑
+var extra_k := 0.0
+var _leaf_hues: Gradient
+var _magic_hues: Gradient
 
 
 func _ready() -> void:
 	_rng.randomize()
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_far = Art.tex("res://art/field/far.webp")
-	_near = Art.tex("res://art/field/near.webp")
+	for k in ["", "-2", "-3"]:
+		_fars.append(Art.tex("res://art/field/far%s.webp" % k))
+		_nears.append(Art.tex("res://art/field/near%s.webp" % k))
 	var g := Gradient.new()
 	g.set_color(0, Color(1.0, 0.96, 0.82, 0.5))
 	g.set_color(1, Color(1.0, 0.96, 0.82, 0.0))
@@ -98,7 +153,14 @@ func _ready() -> void:
 		"slash": Art.tex("res://art/field/hero-slash.webp"),
 		"windup": Art.tex("res://art/field/hero-windup.webp"),
 		"jump": Art.tex("res://art/field/hero-jump.webp"),
+		"twirl1": Art.tex("res://art/field/hero-twirl-1.webp"),
+		"twirl2": Art.tex("res://art/field/hero-twirl-2.webp"),
+		"twirl3": Art.tex("res://art/field/hero-twirl-3.webp"),
+		"twirl4": Art.tex("res://art/field/hero-twirl-4.webp"),
 	}, "run")
+	# 耍劍花的 4 格裡第 3 格劍舉過頭，整格比身體高：身體要跟架式一樣大，格子就放大一點
+	for k in 4:
+		hero.pose_k["twirl%d" % (k + 1)] = 1.09
 	# 跑步 4 格輪流播；蓄力、跳起比較寬（披風張開），身高上限只看平常的姿勢
 	hero.run_frames = ["run", "run2", "run3", "run4"]
 	hero.sizing = ["run", "run2", "run3", "run4", "stance", "slash"]
@@ -123,7 +185,7 @@ func _ready() -> void:
 	_combo = ComboCounter.new()
 	_combo.z_index = 13
 	add_child(_combo)
-	hero.aura_color = Color(1.0, 0.72, 0.25)
+	hero.aura_color = HERO_AURA
 	# 劍的位置（量自立繪，劍根 → 劍尖）：架式劍尖朝右上，跑步時劍拿在後手、朝右下（4 格各量一次），
 	# 揮砍時往右平伸（劍尖碰到圖邊），跳起時舉過頭往右上；蓄力時劍收在頭後面，不冒火
 	hero.blades = {
@@ -164,6 +226,21 @@ func set_stage(stage: int) -> void:
 	tw.tween_method(func(c: Color):
 		tint = c
 		queue_redraw(), tint, to, 1.2)
+	var i := (stage - 1) % _fars.size()
+	if i != _bg:
+		_bg_prev = _bg
+		_bg = i
+		_bg_fade = 0.0
+		create_tween().tween_property(self, "_bg_fade", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+
+
+# 開遊戲時直接放到這一關的背景（不淡入）
+func set_backdrop(stage: int) -> void:
+	tint = TINTS[(stage - 1) % TINTS.size()]
+	_bg = (stage - 1) % _fars.size()
+	_bg_prev = _bg
+	_bg_fade = 1.0
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -176,34 +253,43 @@ func _process(delta: float) -> void:
 			hero.set_pose("run")
 	elif idle and (hero.running_pose() or hero.pose == "jump" or hero.pose == "windup"):
 		hero.set_pose("stance")
+	hero.aura_color = HERO_AURA.lerp(HERO_AURA_EXTRA, extra_k)
 	if _tag.visible:
 		_tag.queue_redraw()
 		_tag.pivot_offset = _tag.size / 2.0
-		_tag.position = Vector2(maxf(6.0, hero.position.x - _tag.size.x / 2.0), hero.position.y - hero.height - _tag.size.y - 6.0)
-		if avoid.intersects(Rect2(_tag.position, _tag.size)):
-			_tag.position.x = avoid.end.x + 6.0
+		_tag.position = _tag_at()
 	queue_redraw()
 
 
 func _draw() -> void:
-	# 遠景：蓋滿整個區域、置中（外婆家的小屋在中間），固定不動
-	var s := maxf(size.y / _far.get_height(), size.x / _far.get_width())
-	var fw := _far.get_width() * s
-	var fh := _far.get_height() * s
-	draw_texture_rect(_far, Rect2((size.x - fw) / 2.0, size.y - fh, fw, fh), false, tint)
-	# 光霧：幾團暖白的光霧慢慢往左飄
+	# 換關時舊的背景墊在下面、新的淡入
+	if _bg_fade < 1.0:
+		_draw_scene(_bg_prev, 1.0)
+	_draw_scene(_bg, _bg_fade)
+
+
+# 一關的背景：遠景蓋滿整個區域、置中，固定不動；暖白的光霧慢慢往左飄；近景縮到區域高度，左右無縫接著捲
+func _draw_scene(i: int, a: float) -> void:
+	var far: Texture2D = _fars[i]
+	var near: Texture2D = _nears[i]
+	var col := Color(tint, a)
+	var s := maxf(size.y / far.get_height(), size.x / far.get_width())
+	var fw := far.get_width() * s
+	var fh := far.get_height() * s
+	draw_texture_rect(far, Rect2((size.x - fw) / 2.0, size.y - fh, fw, fh), false, col)
 	for k in 5:
 		var speed := 8.0 + k * 5.0
 		var w := size.x * (0.7 + 0.15 * (k % 3))
 		var x := fposmod(size.x - _t * speed + k * size.x * 0.41, size.x + w) - w * 0.5
 		var y := size.y * (0.55 + 0.08 * (k % 3))
-		draw_texture_rect(_fog, Rect2(x - w / 2.0, y - w * 0.18, w, w * 0.36), false, Color(1, 1, 1, 0.16))
-	# 近景：縮到區域高度，左右無縫接著捲
-	var nw := _near.get_width() * size.y / _near.get_height()
+		draw_texture_rect(_fog, Rect2(x - w / 2.0, y - w * 0.18, w, w * 0.36), false, Color(1, 1, 1, 0.16 * a))
+	var nw := near.get_width() * size.y / near.get_height()
 	var nx := -fposmod(scroll, nw)
 	while nx < size.x:
-		draw_texture_rect(_near, Rect2(nx, 0, nw + 1.0, size.y), false, tint)
+		draw_texture_rect(near, Rect2(nx, 0, nw + 1.0, size.y), false, col)
 		nx += nw
+	if extra_k > 0.01:
+		_draw_extra()
 	# 底下漸暗，接到 SLOT
 	var y := size.y * 0.82
 	draw_polygon(PackedVector2Array([Vector2(0, y), Vector2(size.x, y), Vector2(size.x, size.y), Vector2(0, size.y)]),
@@ -242,7 +328,34 @@ func _make_leaves() -> CPUParticles2D:
 	hues.colors = PackedColorArray([Color(0.36, 0.62, 0.18), Color(0.62, 0.78, 0.26), Color(0.86, 0.84, 0.36), Color(1.0, 0.95, 0.97)])
 	hues.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
 	p.color_initial_ramp = hues
+	_leaf_hues = hues
+	_magic_hues = Gradient.new()
+	_magic_hues.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	_magic_hues.colors = PackedColorArray([Color(1.0, 0.86, 0.36), Color(0.82, 0.55, 1.0), Color(1.0, 0.97, 0.8)])
+	_magic_hues.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
 	return p
+
+
+# 進出 EXTRA 模式
+func set_extra(on: bool) -> void:
+	create_tween().tween_property(self, "extra_k", 1.0 if on else 0.0, 0.8)
+	_leaves.color_initial_ramp = _magic_hues if on else _leaf_hues
+	_leaves.amount = 28 if on else 14
+
+
+# EXTRA 模式的魔法光：上面一片暖金色的光（一呼一吸）、左右兩側淡紫色的暈
+func _draw_extra() -> void:
+	var p := 0.5 + 0.5 * sin(_t * 2.2)
+	var k := extra_k
+	var gold := Color(1.0, 0.82, 0.4, (0.22 + 0.1 * p) * k)
+	var clear := Color(1.0, 0.82, 0.4, 0.0)
+	var h := size.y * 0.6
+	draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), Vector2(size.x, h), Vector2(0, h)]), PackedColorArray([gold, gold, clear, clear]))
+	var w := size.x * 0.28
+	var vio := Color(0.55, 0.25, 0.9, (0.3 + 0.1 * p) * k)
+	var none := Color(0.55, 0.25, 0.9, 0.0)
+	draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, size.y), Vector2(0, size.y)]), PackedColorArray([vio, none, none, vio]))
+	draw_polygon(PackedVector2Array([Vector2(size.x - w, 0), Vector2(size.x, 0), Vector2(size.x, size.y), Vector2(size.x - w, size.y)]), PackedColorArray([none, vio, vio, none]))
 
 
 # ---------- 存起來的傷害 ----------
@@ -256,7 +369,7 @@ func _make_tag() -> Control:
 	return c
 
 
-# 能量條：深胡桃木底、古金細邊，裡面藍色（上半截亮一點像玻璃）；存滿時整條一閃一閃
+# 能量條：深胡桃木底、古金細邊，裡面藍色（上半截亮一點像玻璃），EXTRA 期間是紫色；存滿時整條一閃一閃
 func _draw_gauge(c: Control) -> void:
 	if not _gauge_frame:
 		_gauge_frame = Art.box(Color(0.12, 0.07, 0.03, 0.9), 6, 1, Art.GOLD_DEEP)
@@ -264,6 +377,8 @@ func _draw_gauge(c: Control) -> void:
 		_gauge_frame.shadow_size = 3
 		_gauge_fill = Art.box(Color("2f7fe0"), 4)
 		_gauge_shine = Art.box(Color(0.62, 0.86, 1.0, 0.75), 4)
+	_gauge_fill.bg_color = Color("2f7fe0").lerp(Color("8a3df0"), extra_k)
+	_gauge_shine.bg_color = Color(0.62, 0.86, 1.0, 0.75).lerp(Color(0.88, 0.72, 1.0, 0.75), extra_k)
 	var r := Rect2(Vector2.ZERO, c.size)
 	c.draw_style_box(_gauge_frame, r)
 	var inner := r.grow(-2.0)
@@ -277,8 +392,8 @@ func _draw_gauge(c: Control) -> void:
 		c.draw_style_box(Art.box(Color(1, 1, 1, 0.22 + 0.22 * sin(_t * 8.0)), 4), fr)
 
 
-# 沒有狼可以打時傷害先存起來：頭上的藍色能量條變長（上限 cap = 總押注 × 100，不寫數字），
-# 身上的金光跟著變亮（power 0～1）；gained > 0 是剛存進來，條子彈一下
+# 沒有狼可以打時傷害先存起來：頭上的藍色能量條變長（上限 cap = 總押注 × 100，條子上不寫數字），
+# 身上的金光跟著變亮（power 0～1）；gained > 0 是剛存進來，條子彈一下、頭上跳出藍色的「+存進來的量」
 func set_charge(amount: int, gained: int, power: float, cap: int) -> void:
 	# 剛打出去的能量條還在淡掉的話直接停掉
 	if _tag_tw:
@@ -296,9 +411,21 @@ func set_charge(amount: int, gained: int, power: float, cap: int) -> void:
 		return
 	_fill_tw = create_tween()
 	_fill_tw.tween_property(self, "_fill", to, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# 跳字從能量條右邊冒出來（以前在頭頂上方，往上飄會疊到左上角的 EP 關卡進度）
+	var extra := extra_k > 0.5
+	float_text("+%s" % Art.money(gained), _tag_at() + Vector2(_tag.size.x + 30.0, _tag.size.y * 0.5),
+		EXTRA_CHARGE_COLOR if extra else CHARGE_COLOR, 20, EXTRA_CHARGE_INK if extra else CHARGE_INK)
 	_tag_tw = create_tween()
 	_tag_tw.tween_property(_tag, "scale", Vector2(1.1, 1.4), 0.08)
 	_tag_tw.tween_property(_tag, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# 能量條的位置：小紅帽頭頂上方，碰到 avoid 的話往右讓開
+func _tag_at() -> Vector2:
+	var at := Vector2(maxf(6.0, hero.position.x - _tag.size.x / 2.0), hero.position.y - hero.height - _tag.size.y - 6.0)
+	if avoid.intersects(Rect2(at, _tag.size)):
+		at.x = avoid.end.x + 6.0
+	return at
 
 
 # SCATTER（金鑰匙）落下：小紅帽的劍點燃、全身泛出火光，張數越多燒越旺（1 張小火、2 張大火、3 張以上烈焰）；
@@ -334,40 +461,59 @@ func release_charge() -> void:
 
 # ---------- 敵人 ----------
 
-# 大野狼從右邊的陰影裡走出來
-func spawn_enemy(kind: String) -> void:
-	enemy = Fighter.new({
-		"idle": Art.tex("res://art/field/wolf.webp"),
-		"hurt": Art.tex("res://art/field/wolf-hurt.webp"),
-		"walk1": Art.tex("res://art/field/wolf-walk-1.webp"),
-		"walk2": Art.tex("res://art/field/wolf-walk-2.webp"),
-		"walk3": Art.tex("res://art/field/wolf-walk-3.webp"),
-		"walk4": Art.tex("res://art/field/wolf-walk-4.webp"),
-	}, "walk1")
+# 敵人從右邊走進來（走路 4 格輪流播），站定後換回站姿、低吼一下；
+# 野豬是衝進來的（揚起塵土、畫面震一下），烏鴉飛在半空；BOSS（熊、雄鹿、外婆狼）身後有一圈光
+func spawn_enemy(kind: String, boss := false) -> void:
+	_boss_kind = kind if boss else ""
+	kind = BOSS_FIRST.get(kind, kind)
+	var m: Dictionary = MONSTERS.get(kind, MONSTERS.squirrel)
+	var poses := {"idle": Art.tex("res://art/field/%s.webp" % kind), "hurt": Art.tex("res://art/field/%s-hurt.webp" % kind)}
+	for k in 4:
+		poses["walk%d" % (k + 1)] = Art.tex("res://art/field/%s-walk-%d.webp" % [kind, k + 1])
+	enemy = Fighter.new(poses, "walk1")
 	enemy.sizing = ["idle"]
 	# 走進場時 4 格走路輪流播，站定後換回站姿
 	enemy.run_frames = ["walk1", "walk2", "walk3", "walk4"]
-	enemy.run_fps = 7.0
-	# 大野狼的圖本來就面向左
+	enemy.run_fps = m.fps
+	enemy.bob = m.get("bob", 1.0)
+	enemy.kick_k = m.get("kick", 1.0)
+	enemy.pose_k["hurt"] = m.get("hurt_k", 1.0)
+	enemy.idle_anim = m.get("chomp", [])
+	# 敵人的圖都面向左
 	enemy.facing = -1.0
 	enemy.flip_source = true
 	_actors.add_child(enemy)
-	_enemy_k = 1.18 if kind == "boss" else 1.0
-	if kind == "boss":
+	_enemy_kind = kind
+	_revealed = false
+	_enemy_k = m.h
+	if boss:
 		enemy.aura = 1.0
-		enemy.tint(Color(1.0, 0.8, 0.78))
+		enemy.aura_color = m.get("aura", Color(0.95, 0.35, 0.6))
 	_place_enemy()
 	var target := enemy.position.x
+	var charge: bool = m.get("charge", false)
 	enemy.position.x = size.x + size.y * 0.5
 	enemy.modulate = Color(0.15, 0.15, 0.2, 0.0)
 	enemy.walking = true
 	_enter = create_tween()
-	_enter.tween_property(enemy, "position:x", target, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_enter.parallel().tween_property(enemy, "modulate", Color.WHITE, 1.0)
+	if charge:
+		enemy.run_fps = m.fps * 1.6
+		_enter.tween_property(enemy, "position:x", target, 0.7).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		for i in 4:
+			_enter.parallel().tween_callback(func():
+				if enemy:
+					_dust(Vector2(enemy.position.x + enemy.height * 0.3, ground), 4, -1.0, 0.8)).set_delay(0.12 * i)
+	else:
+		_enter.tween_property(enemy, "position:x", target, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_enter.parallel().tween_property(enemy, "modulate", Color.WHITE, 0.6 if charge else 1.0)
 	await _enter.finished
 	if enemy:
 		enemy.walking = false
+		enemy.run_fps = m.fps
 		enemy.set_pose("idle")
+		if charge:
+			_dust(Vector2(enemy.position.x, ground), 10)
+			quake.emit(4.0)
 		# 站定時低吼一下：身體一縮一撐
 		var roar := create_tween()
 		roar.tween_property(enemy, "scale", Vector2(1.06, 0.95), 0.12)
@@ -378,12 +524,218 @@ func spawn_enemy(kind: String) -> void:
 func _place_enemy() -> void:
 	enemy.set_height(minf(size.y * WOLF_H, size.x * WOLF_MAX_W / enemy.widest()) * _enemy_k)
 	enemy.position = Vector2(size.x * WOLF_X, ground)
+	enemy.hover = enemy.height * float(MONSTERS.get(_enemy_kind, {}).get("hover", 0.0))
 
 
 func enemy_center() -> Vector2:
 	if not enemy:
 		return Vector2(size.x * WOLF_X, ground - size.y * 0.35)
-	return enemy.position + Vector2(0, -enemy.height * 0.5)
+	return enemy.sprite_rect().get_center()
+
+
+# 血條旁邊菱形頭像要用的圖與臉的位置：[站姿圖, 中心 uv, 半徑 uv（x、y 分開，圖不是正方形）]
+func portrait(kind: String, revealed := false) -> Array:
+	var tex: Texture2D = Art.tex("res://art/field/%s.webp" % ("boss-reveal" if revealed else kind))
+	var f: Array = MONSTERS.get(kind, MONSTERS.squirrel).face
+	var r: float = f[2]
+	return [tex, Vector2(f[0], f[1] + (0.02 if revealed else 0.0)), Vector2(r * tex.get_height() / tex.get_width(), r)]
+
+
+# 被打：一般的受擊（閃紅、往後仰、換受擊立繪），再加這種怪自己的反應與碎屑
+func _hurt_enemy(strength: float) -> void:
+	if not enemy:
+		return
+	enemy.hurt(strength)
+	var m: Dictionary = MONSTERS.get(_enemy_kind, {})
+	var at := enemy_center()
+	var col: Color = m.get("fx", Color("ffb070"))
+	match m.get("react", ""):
+		"hop":
+			_hop(enemy.height * 0.25)
+			_bits(at, col, 5, 0.8)
+		"roll":
+			# 刺蝟縮成一顆球滾一圈、刺噴出來
+			enemy.roll(1.0, 0.45)
+			_bits(at, col, 6, 0.7)
+		"flip":
+			# 狐狸往後空翻
+			_hop(enemy.height * 0.35)
+			enemy.roll(-1.0, 0.42)
+		"duck":
+			# 熊縮脖子、蜂蜜滴出來
+			_bits(at, col, 5, 0.6)
+			enemy.bump(Vector2(1.16, 0.78), 0.06, 0.3)
+		"feathers":
+			_bits(at, col, 10, 1.1)
+		"huff":
+			# 野豬、雄鹿幾乎不退，只從鼻子噴一口氣
+			_dust(at + Vector2(-enemy.height * 0.5, enemy.height * 0.1), 4, 1.0, 0.7)
+		"petals":
+			_bits(at, col, 9, 0.9)
+		"coins":
+			# 寶箱怪：蓋子一開一合、噴出金幣
+			_hop(enemy.height * 0.2)
+			enemy.bump(Vector2(1.1, 0.88), 0.05, 0.25)
+			_bits(at, col, 10, 1.0)
+
+
+func _hop(h: float) -> void:
+	var tw := create_tween()
+	tw.tween_property(enemy, "hop_y", h, 0.16).set_ease(Tween.EASE_OUT)
+	tw.tween_property(enemy, "hop_y", 0.0, 0.2).set_ease(Tween.EASE_IN)
+
+
+# 敵人現在的頭像（外婆狼會變身、露餡，頭像跟著換）
+func current_portrait() -> Array:
+	return portrait(_enemy_kind, _revealed)
+
+
+# 第 3 關 BOSS 血剩一半：扮成小紅帽的狼變身成外婆——砰一團粉紫色的煙、整隻閃白、轉一圈，煙最濃的時候換成外婆的立繪；
+# 回傳是不是這一下才變身（main 只喊一次）
+func transform_boss() -> bool:
+	if not enemy or _boss_kind != "boss" or _enemy_kind != "knock":
+		return false
+	_enemy_kind = "boss"
+	var at := enemy_center()
+	_puff(at, enemy.height)
+	_bits(at, Color("ffc6e0"), 14, 1.1)
+	enemy.flash(1.0, 0.5)
+	enemy.roll(1.0, 0.32)
+	enemy.bump(Vector2(0.8, 1.2), 0.12, 0.3)
+	quake.emit(6.0)
+	Sfx.play("bonus", 1.4, -6.0)
+	var e := enemy
+	get_tree().create_timer(0.14).timeout.connect(func():
+		if e != enemy:
+			return
+		e.poses["idle"] = Art.tex("res://art/field/boss.webp")
+		e.poses["hurt"] = Art.tex("res://art/field/boss-hurt.webp")
+		_enemy_k = MONSTERS.boss.h
+		e.set_height(minf(size.y * WOLF_H, size.x * WOLF_MAX_W / e.widest()) * _enemy_k)
+		e.set_pose("idle"))
+	return true
+
+
+# 變身的煙：一團大大的柔光從中心往外膨脹、淡掉（粉、紫、白）
+func _puff(at: Vector2, h: float) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.amount = 26
+	p.lifetime = 0.8
+	p.texture = Fighter._soft_dot()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = h * 0.2
+	p.spread = 180.0
+	p.gravity = Vector2(0, -40)
+	p.initial_velocity_min = 30.0
+	p.initial_velocity_max = 110.0
+	p.damping_min = 60.0
+	p.damping_max = 120.0
+	var k := h / 120.0
+	p.scale_amount_min = 0.9 * k
+	p.scale_amount_max = 1.6 * k
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.6))
+	curve.add_point(Vector2(1.0, 1.0))
+	p.scale_amount_curve = curve
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.95, 1, 0.95), Color(0.95, 0.75, 1, 0.7), Color(0.8, 0.6, 1, 0)])
+	p.color_ramp = ramp
+	fx.add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+
+
+# 進 EXTRA 模式：先把現在的敵人淡掉收起來（含變身、露餡到哪了），EXTRA 結束再放回來
+func stash_enemy() -> void:
+	if not enemy:
+		return
+	_stash = {"node": enemy, "kind": _enemy_kind, "boss": _boss_kind, "revealed": _revealed, "k": _enemy_k}
+	var e := enemy
+	enemy = null
+	var tw := e.create_tween()
+	tw.tween_property(e, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(func(): e.visible = false)
+
+
+# 出 EXTRA 模式：把收起來的敵人放回原位、淡入；回傳有沒有敵人可以放回來
+func unstash_enemy() -> bool:
+	if _stash.is_empty():
+		return false
+	enemy = _stash.node
+	_enemy_kind = _stash.kind
+	_boss_kind = _stash.boss
+	_revealed = _stash.revealed
+	_enemy_k = _stash.k
+	_stash = {}
+	enemy.visible = true
+	enemy.walking = false
+	_place_enemy()
+	enemy.modulate.a = 0.0
+	create_tween().tween_property(enemy, "modulate:a", 1.0, 0.4)
+	return true
+
+
+# 假扮外婆的大灰狼血剩四分之一：露餡（換成凶相的站姿、不再換受擊立繪），噴一團粉紅蕾絲碎片（畫面震動交給露餡的橫幅，同一拍只震一次）；
+# 回傳是不是這一下才露餡（main 只喊一次）
+func reveal_boss() -> bool:
+	if not enemy or _enemy_kind != "boss" or _revealed:
+		return false
+	_revealed = true
+	enemy.poses["idle"] = Art.tex("res://art/field/boss-reveal.webp")
+	enemy.poses.erase("hurt")
+	if enemy.pose == "idle" or enemy.pose == "hurt":
+		enemy.set_pose("idle")
+	enemy.bump(Vector2(1.14, 0.86), 0.06, 0.35)
+	_bits(enemy_center(), Color("ffd6e6"), 18, 1.2)
+	_fly_glasses()
+	return true
+
+
+# 露餡那一下，圓眼鏡從鼻子上被打飛：往右上翻著飛出去、掉到地上彈一下、淡掉
+func _fly_glasses() -> void:
+	var g := Sprite2D.new()
+	g.texture = Art.tex("res://art/field/boss-glasses.webp")
+	g.scale = Vector2.ONE * enemy.height / 720.0
+	var face: Array = MONSTERS.boss.face
+	var r: Rect2 = enemy.sprite_rect()
+	var from: Vector2 = r.position + Vector2(face[0], face[1] + 0.02) * r.size
+	g.position = from
+	fx.add_child(g)
+	var dx: float = enemy.height * 0.55
+	var up: float = enemy.height * 0.45
+	var land := ground - 6.0
+	var tw := g.create_tween()
+	tw.tween_method(func(t: float):
+		# 拋物線：先往上飛、再掉到地上
+		g.position = Vector2(from.x + dx * t, lerpf(from.y, land, t) - up * 4.0 * t * (1.0 - t))
+		g.rotation = t * TAU * 1.6, 0.0, 1.0, 0.75)
+	tw.tween_property(g, "position:y", land - up * 0.13, 0.12).set_ease(Tween.EASE_OUT)
+	tw.tween_property(g, "position:y", land, 0.12).set_ease(Tween.EASE_IN)
+	tw.tween_interval(0.8)
+	tw.tween_property(g, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(g.queue_free)
+
+
+# 待機 2：小紅帽站在原地耍一段劍花（4 格），途中劍身閃一道光；一開始出招或開始走路就中斷
+func twirl() -> void:
+	if _striking or walking or _twirling or hero.pose != "stance":
+		return
+	_twirling = true
+	for i in 4:
+		if _striking or walking:
+			break
+		hero.set_pose("twirl%d" % (i + 1))
+		if i == 1:
+			_bits(hero.position + Vector2(hero.height * 0.2, -hero.height * 0.5), Color(1, 1, 0.92), 6, 0.6)
+			Sfx.play("throw", 1.3, -10.0)
+		await get_tree().create_timer(0.14 if i < 3 else 0.5).timeout
+	if not _striking and not walking and hero.pose.begins_with("twirl"):
+		hero.set_pose("stance")
+	_twirling = false
 
 
 # 小紅帽出招：連擊段數（level）越多招式越多——
@@ -481,7 +833,7 @@ func _hit(k: int, angle := INF, big := 1.0, strength := 0.45) -> void:
 	var at := enemy_center() + Vector2(_rng.randf_range(-14, 14), _rng.randf_range(-30, 24))
 	_slash(at, a, big * (1.25 if _crit else 1.0))
 	_burst(at, Color("ffb070"), 8)
-	enemy.hurt(strength)
+	_hurt_enemy(strength)
 	Sfx.play("hit", 1.1 + k * 0.06, -7.0)
 
 
@@ -555,7 +907,7 @@ func _pass(x: float, dir: float) -> void:
 		_slash(at, -0.6 * dir, 1.2)
 		_slash(at + Vector2(0, 10), 0.6 * dir, 1.2)
 		_burst(at, Color("ffb070"), 12)
-		enemy.hurt(0.8)
+		_hurt_enemy(0.8)
 		Sfx.play("hit", 1.25, -5.0)
 	await tw.finished
 	hero.tilt = 0.0
@@ -588,7 +940,7 @@ func _plunge() -> void:
 	_slash(at, PI * 0.5, 1.9)
 	_burst(at, Art.GOLD, 30)
 	_burst(Vector2(at.x, ground), Color("ffb070"), 20)
-	enemy.hurt(1.2)
+	_hurt_enemy(1.2)
 	Sfx.play("hit", 0.8, 0.0)
 	quake.emit(12.0 if _crit else 8.0)
 
@@ -671,18 +1023,23 @@ func end_combo() -> void:
 	_combo.finish()
 
 
-# 計數放在 logo 右邊、兩個角色頭上的樹梢
+# 連擊計數正顯示在左上角（main 讓場景編號先淡出讓位）
+func combo_showing() -> bool:
+	return _combo.modulate.a > 0.02
+
+
+# 計數放在左上角（右上角是敵人的血條，不會擋到）
 func _combo_home() -> Vector2:
-	return Vector2(maxf(avoid.end.x + 26.0, size.x * 0.22), size.y * 0.08 + ComboCounter.NUM_SIZE * 0.78)
+	return Vector2(18.0, 14.0 + ComboCounter.NUM_SIZE * 0.78)
 
 
 func impact(damage: String, crit: bool) -> void:
 	var at := enemy_center()
 	_burst(at, Color("ff3a2a") if crit else Color("ffb070"), 26 if crit else 16)
 	if enemy:
-		enemy.hurt(1.4 if crit else 1.0)
+		_hurt_enemy(1.4 if crit else 1.0)
 	Sfx.play("hit", 0.9 if crit else 1.05)
-	float_text(damage, at + Vector2(0, -size.y * 0.16), Art.GOLD_LIGHT if crit else Color.WHITE, 30 if crit else 24, Color("4a0306"))
+	float_text(damage, at + Vector2(0, -size.y * 0.16), DAMAGE_COLOR, 32 if crit else 24, DAMAGE_INK)
 
 
 # 狼人倒下：從邊緣燒成灰，餘燼往上飄
@@ -732,6 +1089,35 @@ func _dust(at: Vector2, amount := 10, dir := 0.0, big := 1.0) -> void:
 	ramp.set_color(0, Color.WHITE)
 	ramp.set_color(1, Color(1, 1, 1, 0))
 	p.color_ramp = ramp
+	fx.add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+
+
+# 被打時噴出來的碎屑（松果屑、刺、羽毛、花瓣、蕾絲）：柔邊的小點往上散開、轉著飄下來
+func _bits(at: Vector2, color: Color, amount: int, big := 1.0) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = amount
+	p.lifetime = 0.9
+	p.texture = Fighter._soft_dot()
+	p.direction = Vector2(0.3, -1.0)
+	p.spread = 70.0
+	p.initial_velocity_min = 90.0 * big
+	p.initial_velocity_max = 200.0 * big
+	p.gravity = Vector2(0, 380)
+	p.angular_velocity_min = -300.0
+	p.angular_velocity_max = 300.0
+	var k := size.y / 300.0 * big
+	p.scale_amount_min = 0.12 * k
+	p.scale_amount_max = 0.26 * k
+	p.color = color
+	var fade := Gradient.new()
+	fade.set_color(0, Color.WHITE)
+	fade.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = fade
 	fx.add_child(p)
 	p.emitting = true
 	p.finished.connect(p.queue_free)

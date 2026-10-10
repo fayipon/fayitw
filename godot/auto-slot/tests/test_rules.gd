@@ -234,12 +234,32 @@ func test_rtp_and_multipliers() -> void:
 
 func test_enemies() -> void:
 	var bosses := []
-	for k in 10:
-		if Rules.spawn_enemy(k, 1).kind == "boss":
+	for k in 2 * Rules.BOSS_EVERY:
+		if Rules.spawn_enemy(k, 1).boss:
 			bosses.append(k)
-	check(bosses == [Rules.BOSS_EVERY - 1, 2 * Rules.BOSS_EVERY - 1], "every fifth enemy is the wolf king")
+	check(bosses == [Rules.BOSS_EVERY - 1, 2 * Rules.BOSS_EVERY - 1], "every fifth enemy is the stage boss")
 	var wolf := Rules.spawn_enemy(0, 5)
-	check(wolf.max_hp == 3 * Rules.total_bet(5), "enemy hp scales with the total bet")
+	check(wolf.max_hp == roundi(Rules.ENEMIES[wolf.kind].hp * Rules.total_bet(5)), "enemy hp scales with the total bet")
+	# 每關換一組怪：三關的怪都不一樣，第四關回到第一關的名單
+	var kinds := []
+	for k in 4 * Rules.BOSS_EVERY:
+		kinds.append(Rules.spawn_enemy(k, 1).kind)
+	check(kinds.slice(0, 7) == ["squirrel", "hedgehog", "raccoon", "squirrel", "hedgehog", "raccoon", "bear"], "stage 1 is the forest path crew, the bear is its boss (%s)" % [kinds.slice(0, 7)])
+	check(kinds[7] == "frog" and kinds[13] == "stag" and kinds[14] == "mouse" and kinds[20] == "boss" and kinds.slice(21, 28) == kinds.slice(0, 7), "stages rotate through the story")
+	# 打怪的回收率不變：每一關的總賞金 ÷ 總血量跟改版前（4 隻 3 倍血 0.4 倍賞金的大野狼 + 10 倍血 2.5 倍賞金的狼王）一樣
+	for s in Rules.STAGES.size():
+		var hp := 0
+		var pay := 0
+		for k in Rules.BOSS_EVERY:
+			var e := Rules.spawn_enemy(s * Rules.BOSS_EVERY + k, 200)
+			hp += e.max_hp
+			pay += e.reward
+		var old := (4 * 0.4 + 2.5) / (4 * 3.0 + 10.0)
+		check(absf(float(pay) / hp - old) < 0.002, "stage %d pays %.4f per damage (was %.4f)" % [s + 1, float(pay) / hp, old])
+	# EXTRA 模式的寶箱怪：賞金 ÷ 血量跟一整關平均一樣，而且不是 BOSS
+	var chest := Rules.make_enemy("chest", 200)
+	var old_rate := (4 * 0.4 + 2.5) / (4 * 3.0 + 10.0)
+	check(chest.treasure and not chest.boss and absf(float(chest.reward) / chest.max_hp - old_rate) < 0.002, "the treasure chest pays the stage average per damage")
 	check(not Rules.hit(wolf, Rules.base_attack(5)), "a base attack alone does not kill")
 	check(Rules.hit(wolf, 100000) and wolf.hp == 0, "a big win defeats the enemy")
 
