@@ -59,6 +59,8 @@ var _portrait: Array = []
 # 左上角的場景編號（EP01）與場景名稱；_ep_stage 是正在顯示的關卡
 var _ep: Control
 var _ep_stage := 0
+# EXTRA 模式時場景編號換成 EXTRA、底下寫 Extra Bonus Stage（紫色，不畫關卡進度：寶箱怪不算進度）
+var _ep_extra := false
 # 預覽（網址 ?stage=2）：關卡從第 2 關第 1 隻開始算——出什麼怪、背景、EP 與關卡進度都照「打倒數 + _kill_off」走，
 # 存檔裡的打倒數照常加（之前寫死 EP 與進度，預覽時進度不會動、換關喊的名字也對不上）
 var _kill_off := 0
@@ -371,13 +373,17 @@ func _build_hud() -> Control:
 	return h
 
 
-# 場景編號：金色大字 EP01，底下一條往右淡掉的金線，再一行場景名稱；後面墊一片往右淡掉的暗色，亮背景上也看得清楚
+# 場景編號：金色大字 EP01，底下一條往右淡掉的金線，再一行場景名稱，再一排關卡進度；後面墊一片往右淡掉的暗色，亮背景上也看得清楚。
+# EXTRA 模式時大字是 EXTRA、線和字換成紫色，底下寫 Extra Bonus Stage
 func _draw_ep(c: Control) -> void:
 	if _ep_stage <= 0:
 		return
 	var f := Art.font()
-	var ep := "EP%02d" % _ep_stage
-	var title := Rules.stage_name(_ep_stage)
+	var ep := "EXTRA" if _ep_extra else "EP%02d" % _ep_stage
+	var title := "Extra Bonus Stage" if _ep_extra else Rules.stage_name(_ep_stage)
+	var fill := Color("ead2ff") if _ep_extra else Art.GOLD_LIGHT
+	var ink := Art.EXTRA_DEEP if _ep_extra else Art.GOLD_INK
+	var line := Art.EXTRA if _ep_extra else Art.GOLD
 	var nw := Art.font("light").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var w := maxf(nw, 90.0) + 40.0
 	var dark := Color(Art.INK, 0.42)
@@ -386,14 +392,15 @@ func _draw_ep(c: Control) -> void:
 		PackedColorArray([dark, clear, clear, dark]))
 	var base := Vector2(0, 24)
 	c.draw_string_outline(f, base + Vector2(0, 2), ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color(0, 0, 0, 0.5))
-	c.draw_string_outline(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 6, Art.GOLD_INK)
-	c.draw_string(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Art.GOLD_LIGHT)
+	c.draw_string_outline(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 6, ink)
+	c.draw_string(f, base, ep, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, fill)
 	c.draw_polygon(PackedVector2Array([Vector2(0, 30), Vector2(nw + 24, 30), Vector2(nw + 24, 31.5), Vector2(0, 31.5)]),
-		PackedColorArray([Art.GOLD, Color(Art.GOLD, 0.0), Color(Art.GOLD, 0.0), Art.GOLD]))
+		PackedColorArray([line, Color(line, 0.0), Color(line, 0.0), line]))
 	var lf := Art.font("light")
 	c.draw_string_outline(lf, Vector2(0, 45), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Art.INK)
-	c.draw_string(lf, Vector2(0, 45), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Art.CREAM)
-	_draw_progress(c, Vector2(5, 58))
+	c.draw_string(lf, Vector2(0, 45), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("e6d4ff") if _ep_extra else Art.CREAM)
+	if not _ep_extra:
+		_draw_progress(c, Vector2(5, 58))
 
 
 # 關卡進度：6 顆小菱形是小動物（打倒的填金、正在打的那顆一閃一閃），最後一顆大一點的皇冠是 BOSS
@@ -436,13 +443,18 @@ func _set_ep(stage: int, animate: bool) -> void:
 	_ep_stage = stage
 	_ep.queue_redraw()
 	if animate:
-		var tw := create_tween()
-		_ep.scale = Vector2(1.35, 1.35)
-		_ep.modulate = Color(2.0, 2.0, 2.0, _ep.modulate.a)
-		tw.tween_property(_ep, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(_ep, "modulate:r", 1.0, 0.4)
-		tw.parallel().tween_property(_ep, "modulate:g", 1.0, 0.4)
-		tw.parallel().tween_property(_ep, "modulate:b", 1.0, 0.4)
+		_pop_ep()
+
+
+# 場景編號放大彈回、閃一下（換關、進出 EXTRA）
+func _pop_ep() -> void:
+	var tw := create_tween()
+	_ep.scale = Vector2(1.35, 1.35)
+	_ep.modulate = Color(2.0, 2.0, 2.0, _ep.modulate.a)
+	tw.tween_property(_ep, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(_ep, "modulate:r", 1.0, 0.4)
+	tw.parallel().tween_property(_ep, "modulate:g", 1.0, 0.4)
+	tw.parallel().tween_property(_ep, "modulate:b", 1.0, 0.4)
 
 
 func _layout_hud(dw: float, fh: float) -> void:
@@ -633,6 +645,8 @@ func _set_extra(on: bool) -> void:
 	_extra_sparks.emitting = on
 	field.set_extra(on)
 	(_total.get_node("Cap") as Label).text = "EXTRA\nWIN" if on else "TOTAL\nWIN"
+	_ep_extra = on
+	_pop_ep()
 	_refresh_fs()
 
 
@@ -2145,11 +2159,11 @@ func _boot() -> void:
 	# ?gold 轉一次第 2～4 軸有幾格金框的盤面；
 	# ?combo 等狼站定後連出第 1～6 段連擊的招式、跑一次連擊計數（每招只扣狼 0.01；?combo=5 從第 5 段開始）；
 	# ?slow=0.25 整個遊戲用四分之一速度跑（檢查動作用，可以跟上面幾個一起帶）；
-	# ?enemy=fox 之後出來的敵人都換成這一種、?stage=2 從第 2 關第 1 隻開始（背景、EP、關卡進度、出的怪都跟著，存檔的打倒數照常加）；?extra 看 EXTRA 模式的畫面；?reveal 看第 3 關 BOSS 變身、露餡
+	# ?enemy=fox 之後出來的敵人都換成這一種（寶箱怪只在 EXTRA 出現，不能指定，看寶箱怪用 ?extra）、?stage=2 從第 2 關第 1 隻開始（背景、EP、關卡進度、出的怪都跟著，存檔的打倒數照常加）；?extra 看 EXTRA 模式的畫面；?reveal 看第 3 關 BOSS 變身、露餡
 	var search := str(JavaScriptBridge.eval("location.search")) if OS.has_feature("web") else ""
 	if search.contains("enemy="):
 		var k := search.get_slice("enemy=", 1).get_slice("&", 0)
-		if Rules.ENEMIES.has(k):
+		if Rules.ENEMIES.has(k) and not Rules.ENEMIES[k].get("treasure", false):
 			_force_enemy = k
 	if search.contains("stage="):
 		var st := maxi(1, search.get_slice("stage=", 1).get_slice("&", 0).to_int())
