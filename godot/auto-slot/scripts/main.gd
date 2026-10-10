@@ -1798,8 +1798,9 @@ func _attack(damage: int, crit: bool, release := false, combo := 1) -> void:
 		_store(damage)
 		return
 	var over := maxi(0, damage - int(enemy.hp))
+	# 打倒時傷害跳字以怪物剩下的血為準（多出來的照樣存進能量條，但不另外跳「+」，免得一個扣一個加）
+	field.impact("-%s" % Art.money(damage - over), crit)
 	var killed := Rules.hit(enemy, damage)
-	field.impact("-%s" % Art.money(damage), crit)
 	_shake(9.0 if crit else 4.0)
 	var to: float = float(enemy.hp) / enemy.max_hp
 	if _hp_tween:
@@ -1815,10 +1816,10 @@ func _attack(damage: int, crit: bool, release := false, combo := 1) -> void:
 		_enemy_box.get_node("Portrait").queue_redraw()
 		_encounter.play("IT'S THE WOLF!", "All the better to eat you with!", _portrait, true, true)
 	if killed and enemy.next != "":
-		_store(over)
+		_store(over, true)
 		await _next_phase()
 	elif killed:
-		_store(over)
+		_store(over, true)
 		await _defeat()
 	else:
 		await get_tree().create_timer(0.15).timeout
@@ -1855,12 +1856,14 @@ func _next_phase() -> void:
 		_queue.push_front([0, false, true, 0])
 
 
-func _store(amount: int) -> void:
+# quiet：打倒時多出來的傷害——能量條默默變長，不跳「+」、不響
+func _store(amount: int, quiet := false) -> void:
 	if amount <= 0:
 		return
 	state.charge += amount
-	field.set_charge(state.charge, amount, _charge_power(), _charge_cap())
-	Sfx.play("coin", 1.5, -12.0)
+	field.set_charge(state.charge, 0 if quiet else amount, _charge_power(), _charge_cap())
+	if not quiet:
+		Sfx.play("coin", 1.5, -12.0)
 
 
 # 頭上藍色能量條的上限：總押注 × 100（換押注時跟著變）
@@ -2097,7 +2100,12 @@ func _make_sheet(title: String, scroll := false) -> Control:
 		sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		col.add_child(sc)
-		sc.add_child(body)
+		# 捲軸疊在內容的右邊：內容右側留出捲軸的寬度，最右一欄（History 的 PROFIT）才不會被蓋住
+		var pad := MarginContainer.new()
+		pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pad.add_theme_constant_override("margin_right", 16)
+		sc.add_child(pad)
+		pad.add_child(body)
 	else:
 		col.add_child(body)
 	sheet.set_meta("body", body)

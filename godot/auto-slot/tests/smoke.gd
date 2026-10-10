@@ -47,7 +47,11 @@ func _process(_delta: float) -> bool:
 			# 狼站定、存的傷害已經打出去之後：打倒牠，多 50 點
 			if _settled():
 				expect(main.state.charge == 0, "stored damage is released when a wolf is ready")
-				main._queue_attack(int(main.enemy.hp) + 50, false)
+				# 第 3 關 BOSS 打倒後會變身成外婆（血條補滿）：兩段的血一起給，多 50 點存起來
+				var more := 0
+				if main.enemy.get("next", "") != "":
+					more = Rules.make_enemy(main.enemy.next, Rules.BET_LEVELS[main.state.bet]).max_hp
+				main._queue_attack(int(main.enemy.hp) + more + 50, false)
 				phase = 5
 		5:
 			# 狼倒下、還在走路：多出來的 50 點存著，這時再打一下 30 點也存起來

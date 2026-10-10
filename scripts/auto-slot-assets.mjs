@@ -72,7 +72,9 @@ await sharp(`${src}/s-far${k}.jpg`).webp({ quality: 80 }).toFile(`${art}/field/f
     if (spill > 0) { px[i] -= spill; px[i + 2] -= spill; }
     px[i + 3] = Math.round(a * 255);
   }
-  const near = seamLoop(px, raw.info.width, raw.info.height, 420);
+  // 頭尾接起來的重疊寬度：林間小路的兩側大樹位置剛好合得上，重疊 420 接在草地上；花田、外婆家門口兩側都是整棵大樹，
+  // 重疊太寬的話接縫會落在兩棵樹中間、把兩邊的樹幹都切掉（只剩樹冠浮在半空），只重疊最外側 60：右邊的樹幹直接接上左邊的樹幹
+  const near = seamLoop(px, raw.info.width, raw.info.height, k ? 60 : 420);
   await sharp(near.data, { raw: { width: near.width, height: near.height, channels: 4 } }).webp({ quality: 82, alphaQuality: 90 }).toFile(`${art}/field/near${out}.webp`);
   console.log('field near' + out, near.width, 'x', near.height);
 }
