@@ -53,6 +53,45 @@ function seamLoop(px, W, H, OV, F = 10) {
   return { data: out, width: L, height: H };
 }
 
+// 近景挖洋紅時誤挖的小塊補回來：花田那棵樹上鑲的紫紅色寶石、紫色小花顏色接近洋紅，會被挖成半透明的洞。
+// 真的背景是很純的洋紅（洋紅程度 min(R, B) - G 平均約 247，枝葉間的小空隙也在 125 以上），寶石、小花只有 15～80：
+// 被挖到的格子連成塊，最大那塊是背景不動；其他塊的平均洋紅程度低於 100 的，整塊換回原圖（不透明）
+function restoreIslands(px, orig, W, H, LO) {
+  const N = W * H;
+  const mag = (j) => Math.min(orig[j * 4], orig[j * 4 + 2]) - orig[j * 4 + 1];
+  const lab = new Int32Array(N);
+  const comps = [];
+  const stack = new Int32Array(N);
+  for (let s = 0; s < N; s++) {
+    if (lab[s] || mag(s) <= LO) continue;
+    const id = comps.length + 1;
+    let top = 0, size = 0, sum = 0;
+    stack[top++] = s;
+    lab[s] = id;
+    while (top) {
+      const j = stack[--top];
+      size++;
+      sum += mag(j);
+      const x = j % W, y = (j - x) / W;
+      for (const k of [x > 0 ? j - 1 : -1, x < W - 1 ? j + 1 : -1, y > 0 ? j - W : -1, y < H - 1 ? j + W : -1]) {
+        if (k >= 0 && !lab[k] && mag(k) > LO) { lab[k] = id; stack[top++] = k; }
+      }
+    }
+    comps.push({ size, mean: sum / size });
+  }
+  let bg = 0;
+  for (let c = 1; c < comps.length; c++) if (comps[c].size > comps[bg].size) bg = c;
+  let restored = 0;
+  for (let j = 0; j < N; j++) {
+    const c = lab[j] - 1;
+    if (c < 0 || c === bg || comps[c].mean >= 100) continue;
+    for (let q = 0; q < 3; q++) px[j * 4 + q] = orig[j * 4 + q];
+    px[j * 4 + 3] = 255;
+    restored++;
+  }
+  return restored;
+}
+
 /* ---------- 自走區：遠景與近景（三關：林間小路 s-far／s-near、花田 s-far2／s-near2、外婆家門口 s-far3／s-near3） ---------- */
 for (const k of ['', '2', '3']) {
 const out = k ? `-${k}` : '';
@@ -63,6 +102,7 @@ await sharp(`${src}/s-far${k}.jpg`).webp({ quality: 80 }).toFile(`${art}/field/f
 {
   const raw = await sharp(`${src}/s-near${k}.jpg`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const px = raw.data, LO = 14, HI = 56;
+  const orig = Buffer.from(px);
   for (let i = 0; i < px.length; i += 4) {
     const m = Math.min(px[i], px[i + 2]) - px[i + 1];
     const t = Math.min(1, Math.max(0, (m - LO) / (HI - LO)));
@@ -72,9 +112,11 @@ await sharp(`${src}/s-far${k}.jpg`).webp({ quality: 80 }).toFile(`${art}/field/f
     if (spill > 0) { px[i] -= spill; px[i + 2] -= spill; }
     px[i + 3] = Math.round(a * 255);
   }
-  // 頭尾接起來的重疊寬度：林間小路的兩側大樹位置剛好合得上，重疊 420 接在草地上；花田、外婆家門口兩側都是整棵大樹，
-  // 重疊太寬的話接縫會落在兩棵樹中間、把兩邊的樹幹都切掉（只剩樹冠浮在半空），只重疊最外側 60：右邊的樹幹直接接上左邊的樹幹
-  const near = seamLoop(px, raw.info.width, raw.info.height, k ? 60 : 420);
+  restoreIslands(px, orig, raw.info.width, raw.info.height, LO);
+  // 頭尾接起來的重疊寬度：三關的近景兩側都是整棵大樹，重疊太寬的話接縫會落在樹與樹之間——
+  // 花田、外婆家門口是把兩邊的樹幹都切掉（只剩樹冠浮在半空），林間小路是把右邊的樹和蘑菇硬塞到左邊的樹旁邊（樹幹擠成一團、蘑菇重複）。
+  // 只重疊最外側 60：右邊的大樹幹直接接上左邊的大樹幹，原圖裡每棵樹、每朵蘑菇都只出現一次
+  const near = seamLoop(px, raw.info.width, raw.info.height, 60);
   await sharp(near.data, { raw: { width: near.width, height: near.height, channels: 4 } }).webp({ quality: 82, alphaQuality: 90 }).toFile(`${art}/field/near${out}.webp`);
   console.log('field near' + out, near.width, 'x', near.height);
 }
